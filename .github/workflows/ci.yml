@@ -1,0 +1,46 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      # ===== BACKEND =====
+      - name: 📦 Install BE dependencies
+        run: |
+          cd be
+          npm install
+
+      - name: 🛠 Build BE
+        run: |
+          cd be
+          npm run build
+
+      # ===== FE USER =====
+      - name: 📦 Install FE dependencies
+        run: |
+          cd fe
+          npm install
+
+      - name: 🛠 Build FE
+        run: |
+          cd fe
+          npm run build
+
+      # ===== FE ADMIN =====
+      - name: 📦 Install FE ADMIN dependencies
+        run: |
+          cd fe-internal
+          npm install
+
+      - name: 🛠 Build FE ADMIN
+        run: |
+          cd fe-internal
+          npm run build
