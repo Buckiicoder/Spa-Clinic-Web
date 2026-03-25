@@ -11,6 +11,6 @@
     "moduleResolution": "NodeNext",
     "target": "ES2022",
     "verbatimModuleSyntax": false,
-    "allowImportingTsExtensions": true,
+    "noEmit": false
   }
 }
