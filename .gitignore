@@ -1,0 +1,19 @@
+# env files
+.env
+.env.*
+be/.env
+fe/.env
+
+# node_modules
+node_modules
+**/node_modules
+
+# build
+dist
+build
+
+# uploads
+be/uploads
+
+# logs
+*.log
