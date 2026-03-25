@@ -1,18 +1,7 @@
 import Navbar from "../components/Navbar";
-import { useSelector, useDispatch } from "react-redux";
-import { logoutAsync } from "../features/auth/authSlice";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 
 export default function BeautySkin() {
-  const token = useSelector((state: any) => state.auth.token);
-  const dispatch = useDispatch<any>();
-  const navigate = useNavigate<any>();
-
-  const handleLogout = () => {
-    dispatch(logoutAsync());
-    navigate("/");
-  };
   // Smooth scroll khi click anchor
   useEffect(() => {
     const links = document.querySelectorAll('a[href^="#"]');
@@ -29,7 +18,7 @@ export default function BeautySkin() {
 
   return (
     <div className="text-brown-900">
-      <Navbar token={token} onLogout={handleLogout} />
+      <Navbar/>
 
       {/* HERO */}
       <section

@@ -1,18 +1,8 @@
 import Navbar from "../components/Navbar";
-import { useDispatch } from "react-redux";
-import { logoutAsync } from "../features/auth/authSlice";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 
 export default function RelaxMassage() {
 
-   const dispatch = useDispatch<any>();
-   const navigate = useNavigate<any>();
-
-  const handleLogout = () => {
-      dispatch(logoutAsync());
-      navigate("/");
-    }
     // Smooth scroll khi click anchor
     useEffect(() => {
       const links = document.querySelectorAll('a[href^="#"]');

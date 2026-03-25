@@ -4,11 +4,6 @@ import { useSelector } from "react-redux";
 import { useAppDispatch } from "../app/hook";
 import { selectUser, logoutAsync } from "../features/auth/authSlice";
 
-interface User {
-  name: string;
-  avatar?: string;
-}
-
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
