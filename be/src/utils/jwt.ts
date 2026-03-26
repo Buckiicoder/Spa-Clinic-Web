@@ -1,7 +1,11 @@
 import jwt from 'jsonwebtoken'
 import { UserRole } from '../types/user.js'
 
-const SECRET = process.env.JWT_SECRET!
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET is missing");
+}
+
+const SECRET = process.env.JWT_SECRET;
 
 export interface JwtPayload {
   id: number
@@ -10,7 +14,7 @@ export interface JwtPayload {
 
 export const signToken = (payload: JwtPayload) =>
   jwt.sign(payload, SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN
+    expiresIn: "1d"
   })
 
 export const verifyToken = (token: string) =>

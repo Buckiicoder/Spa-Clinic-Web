@@ -3,6 +3,7 @@ import { loginSchema, registerSchema } from '../validators/auth.schema.js'
 import * as authService from '../services/auth.service.js'
 import { updateAvatarService } from '../services/auth.service.js' 
 import { sendOTPEmail } from "../utils/mailer.js";
+import { UserRole } from '../types/user.js';
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -29,7 +30,7 @@ export const register = async (req: Request, res: Response) => {
       phone,
       email,
       password,
-      role: "CUSTOMER",
+      role: UserRole.CUSTOMER,
       contact,
     });
 
