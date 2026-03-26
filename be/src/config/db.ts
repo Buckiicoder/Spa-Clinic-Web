@@ -7,9 +7,19 @@ if (!process.env.DATABASE_URL) {
   throw new Error('❌ DATABASE_URL is not defined')
 }
 
+// Db dùng trong local
+// export const db = new Pool({
+//   connectionString: process.env.DATABASE_URL
+// })
+
+// Db dùng cho deploy server
 export const db = new Pool({
-  connectionString: process.env.DATABASE_URL
-})
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
+
 
 // 🔥 VERIFY THỰC SỰ DB
 export const verifyDatabaseConnection = async () => {
