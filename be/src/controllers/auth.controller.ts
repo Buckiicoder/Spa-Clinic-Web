@@ -78,11 +78,19 @@ export const customerLogin = async (req: Request, res: Response) => {
       data.password
     )
     
-    /*Set Cookie*/
+    /*Set Cookie Local*/
+    // res.cookie('accessToken', token, {
+    //   httpOnly: true,
+    //   secure: false,
+    //   sameSite: 'lax',
+    //   maxAge: 1000 * 60 * 60 * 24 * 1
+    // })
+
+    /*Set Cookie Product*/
     res.cookie('accessToken', token, {
       httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
+      secure: true,
+      sameSite: 'none',
       maxAge: 1000 * 60 * 60 * 24 * 1
     })
 
