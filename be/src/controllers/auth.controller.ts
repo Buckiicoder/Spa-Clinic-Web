@@ -78,6 +78,7 @@ export const customerLogin = async (req: Request, res: Response) => {
       data.password
     )
     
+
     /*Set Cookie Local*/
     // res.cookie('accessToken', token, {
     //   httpOnly: true,
@@ -86,6 +87,7 @@ export const customerLogin = async (req: Request, res: Response) => {
     //   maxAge: 1000 * 60 * 60 * 24 * 1
     // })
 
+    
     /*Set Cookie Product*/
     res.cookie('accessToken', token, {
       httpOnly: true,
