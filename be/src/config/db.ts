@@ -8,17 +8,17 @@ if (!process.env.DATABASE_URL) {
 }
 
 // Db dùng trong local
-export const db = new Pool({
-  connectionString: process.env.DATABASE_URL
-})
+// export const db = new Pool({
+//   connectionString: process.env.DATABASE_URL
+// })
 
 // Db dùng cho deploy server
-// export const db = new Pool({
-//   connectionString: process.env.DATABASE_URL,
-//   ssl: {
-//     rejectUnauthorized: false,
-//   },
-// });
+export const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
 
 
 // 🔥 VERIFY THỰC SỰ DB
