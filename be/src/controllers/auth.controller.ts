@@ -93,7 +93,7 @@ export const customerLogin = async (req: Request, res: Response) => {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      path: '/',
+      domain: '.onrender.com',
       maxAge: 1000 * 60 * 60 * 24 * 1
     })
 
