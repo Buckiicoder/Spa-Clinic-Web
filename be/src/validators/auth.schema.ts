@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { UserRole } from '../types/user.js'
 
 export const registerSchema = z.object({
   name: z.string().min(2),

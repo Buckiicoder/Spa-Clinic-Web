@@ -7,7 +7,11 @@ interface Props {
 }
 
 export default function ProtectedRoute({ children }: Props) {
-  const { isAuthenticated } = useAppSelector((state) => state.auth)
+  const { isAuthenticated, loading } = useAppSelector((state) => state.auth)
+
+  if(loading) {
+    return <div className= "spinner">Loading</div>
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/" replace/>

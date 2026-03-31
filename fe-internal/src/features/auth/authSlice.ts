@@ -5,9 +5,9 @@ interface StaffUser {
   id: number
   name: string
   email: string
-  phone: number
+  phone: string
   avatar?: string
-  role: 'STAFF' | 'MANAGER'
+  role: 'STAFF' | 'MANAGER' | 'RECEPTION'
 }
 
 interface AuthState {
@@ -19,7 +19,7 @@ interface AuthState {
 
 const initialState: AuthState = {
   user: null,
-  loading: false,
+  loading: true,
   error: null,
   isAuthenticated: false
 }
@@ -29,12 +29,10 @@ export const login = createAsyncThunk(
   async(data: {email: string, password: string}, {rejectWithValue}) => {
     try {
       await loginAPI(data)
-
       const res = await meAPI()
-
       const user = res.data
 
-      if(user.role !== 'STAFF' && user.role !== 'MANAGER') {
+      if(user.role !== 'STAFF' && user.role !== 'MANAGER' && user.role!== 'RECEPTION') {
         throw new Error ('Unauthorized role')
       }
 
@@ -92,10 +90,12 @@ const authSlice = createSlice({
       state.isAuthenticated = false
     })
     .addCase(fetchUser.fulfilled, (state, action) => {
+      state.loading = false
       state.user = action.payload
       state.isAuthenticated = true
     })
     .addCase(fetchUser.rejected, (state) => {
+      state.loading = false
       state.user = null
       state.isAuthenticated = false
     })
