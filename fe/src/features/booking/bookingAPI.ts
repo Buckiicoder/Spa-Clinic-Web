@@ -1,7 +1,7 @@
 import { api } from "../../services/api";
 
 export const createBookingAPI = (data: any) =>
-  api.post("/booking", data);
+  api.post("/booking/customer", data);
 
 // (sau này dùng)
 export const getMyBookingsAPI = () =>

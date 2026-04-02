@@ -4,8 +4,9 @@ import * as authService from '../services/auth.service.js'
 import { updateAvatarService } from '../services/auth.service.js' 
 import { sendOTPEmail } from "../utils/mailer.js";
 import { UserRole } from '../types/user.js';
+import { signToken } from "../utils/jwt.js";
 
-export const register = async (req: Request, res: Response) => {
+export const customerRegister = async (req: Request, res: Response) => {
   try {
     const { name, gender, contact, password } = registerSchema.parse(req.body);
 
@@ -56,7 +57,7 @@ export const verifyOTP = async (req: Request, res: Response) => {
 
     const token = await authService.verifyOTPService(contact, otp);
 
-    res.cookie("accessToken", token, {
+    res.cookie("customerAccessToken", token, {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
@@ -72,57 +73,114 @@ export const verifyOTP = async (req: Request, res: Response) => {
 
 export const customerLogin = async (req: Request, res: Response) => {
   try {
-    const data = loginSchema.parse(req.body)
-    const token = await authService.customerLoginService(
+    const data = loginSchema.parse(req.body);
+
+    const user = await authService.loginService(
       data.email,
       data.password
-    )
-    
+    );
 
-    /*Set Cookie Local*/
-    res.cookie('accessToken', token, {
+    if (user.role !== "CUSTOMER") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const token = signToken({
+      id: user.id,
+      role: user.role,
+    });
+
+    res.cookie("customerAccessToken", token, {
       httpOnly: true,
       secure: false,
-      sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24 * 1
-    })
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24,
+    });
 
-
-    /*Set Cookie Product*/
-    // res.cookie('accessToken', token, {
-    //   httpOnly: true,
-    //   secure: true,
-    //   sameSite: 'none',
-    //   domain: '.onrender.com',
-    //   maxAge: 1000 * 60 * 60 * 24 * 1
-    // })
-
-    return res.json({
-      message: 'Login success'
-    })
+    return res.json({ message: "Login success" });
   } catch (err: any) {
-    return res.status(401).json({ message: err.message })
+    return res.status(401).json({ message: err.message });
   }
-}
+};
 
 
-export const logout = async (_req: Request, res: Response) => {
-  res.clearCookie('accessToken')
+
+export const customerLogout = async (_req: Request, res: Response) => {
+  res.clearCookie('customerAccessToken')
 
   return res.json({
     message: 'Logout success'
   })
 }
 
-export const me = async (req: Request, res: Response) => {
+export const staffLogin = async (req: Request, res: Response) => {
+  try {
+    const data = loginSchema.parse(req.body);
+
+    const user = await authService.loginService(
+      data.email,
+      data.password
+    );
+
+    // 🔥 phân quyền tại controller
+    if (user.role !== "STAFF" && user.role !== "MANAGER") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const token = signToken({
+      id: user.id,
+      role: user.role,
+    });
+
+    res.cookie("staffAccessToken", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24,
+    });
+
+    return res.json({ message: "Login success" });
+  } catch (err: any) {
+    return res.status(401).json({ message: err.message });
+  }
+};
+
+
+export const staffLogout = async (_req: Request, res: Response) => {
+  res.clearCookie('staffAccessToken')
+
+  return res.json({
+    message: 'Logout success'
+  })
+}
+
+export const meCustomer = async (req: Request, res: Response) => {
   if(!req.user) {
     return res.status(401).json({message: 'Unauthorized'})
   }
 
-  const user = await authService.getCustomerUserById(req.user.id)
+  const user = await authService.getCustomerById(req.user.id)
 
   return res.json(user)
 }
+
+export const meStaff = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (req.user.role !== "STAFF" && req.user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const staff = await authService.getStaffById(req.user.id);
+
+    return res.json(staff);
+  } catch (err: any) {
+    return res.status(404).json({ message: err.message });
+  }
+};
+
 
 export const uploadAvatar = async (req: Request, res: Response) => {
   try {
@@ -152,27 +210,27 @@ export const uploadAvatar = async (req: Request, res: Response) => {
   }
 };
 
-//staff only
-export const staffLogin = async (req: Request, res: Response) => {
-  try {
-    const data = loginSchema.parse(req.body)
-    const token = await authService.staffLoginService(
-      data.email,
-      data.password
-    )
+// //staff only
+// export const staffLogin = async (req: Request, res: Response) => {
+//   try {
+//     const data = loginSchema.parse(req.body)
+//     const token = await authService.staffLoginService(
+//       data.email,
+//       data.password
+//     )
     
-    /*Set Cookie*/
-    res.cookie('accessToken', token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24 * 1
-    })
+//     /*Set Cookie*/
+//     res.cookie('staffAccessToken', token, {
+//       httpOnly: true,
+//       secure: false,
+//       sameSite: 'lax',
+//       maxAge: 1000 * 60 * 60 * 24 * 1
+//     })
 
-    return res.json({
-      message: 'Login success'
-    })
-  } catch (err: any) {
-    return res.status(401).json({ message: err.message })
-  }
-}
+//     return res.json({
+//       message: 'Login success'
+//     })
+//   } catch (err: any) {
+//     return res.status(401).json({ message: err.message })
+//   }
+// }

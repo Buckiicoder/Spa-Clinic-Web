@@ -109,7 +109,7 @@ export default function Home() {
             Liên hệ & Đặt lịch
           </h3>
           <p className="text-gray-500 mb-8 font-medium ">
-            Hotline: 0909 999 999 – Địa chỉ: TP. Hồ Chí Minh
+            Hotline: 0909 999 999  –  Địa chỉ: Thành phố Hà Nội
           </p>
 
           <button className="bg-amber-500 hover:bg-amber-600 px-10 py-3 rounded-full font-semibold transition">

@@ -8,24 +8,52 @@ export interface AuthRequest extends Request {
   }
 }
 
-export const authMiddleware = (
+export const authCustomerMiddleware = (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    
-    /* Lấy token từ cookie (http) */
-    const token = req.cookies?.accessToken
-    
-    if(!token) { 
-      return res.status(401).json({ message: 'Unauthorized'})
+    const token = req.cookies?.customerAccessToken;
+
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const decoded = verifyToken(token)
-    req.user = decoded
-    next()
-  } catch (error) {
-    return res.status(401).json({ message: 'Invalid token'})
+    const decoded = verifyToken(token);
+
+    if (decoded.role !== "CUSTOMER") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    req.user = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ message: "Invalid token" });
   }
-}
+};
+
+export const authStaffMiddleware = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.cookies?.staffAccessToken;
+
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const decoded = verifyToken(token);
+
+    if (decoded.role !== "STAFF" && decoded.role !== "ADMIN") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    req.user = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ message: "Invalid token" });
+  }
+};

@@ -32,7 +32,7 @@ export const login = createAsyncThunk(
       const res = await meAPI()
       const user = res.data
 
-      if(user.role !== 'STAFF' && user.role !== 'MANAGER' && user.role!== 'RECEPTION') {
+      if(user.role !== 'STAFF' && user.role !== 'MANAGER') {
         throw new Error ('Unauthorized role')
       }
 

@@ -1,5 +1,35 @@
 import { db } from "../config/db.js";
 
+export const searchCustomers = async (
+  phone?: string,
+  email?: string
+) => {
+  let query = `
+    SELECT id, name, phone, email
+    FROM users
+    WHERE role = 'CUSTOMER'
+  `;
+
+  const params: any[] = [];
+
+  if (phone) {
+    params.push(`%${phone}%`);
+    query += ` AND phone ILIKE $${params.length}`;
+  }
+
+  if (email) {
+    params.push(`%${email}%`);
+    query += ` AND email ILIKE $${params.length}`;
+  }
+
+  query += ` ORDER BY created_at DESC LIMIT 5`;
+
+  const result = await db.query(query, params);
+
+  return result.rows;
+};
+
+
 export const findUserByContact = async (phone?: string | null, email?: string | null) => {
   const result = await db.query(
     `SELECT * FROM users WHERE phone = $1 OR email = $2 LIMIT 1`,
@@ -23,15 +53,15 @@ export const createGuestUser = async (
 };
 
 export const createBooking = async (data: any) => {
-  const { customer_id, service_id, booking_date, booking_time, quantity } =
+  const { customer_id, service_id, booking_date, booking_time, quantity, created_by } =
     data;
 
   const result = await db.query(
-    `INSERT INTO bookings (booking_code, customer_id, service_id, booking_date, booking_time, quantity)
+    `INSERT INTO bookings (booking_code, customer_id, service_id, booking_date, booking_time, quantity, created_by)
     VALUES (CONCAT('BK', FLOOR(RANDOM() * 1000000)),
-    $1, $2, $3, $4, $5)
+    $1, $2, $3, $4, $5, $6)
     RETURNING *`,
-    [customer_id, service_id, booking_date, booking_time, quantity],
+    [customer_id, service_id, booking_date, booking_time, quantity, created_by],
   );
 
   return await getBookingById(result.rows[0].id);
@@ -70,6 +100,17 @@ export const confirmBooking = async (id: string) => {
   return await getBookingById(id);
 };
 
+export const checkInBooking = async (id: string) => {
+  await db.query(
+    `UPDATE bookings SET status = 'CHECKED_IN' WHERE id = $1`,
+    [id]
+  );
+
+  return await getBookingById(id);
+};
+
+
 export const deleteBooking = async (id: string) => {
   await db.query(`DELETE FROM bookings WHERE id = $1`, [id]);
 };
+

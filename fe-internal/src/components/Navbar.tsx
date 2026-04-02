@@ -180,7 +180,10 @@ export default function Navbar() {
             className="absolute top-0 left-0 h-full w-64 bg-white p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold mb-8 text-amber-600">SpaClinic</h2>
+            <h2 className="text-xl font-bold mb-8 text-amber-600">
+              <Link to="/checklich">
+              Spa<span className="text-amber-400">Clinic</span>
+            </Link></h2>
 
             <ul className="flex flex-col gap-6 text-gray-700 font-medium ">
               <li className="hover:text-amber-400 transition">
@@ -194,6 +197,12 @@ export default function Navbar() {
                   Lịch làm
                 </a>
               </li>
+
+              <li>
+              <Link to="/checklich" className="hover:text-amber-400 transition">
+                Check lịch
+              </Link>
+            </li>
 
               {/* <li className="hover:text-amber-400 transition">
                 <a href="#services" onClick={closeMenu}>

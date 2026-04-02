@@ -6,6 +6,8 @@ import Login from "./pages/Login";
 import ProtectedRoute from "./ProtectedRoute";
 import ChamCong from "./pages/Timekeeping";
 import ReceptionDashboard from "./pages/ReceptionDashboard";
+import BookingDetail from "./pages/BookingDetail";
+import Booking from "./pages/Booking";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -42,6 +44,22 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ReceptionDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/booking/:id"
+          element={
+            <ProtectedRoute>
+              <BookingDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/booking"
+          element={
+            <ProtectedRoute>
+              <Booking />
             </ProtectedRoute>
           }
         />

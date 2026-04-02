@@ -1,16 +1,16 @@
 import { api } from "../../services/api"
 
 export const loginAPI = (data: any) =>
-  api.post('/auth/login/staff', data)
+  api.post('/auth/staff/login', data)
 
 export const logoutAPI = () => 
-  api.post('/auth/logout/staff')
+  api.post('/auth/staff/logout')
 
 export const meAPI = () => 
-  api.get('/auth/me')
+  api.get('/auth/staff/me')
 
 export const uploadAvatarAPI = (data: FormData) =>
-  api.post("/auth/upload-avatar", data, {
+  api.post("/auth/staff/upload-avatar", data, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
