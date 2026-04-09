@@ -3,6 +3,7 @@ import cors from "cors";
 import authRoutes from "./routes/auth.routes.js";
 import bookingRoutes from "./routes/booking.routes.js"
 import serviceRoutes from "./routes/service.routes.js"
+import chatRoutes from "./routes/chat.routes.js";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -32,6 +33,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/service", serviceRoutes);
+app.use("/api/chat", chatRoutes);
 
 
 const __filename = fileURLToPath(import.meta.url);

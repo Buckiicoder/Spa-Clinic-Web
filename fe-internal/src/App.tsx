@@ -8,6 +8,7 @@ import ChamCong from "./pages/Timekeeping";
 import ReceptionDashboard from "./pages/ReceptionDashboard";
 import BookingDetail from "./pages/BookingDetail";
 import Booking from "./pages/Booking";
+import MainLayout from "./components/MainLayout";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -17,12 +18,12 @@ export default function App() {
       try {
         await dispatch(fetchUser()).unwrap();
       } catch (err: any) {
-        if(err === null || err?.message === "Rejected") {
+        if (err === null || err?.message === "Rejected") {
           return;
         }
       }
       console.log("Lỗi lấy thông tin người dùng");
-    }
+    };
     initAuth();
   }, [dispatch]);
 
@@ -30,39 +31,41 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* Public */}
-        <Route path="/" element={<Login />}/>
-        <Route
-          path="/chamcong"
-          element={
-            <ProtectedRoute>
-              <ChamCong />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/checklich"
-          element={
-            <ProtectedRoute>
-              <ReceptionDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/booking/:id"
-          element={
-            <ProtectedRoute>
-              <BookingDetail />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/booking"
-          element={
-            <ProtectedRoute>
-              <Booking />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/" element={<Login />} />
+        <Route element={<MainLayout />}>
+          <Route
+            path="/chamcong"
+            element={
+              <ProtectedRoute>
+                <ChamCong />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/checklich"
+            element={
+              <ProtectedRoute>
+                <ReceptionDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/booking/:id"
+            element={
+              <ProtectedRoute>
+                <BookingDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/booking"
+            element={
+              <ProtectedRoute>
+                <Booking />
+              </ProtectedRoute>
+            }
+          />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

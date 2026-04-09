@@ -12,6 +12,7 @@ import { useEffect } from "react";
 import { fetchUser } from "./features/auth/authSlice";
 import Register from "./pages/Register";
 import VerifyOTP from "./pages/verifyOTP";
+import SpaChatWidget from "./components/SpaChatWidget";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -35,6 +36,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+    <SpaChatWidget/>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />

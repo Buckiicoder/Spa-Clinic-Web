@@ -85,7 +85,7 @@ export default function BookingDetail() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-amber-100 p-6 flex justify-center">
-      <Navbar />
+      {/* <Navbar /> */}
 
       <div className="w-full max-w-3xl py-24">
         <div className="bg-white/90 backdrop-blur-xl border border-amber-200 rounded-2xl shadow-[0_20px_40px_rgba(120,_72,_0,_0.15)] p-8">

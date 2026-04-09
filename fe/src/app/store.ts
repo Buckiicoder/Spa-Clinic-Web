@@ -2,12 +2,14 @@ import { configureStore } from '@reduxjs/toolkit'
 import authReducer from '../features/auth/authSlice'
 import bookingReducer from '../features/booking/bookingSlice'
 import serviceReducer from '../features/service/serviceSlice'
+import chatReducer from '../features/chat/chatSlice'
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     booking: bookingReducer,
     service: serviceReducer,
+    chat: chatReducer
   }
 })
 
