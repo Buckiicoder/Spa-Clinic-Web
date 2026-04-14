@@ -3,11 +3,23 @@ import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useAppDispatch } from "../app/hook";
 import { selectUser, logoutAsync } from "../features/auth/authSlice";
-import { LayoutDashboard, Clock, CalendarCheck } from "lucide-react";
+import {
+  LayoutDashboard,
+  Clock,
+  CalendarCheck,
+  Users,
+  ChevronDown,
+} from "lucide-react";
 
 export default function Navbar({ open, setOpen }: any) {
   const navigate = useNavigate();
   const [openAccount, setOpenAccount] = useState(false);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+
+  // toggle đảm bảo chỉ mở 1 menu
+  const toggleMenu = (key: string) => {
+    setOpenMenu((prev) => (prev === key ? null : key));
+  };
 
   const user = useSelector(selectUser);
   const dispatch = useAppDispatch();
@@ -33,7 +45,10 @@ export default function Navbar({ open, setOpen }: any) {
       {/* ================= NAVBAR ================= */}
       {!open && (
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => {
+  setOpen(true);
+  setOpenMenu(null);
+}}
           className="fixed top-4 left-4 z-[60] bg-white px-2 py-1 rounded-lg shadow border border-gray-300"
         >
           ☰
@@ -135,6 +150,65 @@ export default function Navbar({ open, setOpen }: any) {
                       Check lịch
                     </span>
                   )}
+                </li>
+
+                {/* Nhân viên (dropdown) */}
+                <li className="relative">
+                  <div
+                    onClick={() => toggleMenu("staff")}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-amber-50 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Users size={18} />
+                      {open && <span>Nhân viên</span>}
+                    </div>
+
+                    {open && (
+                      <ChevronDown
+                        size={16}
+                        className={`transition-transform duration-300 ${
+                          openMenu === "staff" ? "rotate-180" : ""
+                        }`}
+                      />
+                    )}
+                  </div>
+
+                  {/* SUB MENU */}
+                  <div
+                    className={`
+      overflow-hidden transition-all duration-300
+      ${openMenu === "staff" ? "max-h-40 mt-1" : "max-h-0"}
+    `}
+                  >
+                    <ul className="ml-8 flex flex-col gap-1 text-sm">
+                      <li>
+                        <Link
+                          to="/qlynhanvien"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Thông tin
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
+                          to="/qlychamcong"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Chấm công
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
+                          to="/staff/payroll"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Bảng lương
+                        </Link>
+                      </li>
+                    </ul>
+                  </div>
                 </li>
               </ul>
             </div>

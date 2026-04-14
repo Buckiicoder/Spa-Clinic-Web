@@ -30,17 +30,16 @@ export const registerService = async (data: RegisterInput) => {
   const hashed = await hashPassword(password);
 
   const userResult = await db.query(
-    `INSERT INTO users(name, phone, email, password_hash, role)
-     VALUES ($1,$2,$3,$4,$5)
+    `INSERT INTO users(name, phone, email, password_hash, role, gender)
+     VALUES ($1,$2,$3,$4,$5,$6)
      RETURNING id, role`,
-    [name, phone, email, hashed, role],
+    [name, phone, email, hashed, role, gender],
   );
 
   const userId = userResult.rows[0].id;
 
-  await db.query(`INSERT INTO customers(user_id, sex) VALUES ($1, $2)`, [
+  await db.query(`INSERT INTO customers(user_id) VALUES ($1)`, [
     userId,
-    gender,
   ]);
 
   return signToken(userResult.rows[0]);
@@ -140,7 +139,7 @@ export const loginService = async (email: string, password: string) => {
 
 export const getCustomerById = async (id: number) => {
   const result = await db.query(
-    `SELECT u.id, u.name, u.email, u.phone, u.role, u.avatar, c.sex, c.total_spending, c.rank
+    `SELECT u.id, u.name, u.email, u.phone, u.role, u.avatar, u.gender, c.total_spending, c.rank
     FROM users u
     LEFT JOIN customers c 
     ON c.user_id = u.id 

@@ -4,11 +4,13 @@ import { useEffect } from "react";
 import { fetchUser } from "./features/auth/authSlice";
 import Login from "./pages/Login";
 import ProtectedRoute from "./ProtectedRoute";
-import ChamCong from "./pages/Timekeeping";
+import TimeKeeping from "./pages/Timekeeping";
+import TimeKeepingManage from "./pages/TimeKeepingManage";
 import ReceptionDashboard from "./pages/ReceptionDashboard";
 import BookingDetail from "./pages/BookingDetail";
 import Booking from "./pages/Booking";
 import MainLayout from "./components/MainLayout";
+import StaffManage from "./pages/StaffManage";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -37,7 +39,23 @@ export default function App() {
             path="/chamcong"
             element={
               <ProtectedRoute>
-                <ChamCong />
+                <TimeKeeping />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/qlychamcong"
+            element={
+              <ProtectedRoute>
+                <TimeKeepingManage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/qlynhanvien"
+            element={
+              <ProtectedRoute>
+                <StaffManage />
               </ProtectedRoute>
             }
           />
