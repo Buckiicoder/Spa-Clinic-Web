@@ -1,39 +1,37 @@
 import { z } from "zod";
 
-//
-// 🔹 ENUM
-//
 export const timekeepingStatusEnum = z.enum([
-  "SCHEDULED",     // đã đăng ký
-  "CHECKED_IN",    // đã check-in
-  "WORKING",       // đang làm
-  "DONE",          // hoàn thành
-  "ABSENT",        // vắng
-  "REJECTED",      // bị từ chối
+  "PENDING",     // nhân viên xin nghỉ, chờ duyệt
+  "OFF",
+  "SCHEDULED",  
+  "WORKING",
+  "BREAK",
+  "COMPLETED",
+  "ABSENT",
 ]);
 
-//
-// 🔹 ĐĂNG KÝ CA (BULK)
-//
 export const createTimekeepingSchema = z.object({
-  records: z.array(
-    z.object({
-      user_id: z.number({
-        required_error: "Thiếu user_id",
-      }),
+  records: z
+    .array(
+      z.object({
+        user_id: z.number({
+          required_error: "Thiếu user_id",
+        }),
 
-      shift_id: z.number({
-        required_error: "Chưa chọn ca làm",
-      }),
+        shift_id: z.number({
+          required_error: "Chưa chọn ca làm",
+        }),
 
-      work_date: z.string({
-        required_error: "Thiếu ngày làm việc",
-      }),
+        work_date: z.string({
+          required_error: "Thiếu ngày làm việc",
+        }),
 
-      status: timekeepingStatusEnum.optional(),
-    })
-  ).min(1, "Phải chọn ít nhất 1 ca"),
+        status: timekeepingStatusEnum.default("SCHEDULED"),
+      })
+    )
+    .min(1, "Phải chọn ít nhất 1 ca"),
 });
+
 
 
 //
@@ -58,7 +56,7 @@ export const updateTimekeepingSchema = z.object({
 // 🔹 GET theo user + tháng
 //
 export const getTimekeepingByUserSchema = z.object({
-  user_id: z.number(),
+  user_id: z.number().optional(),
 
   month: z.number().min(1).max(12),
 

@@ -23,10 +23,7 @@ export type TimekeepingDetailInput = {
 // 🔹 GET AVAILABLE SCHEDULE (lấy lịch mở cho FE đăng ký)
 //
 
-export const getAvailableSchedule = async (
-  month: number,
-  year: number
-) => {
+export const getAvailableSchedule = async (month: number, year: number) => {
   const result = await db.query(
     `
     SELECT 
@@ -54,12 +51,11 @@ export const getAvailableSchedule = async (
     WHERE sp.month = $1 AND sp.year = $2
     ORDER BY sd.work_date ASC
     `,
-    [month, year]
+    [month, year],
   );
 
   return result.rows;
 };
-
 
 //
 // 🔹 TIMEKEEPING DAILY
@@ -67,31 +63,38 @@ export const getAvailableSchedule = async (
 
 // 🔹 GET theo user + tháng
 export const getTimekeepingByUser = async (
-  user_id: number,
   month: number,
-  year: number
+  year: number,
+  user_id?: number,
 ) => {
+  const params: any[] = [month, year];
+
+  let userCondition = "";
+
+  if (user_id) {
+    params.push(user_id);
+    userCondition = `AND tk.user_id = $3`;
+  }
+
   const result = await db.query(
     `
-    SELECT tk.*, s.name as shift_name, s.start_time, s.end_time
+    SELECT tk.*, s.name as shift_name, s.start_time, s.end_time, u.name, st.employee_type
     FROM timekeeping_daily tk
     JOIN shifts s ON s.id = tk.shift_id
-    WHERE tk.user_id = $1
-      AND EXTRACT(MONTH FROM tk.work_date) = $2
-      AND EXTRACT(YEAR FROM tk.work_date) = $3
-    ORDER BY tk.work_date ASC
+    JOIN users u ON u.id = tk.user_id
+    JOIN staffs st ON st.user_id = u.id
+    WHERE EXTRACT(MONTH FROM tk.work_date) = $1
+      AND EXTRACT(YEAR FROM tk.work_date) = $2
+      ${userCondition}
+    ORDER BY tk.work_date ASC, tk.shift_id ASC
     `,
-    [user_id, month, year]
+    params,
   );
 
   return result.rows;
 };
 
-
-// 🔹 CREATE (đăng ký ca - bulk)
-export const createTimekeepingBulk = async (
-  records: TimekeepingInput[]
-) => {
+export const createTimekeepingBulk = async (records: TimekeepingInput[]) => {
   if (!records.length) return [];
 
   const values: any[] = [];
@@ -100,32 +103,35 @@ export const createTimekeepingBulk = async (
   records.forEach((r, index) => {
     const i = index * 4;
 
-    placeholders.push(
-      `($${i + 1}, $${i + 2}, $${i + 3}, $${i + 4})`
-    );
+    placeholders.push(`($${i + 1}, $${i + 2}, $${i + 3}, $${i + 4})`);
 
     values.push(
-      r.user_id,
-      r.shift_id,
+      Number(r.user_id),
+      Number(r.shift_id),
       r.work_date,
-      r.status || "SCHEDULED"
+      r.status || "SCHEDULED",
     );
   });
+
+  console.log("SQL VALUES", values);
 
   const result = await db.query(
     `
     INSERT INTO timekeeping_daily
-    (user_id, shift_id, work_date, status)
-    VALUES ${placeholders.join(",")}
-    ON CONFLICT (user_id, work_date, shift_id) DO NOTHING
+      (user_id, shift_id, work_date, status)
+    VALUES
+      ${placeholders.join(",")}
+    ON CONFLICT (user_id, work_date, shift_id)
+    DO UPDATE SET
+      status = EXCLUDED.status,
+      shift_id = EXCLUDED.shift_id
     RETURNING *
     `,
-    values
+    values,
   );
 
   return result.rows;
 };
-
 
 // 🔹 UPDATE (checkin / checkout / status)
 export const updateTimekeeping = async (
@@ -137,7 +143,7 @@ export const updateTimekeeping = async (
     break_end_time: string;
     status: string;
     reject_reason: string;
-  }>
+  }>,
 ) => {
   const {
     check_in_time,
@@ -169,22 +175,30 @@ export const updateTimekeeping = async (
       status,
       reject_reason,
       id,
-    ]
+    ],
   );
 
   return result.rows[0];
 };
 
+export const updateTimekeepingStatus = async (id: number, status: string) => {
+  const result = await db.query(
+    `
+    UPDATE timekeeping_daily
+    SET status = $1
+    WHERE id = $2
+    RETURNING *
+    `,
+    [status, id],
+  );
+
+  return result.rows[0];
+};
 
 // 🔹 DELETE (hủy đăng ký ca)
 export const deleteTimekeeping = async (id: number) => {
-  await db.query(
-    `DELETE FROM timekeeping_daily WHERE id = $1`,
-    [id]
-  );
+  await db.query(`DELETE FROM timekeeping_daily WHERE id = $1`, [id]);
 };
-
-
 
 //
 // 🔹 TIMEKEEPING DETAILS
@@ -197,17 +211,14 @@ export const getTimekeepingDetail = async (timekeeping_id: number) => {
     SELECT * FROM timekeeping_details
     WHERE timekeeping_id = $1
     `,
-    [timekeeping_id]
+    [timekeeping_id],
   );
 
   return result.rows[0];
 };
 
-
 // 🔹 CREATE / UPDATE detail
-export const upsertTimekeepingDetail = async (
-  data: TimekeepingDetailInput
-) => {
+export const upsertTimekeepingDetail = async (data: TimekeepingDetailInput) => {
   const {
     timekeeping_id,
     work_minutes,
@@ -248,7 +259,7 @@ export const upsertTimekeepingDetail = async (
       check_out_lat,
       check_out_lng,
       is_full_work,
-    ]
+    ],
   );
 
   return result.rows[0];

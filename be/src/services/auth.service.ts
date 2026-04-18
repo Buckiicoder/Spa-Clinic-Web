@@ -170,6 +170,8 @@ export const getStaffById = async (id: number) => {
         s.salary,
         s.is_active AS staff_active,
         s.rating,
+        s.employee_type,
+        s.note,
 
         p.name AS position
 

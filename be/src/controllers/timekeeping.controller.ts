@@ -10,20 +10,21 @@ import {
 //
 export const getTimekeepingByMonth = async (req: Request, res: Response) => {
   try {
-    const user_id = Number(req.query.user_id);
     const month = Number(req.query.month);
     const year = Number(req.query.year);
 
-    if (!user_id || !month || !year) {
+    const user_id = req.query.user_id ? Number(req.query.user_id) : undefined;
+
+    if (!month || !year) {
       return res.status(400).json({
-        message: "Thiếu user_id, month hoặc year",
+        message: "Thiếu month hoặc year",
       });
     }
 
-    const data = await timekeepingService.getTimekeepingByMonth(
-      user_id,
+    const data = await timekeepingService.getTimekeepingByUser(
       month,
-      year
+      year,
+      user_id,
     );
 
     return res.json(data);
@@ -35,19 +36,30 @@ export const getTimekeepingByMonth = async (req: Request, res: Response) => {
 //
 // 🔹 CREATE (đăng ký lịch làm)
 //
+// timekeeping.controller.ts
+
 export const createTimekeeping = async (req: Request, res: Response) => {
   try {
-    const data = createTimekeepingSchema.parse(req.body);
+    console.log("REQ BODY", req.body);
 
-    const result = await timekeepingService.createTimekeeping(data);
+    const parsed = createTimekeepingSchema.parse(req.body);
 
-    return res.json({
-      message: "Đăng ký ca làm thành công",
+    console.log("PARSED RECORDS", parsed.records);
+
+    const result = await timekeepingService.createTimekeepingBulk(
+      parsed.records,
+    );
+
+    return res.status(200).json({
+      message: "Đăng ký lịch thành công",
       data: result,
     });
   } catch (err: any) {
+    console.error("CREATE TIMEKEEPING ERROR", err);
+
     return res.status(400).json({
-      message: err.errors?.[0]?.message || err.message,
+      message:
+        err?.errors?.[0]?.message || err?.message || "Đăng ký lịch thất bại",
     });
   }
 };
@@ -82,6 +94,44 @@ export const updateTimekeeping = async (req: Request, res: Response) => {
   } catch (err: any) {
     return res.status(400).json({
       message: err.errors?.[0]?.message || err.message,
+    });
+  }
+};
+
+export const approveTimekeepingOff = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+
+    const updated = await timekeepingService.updateTimekeepingStatus(id, "OFF");
+    return res.json({
+      success: true,
+      data: updated,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: "Duyệt nghỉ thất bại",
+    });
+  }
+};
+
+export const rejectTimekeepingOff = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+
+    const updated = await timekeepingService.updateTimekeepingStatus(
+      id,
+      "SCHEDULED",
+    );
+
+    return res.json({
+      success: true,
+      data: updated,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: "Từ chối nghỉ thất bại",
     });
   }
 };

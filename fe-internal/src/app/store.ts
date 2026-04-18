@@ -6,7 +6,7 @@ import shiftReducer from "../features/shift/shiftSlice";
 import scheduleReducer from "../features/schedule/scheduleSlice";
 import staffReducer from "../features/staff/staffSlice";
 import positionReducer from "../features/position/positionSlice";
-
+import timekeepingReducer from "../features/timekeeping/timekeepingSlice";
 
 export const store = configureStore({
   reducer: {
@@ -17,6 +17,7 @@ export const store = configureStore({
     schedule: scheduleReducer,
     staff: staffReducer,
     position: positionReducer,
+    timekeeping: timekeepingReducer,
   },
 });
 

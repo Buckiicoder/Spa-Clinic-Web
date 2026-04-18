@@ -22,6 +22,17 @@ router.patch(
   timekeepingController.updateTimekeeping,
 );
 
+router.patch(
+  "/:id/approve-off",
+  authStaffMiddleware,
+  timekeepingController.approveTimekeepingOff,
+);
+router.patch(
+  "/:id/reject-off",
+  authStaffMiddleware,
+  timekeepingController.rejectTimekeepingOff,
+);
+
 // 🔹 CHECK-IN / CHECK-OUT
 router.patch(
   "/:id/check-in",

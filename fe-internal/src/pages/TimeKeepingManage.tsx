@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { useMemo } from "react";
 import { useAppDispatch } from "../app/hook";
+import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
   fetchShifts,
@@ -14,6 +16,10 @@ import {
   setScheduleDays,
   selectSchedule,
 } from "../features/schedule/scheduleSlice";
+import {
+  fetchTimekeeping,
+  selectTimekeepingRecords,
+} from "../features/timekeeping/timekeepingSlice";
 import ShiftModal from "../components/ShiftModal";
 import ScheduleModal from "../components/ScheduleModal";
 import Toast from "../components/Toast";
@@ -27,6 +33,9 @@ export default function TimeKeepingManage() {
   // month hiện tại (0-11)
   const [month, setMonth] = useState(new Date().getMonth());
   const [year, setYear] = useState(new Date().getFullYear());
+
+  const navigate = useNavigate();
+  const records = useSelector(selectTimekeepingRecords);
 
   // schedule store
   const { period, days, loading } = useSelector(selectSchedule) ?? {
@@ -49,8 +58,19 @@ export default function TimeKeepingManage() {
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(fetchSchedule({ month: month + 1, year }));
+    dispatch(fetchSchedule({ month: month + 1, year }) as any);
+
+    dispatch(
+      fetchTimekeeping({
+        month: month + 1,
+        year,
+      }) as any,
+    );
   }, [dispatch, month, year]);
+
+  const [employeeView, setEmployeeView] = useState<
+    "ALL" | "FULLTIME" | "PARTTIME"
+  >("ALL");
 
   const hasSchedule = (day: number) => {
     const date = formatDate(day);
@@ -67,6 +87,91 @@ export default function TimeKeepingManage() {
   const formatDate = (day: number) => {
     return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   };
+
+  const normalizeDate = (value?: string) => {
+    if (!value) return "";
+
+    const d = new Date(value);
+    d.setHours(d.getHours() + 7);
+
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  const filteredRecords = useMemo(() => {
+    if (employeeView === "ALL") return records;
+
+    return records.filter((item: any) => item.employee_type === employeeView);
+  }, [records, employeeView]);
+
+  const groupedByDate = useMemo(() => {
+    const result: Record<string, any[]> = {};
+
+    filteredRecords.forEach((item: any) => {
+      const date = normalizeDate(item.work_date);
+
+      if (!result[date]) result[date] = [];
+
+      const existed = result[date].find(
+        (x) =>
+          Number(x.shift_id) === Number(item.shift_id) &&
+          x.employee_type === item.employee_type,
+      );
+
+      // FULLTIME: nhân viên xin nghỉ
+      if (item.employee_type === "FULLTIME") {
+        if (existed) {
+          if (["PENDING", "OFF"].includes(item.status)) {
+            existed.offCount += 1;
+            existed.leaveEmployees.push(item);
+          }
+        } else {
+          result[date].push({
+            shift_id: item.shift_id,
+            employee_type: "FULLTIME",
+            shift_name: item.shift_name,
+            start_time: item.start_time,
+            end_time: item.end_time,
+            offCount: ["PENDING", "OFF"].includes(item.status) ? 1 : 0,
+            leaveEmployees: ["PENDING", "OFF"].includes(item.status)
+              ? [item]
+              : [],
+          });
+        }
+      }
+
+      // PARTTIME: nhân viên đăng ký đi làm
+      if (item.employee_type === "PARTTIME") {
+        if (existed) {
+          if (["PENDING", "SCHEDULED"].includes(item.status)) {
+            existed.workCount += 1;
+            existed.workEmployees.push(item);
+          }
+        } else {
+          const scheduleInfo = days.find(
+            (d: any) =>
+              Number(d.shift_id) === Number(item.shift_id) &&
+              normalizeDate(d.work_date) === date &&
+              d.employee_type === "PARTTIME",
+          );
+
+          result[date].push({
+            shift_id: item.shift_id,
+            employee_type: "PARTTIME",
+            shift_name: item.shift_name,
+            start_time: item.start_time,
+            end_time: item.end_time,
+            max_employee: scheduleInfo?.max_employee || 0,
+            workCount: ["PENDING", "SCHEDULED"].includes(item.status) ? 1 : 0,
+            workEmployees: ["PENDING", "SCHEDULED"].includes(item.status)
+              ? [item]
+              : [],
+          });
+        }
+      }
+    });
+
+    return result;
+  }, [filteredRecords, days]);
 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay = new Date(year, month, 1).getDay();
@@ -270,6 +375,28 @@ export default function TimeKeepingManage() {
               </button>
             </div>
 
+            <div className="flex justify-center gap-2 mb-4">
+              {[
+                { key: "ALL", label: "Tất cả" },
+                { key: "FULLTIME", label: "Fulltime" },
+                { key: "PARTTIME", label: "Parttime" },
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => setEmployeeView(item.key as any)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition
+        ${
+          employeeView === item.key
+            ? "bg-amber-600 text-white shadow"
+            : "bg-gray-100 hover:bg-amber-100"
+        }
+      `}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
             {/* Weekdays */}
             <div
               className="grid grid-cols-7 text-center text-xs font-semibold py-1
@@ -283,28 +410,162 @@ export default function TimeKeepingManage() {
             {/* Calendar compact */}
             <div className="grid grid-cols-7 gap-1">
               {calendar.map((day, index) => {
-                const isOff = day.isCurrentMonth && hasSchedule(day.day);
+                const date = formatDate(day.day);
+
+                const schedules = day.isCurrentMonth
+                  ? groupedByDate[date] || []
+                  : [];
 
                 return (
                   <div
                     key={index}
-                    className={`min-h-[90px] border rounded-lg p-1 text-[11px] flex flex-col gap-1
-        ${day.isCurrentMonth ? "bg-white" : "bg-gray-100 text-gray-400"}
-        ${isOff && <span className="text-[8px] text-green-600">Có ca</span>}
-      `}
+                    className={`min-h-[150px] rounded-2xl border p-2 flex flex-col gap-2 transition
+          ${
+            day.isCurrentMonth
+              ? "bg-white hover:border-amber-400 hover:shadow"
+              : "bg-gray-100 text-gray-400"
+          }
+        `}
                   >
-                    <div className="font-semibold text-[11px] flex justify-between">
-                      {day.day}
-                      {isOff && (
-                        <span className="text-[8px] text-red-500">OFF</span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-[15px] px-1">
+                        {day.day}
+                      </span>
+
+                      {schedules.length > 0 && (
+                        <span className="text-[12px] px-3 py-1 rounded-full bg-amber-100 text-amber-700">
+                          {schedules.length} ca
+                        </span>
                       )}
                     </div>
 
-                    {/* sau này sẽ render shift thật */}
-                    <div className="flex flex-col gap-[2px] overflow-y-auto">
-                      {!isOff && day.isCurrentMonth && (
-                        <div className="text-[9px] text-gray-400">
-                          Chưa có người đăng ký
+                    <div className="flex flex-col gap-2 overflow-y-auto max-h-full pr-1">
+                      {schedules.map((schedule: any, idx: number) => {
+                        const shift = shifts.find(
+                          (s: any) =>
+                            Number(s.id) === Number(schedule.shift_id),
+                        );
+
+                        return (
+                          <button
+                            key={`${date}-${schedule.employee_type}-${schedule.shift_id}-${idx}`}
+                            onClick={() =>
+                              navigate(
+                                `/timekeeping/detail?date=${date}&shift=${schedule.shift_id}&type=${schedule.employee_type}`,
+                              )
+                            }
+                            className={`w-full text-left rounded-xl border p-2 transition hover:shadow-sm
+                  ${
+                    schedule.employee_type === "FULLTIME"
+                      ? "bg-blue-50 border-blue-200 hover:border-blue-300"
+                      : "bg-green-50 border-green-200 hover:border-green-300"
+                  }
+                `}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-semibold truncate">
+                                  {shift?.name || "Ca làm"}
+                                </div>
+
+                                <div className="text-xs text-gray-600 mt-0.5">
+                                  {shift?.start_time?.slice(0, 5)} -{" "}
+                                  {shift?.end_time?.slice(0, 5)}
+                                </div>
+                              </div>
+
+                              <div
+                                className={`text-[9px] px-2 py-1 rounded-full font-medium whitespace-nowrap
+                      ${
+                        schedule.employee_type === "FULLTIME"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-green-100 text-green-700"
+                      }
+                    `}
+                              >
+                                {schedule.employee_type === "FULLTIME"
+                                  ? "FT"
+                                  : "PT"}
+                              </div>
+                            </div>
+
+                            {schedule.employee_type === "FULLTIME" ? (
+                              <div className="mt-2 flex flex-col gap-2">
+                                <div className="flex items-center justify-between rounded-lg bg-red-50 border border-red-200 px-2 py-1.5">
+                                  <span className="text-[11px] font-medium text-red-700">
+                                    Chờ duyệt nghỉ
+                                  </span>
+
+                                  <span className="min-w-[24px] text-center text-xs font-bold text-red-700 bg-white border border-red-200 rounded-full px-2 py-0.5">
+                                    {
+                                      schedule.leaveEmployees?.filter(
+                                        (employee: any) =>
+                                          employee.status === "PENDING",
+                                      ).length
+                                    }
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center justify-between rounded-lg bg-gray-50 border border-gray-200 px-2 py-1.5">
+                                  <span className="text-[11px] font-medium text-gray-700">
+                                    Đã duyệt nghỉ
+                                  </span>
+
+                                  <span className="min-w-[24px] text-center text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-full px-2 py-0.5">
+                                    {
+                                      schedule.leaveEmployees?.filter(
+                                        (employee: any) =>
+                                          employee.status === "OFF",
+                                      ).length
+                                    }
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="mt-2 flex flex-col gap-2">
+                                <div className="flex items-center justify-between rounded-lg bg-yellow-50 border border-yellow-200 px-2 py-1.5">
+                                  <span className="text-[11px] font-medium text-yellow-700">
+                                    Chờ duyệt đi làm
+                                  </span>
+
+                                  <span className="min-w-[24px] text-center text-xs font-bold text-yellow-700 bg-white border border-yellow-200 rounded-full px-2 py-0.5">
+                                    {
+                                      schedule.workEmployees?.filter(
+                                        (employee: any) =>
+                                          employee.status === "PENDING",
+                                      ).length
+                                    }
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center justify-between rounded-lg bg-green-50 border border-green-200 px-2 py-1.5">
+                                  <span className="text-[11px] font-medium text-green-700">
+                                    Đã duyệt đi làm
+                                  </span>
+
+                                  <span className="min-w-[24px] text-center text-xs font-bold text-green-700 bg-white border border-green-200 rounded-full px-2 py-0.5">
+                                    {
+                                      schedule.workEmployees?.filter(
+                                        (employee: any) =>
+                                          employee.status === "SCHEDULED",
+                                      ).length
+                                    }
+                                  </span>
+                                </div>
+
+                                <div className="text-[11px] text-right text-red-500 font-bold">
+                                  Tổng: {schedule.workCount}/
+                                  {schedule.max_employee}
+                                </div>
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+
+                      {day.isCurrentMonth && schedules.length === 0 && (
+                        <div className="text-[10px] text-gray-400 italic mt-1">
+                          Không có ca
                         </div>
                       )}
                     </div>

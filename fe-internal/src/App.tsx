@@ -11,6 +11,7 @@ import BookingDetail from "./pages/BookingDetail";
 import Booking from "./pages/Booking";
 import MainLayout from "./components/MainLayout";
 import StaffManage from "./pages/StaffManage";
+import TKManageDetail from "./pages/TKManageDetail";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -48,6 +49,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <TimeKeepingManage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/timekeeping/detail"
+            element={
+              <ProtectedRoute>
+                <TKManageDetail />
               </ProtectedRoute>
             }
           />
