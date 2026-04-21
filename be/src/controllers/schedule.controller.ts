@@ -135,9 +135,6 @@ export const setScheduleDays = async (req: Request, res: Response) => {
 
     const finalRecords = Array.from(uniqueMap.values());
 
-    // 🔥 DB
-    await scheduleService.deleteScheduleDaysByPeriod(data.period_id);
-
     const result = await scheduleService.createScheduleDays(
       data.period_id,
       finalRecords

@@ -142,19 +142,21 @@ export const createScheduleDays = async (
   });
 
   const result = await db.query(
-    `
-    INSERT INTO schedule_days 
+  `
+  INSERT INTO schedule_days
     (period_id, work_date, shift_id, employee_type, max_employee, note)
-    VALUES ${placeholders.join(",")}
-    ON CONFLICT (period_id, work_date, shift_id, employee_type) DO NOTHING
-    RETURNING *
-    `,
-    values
-  );
+  VALUES ${placeholders.join(",")}
+
+  ON CONFLICT (period_id, work_date, shift_id, employee_type)
+  DO NOTHING
+
+  RETURNING *
+  `,
+  values
+);
 
   return result.rows;
 };
-
 
 export const getFullSchedule = async (month: number, year: number) => {
   const period = await getSchedulePeriod(month, year);
@@ -169,79 +171,19 @@ export const getFullSchedule = async (month: number, year: number) => {
   };
 };
 
-export const generateScheduleDays = async (
+export const deleteScheduleByShift = async (
   period_id: number,
-  selectedDates: string[],
-  shifts: {
-    shift_id: number;
-    employeeType: "ALL" | "FULLTIME" | "PARTTIME";
-    applyType: "ALL_DAYS" | "WEEKEND" | "CUSTOM";
-    customDates?: string[];
-    max_employee?: number;
-  }[]
+  work_date: string,
+  shift_id: number,
+  employee_type: "FULLTIME" | "PARTTIME"
 ) => {
-  const records: ScheduleDayInput[] = [];
-
-  for (const shift of shifts) {
-    let targetDates: string[] = [];
-
-    // 🔹 ALL_DAYS
-    if (shift.applyType === "ALL_DAYS") {
-      targetDates = selectedDates;
-    }
-
-    // 🔹 WEEKEND
-    if (shift.applyType === "WEEKEND") {
-      targetDates = selectedDates.filter((d) => {
-        const day = new Date(d).getDay();
-        return day === 0 || day === 6;
-      });
-    }
-
-    // 🔹 CUSTOM
-    if (shift.applyType === "CUSTOM") {
-      targetDates = shift.customDates || [];
-    }
-
-    // 🔹 employee type
-    const employeeTypes =
-      shift.employeeType === "ALL"
-        ? ["FULLTIME", "PARTTIME"]
-        : [shift.employeeType];
-
-    for (const date of targetDates) {
-      for (const type of employeeTypes) {
-        records.push({
-          period_id,
-          work_date: date,
-          shift_id: shift.shift_id,
-          employee_type: type as "FULLTIME" | "PARTTIME",
-          max_employee: shift.max_employee || null,
-        });
-      }
-    }
-  }
-
-  // ❗ Xóa cũ trước
-  await deleteScheduleDaysByPeriod(period_id);
-
-  // ❗ Insert mới
-  return await createScheduleDays(period_id, records);
+  await db.query(
+    `DELETE FROM schedule_days
+     WHERE period_id = $1 
+     AND work_date = $2
+     AND shift_id = $3
+     AND employee_type = $4`,
+    [period_id, work_date, shift_id, employee_type]
+  );
 };
-
-// export const deleteScheduleByShift = async (
-//   period_id: number,
-//   work_date: string,
-//   shift_id: number,
-//   employee_type: "FULLTIME" | "PARTTIME"
-// ) => {
-//   await db.query(
-//     `DELETE FROM schedule_days
-//      WHERE period_id = $1 
-//      AND work_date = $2
-//      AND shift_id = $3
-//      AND employee_type = $4`,
-//     [period_id, work_date, shift_id, employee_type]
-//   );
-// };
 

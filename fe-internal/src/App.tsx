@@ -12,6 +12,7 @@ import Booking from "./pages/Booking";
 import MainLayout from "./components/MainLayout";
 import StaffManage from "./pages/StaffManage";
 import TKManageDetail from "./pages/TKManageDetail";
+import Product from "./pages/Product";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -89,6 +90,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Booking />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/product"
+            element={
+              <ProtectedRoute>
+                <Product />
               </ProtectedRoute>
             }
           />

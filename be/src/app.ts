@@ -8,6 +8,7 @@ import shiftRoutes from "./routes/shift.routes.js";
 import scheduleRoutes from "./routes/schedule.routes.js"
 import staffRoutes from "./routes/staff.routes.js"
 import positionRoutes from "./routes/position.routes.js"
+import branchRoutes from "./routes/branch.routes.js"
 import TimeKeepingRoutes from "./routes/timekeeping.routes.js"
 import cookieParser from "cookie-parser";
 import path from "path";
@@ -45,6 +46,7 @@ app.use("/api/schedule", scheduleRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/position", positionRoutes);
 app.use("/api/timekeeping", TimeKeepingRoutes);
+app.use("/api/branch", branchRoutes);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

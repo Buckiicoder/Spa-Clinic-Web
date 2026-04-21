@@ -20,8 +20,8 @@ import {
   fetchTimekeeping,
   selectTimekeepingRecords,
 } from "../features/timekeeping/timekeepingSlice";
-import ShiftModal from "../components/ShiftModal";
-import ScheduleModal from "../components/ScheduleModal";
+import ShiftModal from "../modal/ShiftModal";
+import ScheduleModal from "../modal/ScheduleModal";
 import Toast from "../components/Toast";
 
 export default function TimeKeepingManage() {

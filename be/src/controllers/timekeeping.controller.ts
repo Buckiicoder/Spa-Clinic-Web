@@ -102,7 +102,9 @@ export const approveTimekeepingOff = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
-    const updated = await timekeepingService.updateTimekeepingStatus(id, "OFF");
+    const updated = await timekeepingService.updateTimekeepingAndReturn(id, {
+      status: "OFF",
+    });
     return res.json({
       success: true,
       data: updated,
@@ -119,10 +121,10 @@ export const rejectTimekeepingOff = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
-    const updated = await timekeepingService.updateTimekeepingStatus(
-      id,
-      "SCHEDULED",
-    );
+    const updated = await timekeepingService.updateTimekeepingAndReturn(id, {
+      status: "SCHEDULED",
+      reject_reason: null,
+    });
 
     return res.json({
       success: true,
@@ -172,7 +174,17 @@ export const checkIn = async (req: Request, res: Response) => {
 
     const { lat, lng } = req.body;
 
-    const result = await timekeepingService.checkIn(id, lat, lng);
+    const result = await timekeepingService.updateTimekeepingAndReturn(
+      id,
+      {
+        check_in_time: new Date().toISOString(),
+        status: "WORKING",
+      },
+      {
+        check_in_lat: lat,
+        check_in_lng: lng,
+      },
+    );
 
     return res.json({
       message: "Check-in thành công",
@@ -196,7 +208,36 @@ export const checkOut = async (req: Request, res: Response) => {
 
     const { lat, lng } = req.body;
 
-    const result = await timekeepingService.checkOut(id, lat, lng);
+    const current = await timekeepingService.getTimekeepingById(id);
+
+    const totalMinutes = current?.check_in_time
+      ? Math.max(
+          0,
+          Math.round(
+            (new Date().getTime() - new Date(current.check_in_time).getTime()) /
+              60000,
+          ),
+        )
+      : 0;
+
+    const totalBreakMinutes = Number(current?.break_minutes || 0);
+
+    const workMinutes = Math.max(totalMinutes - totalBreakMinutes, 0);
+
+    const result = await timekeepingService.updateTimekeepingAndReturn(
+  id,
+  {
+    check_out_time: new Date().toISOString(),
+    status: "COMPLETED",
+  },
+  {
+    work_minutes: workMinutes,
+    break_minutes: totalBreakMinutes,
+    check_out_lat: lat,
+    check_out_lng: lng,
+    is_full_work: workMinutes >= 480,
+  },
+);
 
     return res.json({
       message: "Check-out thành công",
@@ -218,7 +259,10 @@ export const startBreak = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "ID không hợp lệ" });
     }
 
-    const result = await timekeepingService.startBreak(id);
+    const result = await timekeepingService.updateTimekeepingAndReturn(id, {
+      break_start_time: new Date().toISOString(),
+      status: "BREAK",
+    });
 
     return res.json({
       message: "Bắt đầu nghỉ",
@@ -240,7 +284,29 @@ export const endBreak = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "ID không hợp lệ" });
     }
 
-    const result = await timekeepingService.endBreak(id);
+    const current = await timekeepingService.getTimekeepingById(id);
+
+    const breakMinutes = current?.break_start_time
+      ? Math.max(
+          0,
+          Math.round(
+            (new Date().getTime() -
+              new Date(current.break_start_time).getTime()) /
+              60000,
+          ),
+        ) + Number(current?.break_minutes || 0)
+      : Number(current?.break_minutes || 0);
+
+    const result = await timekeepingService.updateTimekeepingAndReturn(
+      id,
+      {
+        break_end_time: new Date().toISOString(),
+        status: "WORKING",
+      },
+      {
+        break_minutes: breakMinutes,
+      },
+    );
 
     return res.json({
       message: "Kết thúc nghỉ",

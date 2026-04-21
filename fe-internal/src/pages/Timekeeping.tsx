@@ -11,7 +11,13 @@ import {
   createTimekeeping,
   fetchTimekeeping,
   selectTimekeepingRecords,
+  checkIn,
+  checkOut,
+  startBreak,
+  endBreak,
 } from "../features/timekeeping/timekeepingSlice";
+import { fetchBranches, selectBranches } from "../features/branch/branchSlice";
+import { getDistanceInMeters } from "../features/branch/branchFunction";
 
 export default function TimeKeeping() {
   const dispatch = useDispatch();
@@ -20,6 +26,19 @@ export default function TimeKeeping() {
   const period = useSelector(selectSchedulePeriod);
   const user = useSelector(selectUser);
   const registeredRecords = useSelector(selectTimekeepingRecords);
+  const branches = useSelector(selectBranches);
+
+  const [checkingLocation, setCheckingLocation] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
+
+  const employeeBranch = useMemo(() => {
+    return branches.find((b: any) => Number(b.id) === Number(user?.branch_id));
+  }, [branches, user?.branch_id]);
+
+  useEffect(() => {
+    dispatch(fetchBranches());
+  }, [dispatch]);
 
   // console.log(user);
   const employeeType = user?.employee_type;
@@ -136,6 +155,131 @@ export default function TimeKeeping() {
 
   const hasRegistered = registeredRecords.length > 0;
 
+  const todayStr = `${year}-${String(month).padStart(2, "0")}-${String(
+    today.getDate(),
+  ).padStart(2, "0")}`;
+
+  const todayRecord = registeredMap[todayStr]?.[0] || null;
+
+  const todaySchedule = scheduleMap[todayStr]?.[0] || null;
+
+  const nowTime = new Date();
+
+  const parseShiftTime = (dateStr: string, time?: string) => {
+    if (!time) return null;
+
+    const [h, m] = time.slice(0, 5).split(":").map(Number);
+
+    const d = new Date(dateStr);
+    d.setHours(h, m, 0, 0);
+
+    return d;
+  };
+
+  const shiftStart = parseShiftTime(
+    todayStr,
+    todayRecord?.start_time || todaySchedule?.start_time,
+  );
+
+  const shiftEnd = parseShiftTime(
+    todayStr,
+    todayRecord?.end_time || todaySchedule?.end_time,
+  );
+
+  const checkInOpenTime = shiftStart
+    ? new Date(shiftStart.getTime() - 30 * 60 * 1000)
+    : null;
+
+  const checkInCloseTime = shiftEnd;
+
+  const isBeforeShift = !!checkInOpenTime && nowTime < checkInOpenTime;
+
+  const isAfterShift = !!checkInCloseTime && nowTime > checkInCloseTime;
+
+  const isWorking = todayRecord?.status === "WORKING";
+  const isBreak = todayRecord?.status === "BREAK";
+  const isCompleted = todayRecord?.status === "COMPLETED";
+
+  const isFulltime = employeeType === "FULLTIME";
+  const isParttime = employeeType === "PARTTIME";
+
+  const canCheckIn = (() => {
+    if (!todayRecord || !shiftStart || !shiftEnd) return false;
+
+    // chưa tới thời gian mở checkin
+    if (isBeforeShift) return false;
+
+    // quá giờ làm thì không cho checkin nữa
+    if (isAfterShift) return false;
+
+    // parttime: chỉ được checkin 1 lần
+    if (isParttime) {
+      return (
+        ["SCHEDULED", "PENDING"].includes(todayRecord.status) &&
+        !todayRecord.check_in
+      );
+    }
+
+    // fulltime
+    if (isFulltime) {
+      // lần đầu vào ca
+      if (!todayRecord.check_in) {
+        return ["SCHEDULED", "PENDING"].includes(todayRecord.status);
+      }
+
+      // đã nghỉ trưa và đang ở trạng thái BREAK -> cho vào lại
+      if (todayRecord.break_start_time && !todayRecord.break_end_time) {
+        return true;
+      }
+    }
+
+    return false;
+  })();
+
+  const canCheckOut = (() => {
+    if (!todayRecord) return false;
+
+    // parttime/fulltime đang làm thì đều được checkout
+    if (isWorking) return true;
+
+    // fulltime sau khi checkin lại sau giờ nghỉ vẫn được checkout
+    if (isBreak) return true;
+
+    return false;
+  })();
+
+  const canRequestOT =
+    !!todayRecord &&
+    !!shiftEnd &&
+    isWorking &&
+    nowTime > new Date(shiftEnd.getTime() + 30 * 60 * 1000);
+
+  const canStartBreak =
+    isFulltime &&
+    todayRecord?.status === "WORKING" &&
+    !todayRecord?.break_start_time;
+
+  const canEndBreak = isFulltime && todayRecord?.status === "BREAK";
+
+  const todayStatusText = (() => {
+    if (!todayRecord) return "Chưa có lịch";
+
+    if (todayRecord.status === "PENDING") {
+      return employeeType === "FULLTIME"
+        ? "Chờ duyệt nghỉ"
+        : "Chờ duyệt đi làm";
+    }
+
+    if (todayRecord.status === "OFF") {
+      return employeeType === "FULLTIME" ? "Được nghỉ" : "Từ chối";
+    }
+
+    if (todayRecord.check_out) return "Đã hoàn thành";
+    if (todayRecord.check_in) return "Đang làm";
+
+    return "Chưa chấm công";
+  })();
+
   // Phần hiển thị ngày đúng với thứ
   const firstDay = new Date(year, month - 1, 1).getDay();
   const startOffset = firstDay === 0 ? 6 : firstDay - 1;
@@ -144,6 +288,8 @@ export default function TimeKeeping() {
     ...Array.from({ length: startOffset }, () => null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
+
+  const isRegisterLocked = isBeforeOpen || isAfterClose || hasRegistered;
 
   const handleSelectDay = (
     dateStr: string,
@@ -264,6 +410,146 @@ export default function TimeKeeping() {
     }
   };
 
+  const validateBranchLocation = async () => {
+    if (!employeeBranch) {
+      throw new Error("Bạn chưa được gán cơ sở làm việc");
+    }
+
+    if (!navigator.geolocation) {
+      throw new Error("Trình duyệt không hỗ trợ lấy vị trí");
+    }
+
+    const position = await new Promise<GeolocationPosition>(
+      (resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        });
+      },
+    );
+
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+
+    const branchLat = Number(employeeBranch.latitude);
+    const branchLng = Number(employeeBranch.longitude);
+    const allowedRadius = Number(employeeBranch.allowed_radius || 100);
+
+    const distance = getDistanceInMeters(lat, lng, branchLat, branchLng);
+
+    console.log("CHECK LOCATION", {
+      userLat: lat,
+      userLng: lng,
+      branchLat,
+      branchLng,
+      distance,
+      allowedRadius,
+    });
+
+    if (distance > allowedRadius) {
+      throw new Error(
+        `Bạn đang ngoài khu vực cho phép chấm công (${Math.round(distance)}m / ${allowedRadius}m)`,
+        // `Bạn đang ngoài khu vực cho phép chấm công)`,
+      );
+    }
+
+    return { lat, lng };
+  };
+
+  const handleCheckIn = async () => {
+    if (!todayRecord?.id) return;
+
+    if (!shiftStart || !shiftEnd) {
+      alert("Không tìm thấy thời gian ca làm");
+      return;
+    }
+
+    if (isBeforeShift) {
+      alert(
+        "Chưa đến thời gian chấm công. Bạn chỉ được chấm công trước ca tối đa 30 phút",
+      );
+      return;
+    }
+
+    if (isAfterShift) {
+      alert(
+        `Ca làm đã kết thúc (${todayRecord.start_time?.slice(0, 5)} - ${todayRecord.end_time?.slice(0, 5)})`,
+      );
+      return;
+    }
+
+    try {
+      setCheckingLocation(true);
+      setLocationError("");
+
+      const { lat, lng } = await validateBranchLocation();
+
+      await dispatch(
+        checkIn({
+          id: Number(todayRecord.id),
+          lat,
+          lng,
+        }) as any,
+      ).unwrap();
+
+      alert(
+        isFulltime &&
+          todayRecord.break_start_time &&
+          !todayRecord.break_end_time
+          ? "Quay lại làm việc thành công"
+          : "Chấm công vào ca thành công",
+      );
+
+      dispatch(
+        fetchTimekeeping({
+          month,
+          year,
+          user_id: Number(user.id),
+        }) as any,
+      );
+    } catch (err: any) {
+      setLocationError(err?.message || "Không thể xác minh vị trí");
+      alert(err?.message || "Không thể chấm công");
+    } finally {
+      setCheckingLocation(false);
+    }
+  };
+
+  const handleCheckOut = async () => {
+    if (!todayRecord?.id) return;
+
+    try {
+      setCheckingLocation(true);
+      setLocationError("");
+
+      const { lat, lng } = await validateBranchLocation();
+
+      await dispatch(
+        checkOut({
+          id: Number(todayRecord.id),
+          lat,
+          lng,
+        }) as any,
+      ).unwrap();
+
+      alert("Chấm công ra ca thành công");
+
+      dispatch(
+        fetchTimekeeping({
+          month,
+          year,
+          user_id: Number(user.id),
+        }) as any,
+      );
+    } catch (err: any) {
+      setLocationError(err?.message || "Không thể xác minh vị trí");
+      alert(err?.message || "Không thể chấm công ra ca");
+    } finally {
+      setCheckingLocation(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-amber-50">
       <div className="max-w-[1800px] mx-auto px-2 sm:px-3 md:px-6 py-4 md:py-6">
@@ -303,6 +589,7 @@ export default function TimeKeeping() {
             </div>
           </div>
 
+          {/* navigate các tháng trong lịch */}
           <div className="flex items-center justify-center gap-4 mb-4 py-1">
             <button
               onClick={() => changeMonth(-1)}
@@ -323,12 +610,14 @@ export default function TimeKeeping() {
             </button>
           </div>
 
+          {/* Tiêu đề lịch (thứ)*/}
           <div className="grid grid-cols-7 text-center text-black font-medium mb-2">
             {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
               <div key={d}>{d}</div>
             ))}
           </div>
 
+          {/* Nội dung các ngày trong tháng */}
           <div className="grid grid-cols-7 gap-1 md:gap-2 text-center text-xs md:text-sm">
             {calendarDays.map((day, index) => {
               if (!day) {
@@ -346,8 +635,18 @@ export default function TimeKeeping() {
                 (x: any) => x.status === "PENDING",
               );
 
-              const workingDay = registeredDay.some(
-                (x: any) => x.status === "SCHEDULED",
+              const approvedWorkingDay = registeredDay.some((x: any) =>
+                ["SCHEDULED", "WORKING", "BREAK", "COMPLETED"].includes(
+                  x.status,
+                ),
+              );
+
+              const approvedOffDay = registeredDay.some(
+                (x: any) => x.status === "OFF",
+              );
+
+              const rejectedDay = registeredDay.some(
+                (x: any) => x.status === "REJECT",
               );
 
               const isSelected =
@@ -355,16 +654,30 @@ export default function TimeKeeping() {
                   ? selectedDays.includes(dateStr)
                   : selectedShifts.some((s) => s.work_date === dateStr);
 
+              const shiftsToRender = hasRegisteredDay
+                ? registeredDay
+                : hasSchedule;
+              const visibleShifts = shiftsToRender.slice(0, 2);
+              const hiddenShiftCount = shiftsToRender.length - 2;
+
               const isToday =
                 day === today.getDate() &&
                 month === today.getMonth() + 1 &&
                 year === today.getFullYear();
 
+                  const hasFinalStatus =
+  pendingDay ||
+  approvedWorkingDay ||
+  approvedOffDay ||
+  rejectedDay;
+
               return (
-                <button
+                <div
                   key={index}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => {
-                    if (hasRegistered) return;
+                    if (hasRegistered || isBeforeOpen || isAfterClose) return;
                     handleSelectDay(dateStr, isAvailable);
                   }}
                   className={`
@@ -372,22 +685,35 @@ export default function TimeKeeping() {
 
   ${
     !isAvailable && !hasRegisteredDay
-      ? "bg-gray-50 border-gray-100 text-gray-300 cursor-default"
+      ? "bg-stone-50 border-stone-200 text-stone-300 cursor-default"
       : pendingDay
         ? employeeType === "FULLTIME"
-          ? "bg-red-100 border-2 border-red-500 text-red-700"
-          : "bg-green-100 border-2 border-green-500 text-green-700"
-        : workingDay
-          ? "bg-amber-100 border-amber-500 text-amber-700"
-          : isSelected
-            ? employeeType === "FULLTIME"
-              ? "bg-red-100 border-red-500 text-red-700 ring-2 ring-red-300"
-              : "bg-green-100 border-green-500 text-green-700 ring-2 ring-green-300"
-            : "bg-amber-100 border-amber-300 text-amber-700 hover:bg-amber-100"
+          ? "bg-red-100 border-2 border-red-700 text-red-800"
+          : "bg-amber-100 border-2 border-amber-700 text-amber-800"
+        : approvedOffDay
+          ? "bg-red-100 border-2 border-red-700 text-red-800"
+          : approvedWorkingDay
+            ? "bg-amber-100 border-2 border-amber-500 text-amber-800"
+            : rejectedDay
+              ? "bg-red-50 border-2 border-red-500 text-red-700"
+              : isSelected
+                ? employeeType === "FULLTIME"
+                  ? "bg-red-100 border-red-700 text-red-800 ring-2 ring-red-300"
+                  : "bg-amber-100 border-amber-500 text-amber-800 ring-2 ring-amber-300"
+                : employeeType === "PARTTIME"
+                  ? "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                  : "bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-100"
   }
 
   ${isToday ? "ring-2 ring-amber-400" : ""}
-  ${hasRegistered ? "cursor-default" : ""}
+ ${
+  // isRegisterLocked && !hasFinalStatus
+  //   ? "opacity-55 cursor-not-allowed"
+  //   : isRegisterLocked
+  //     ? "cursor-default"
+  //     : 
+  ""
+}
 `}
                 >
                   {day}
@@ -395,21 +721,31 @@ export default function TimeKeeping() {
                   <div className="mt-1 flex justify-center">
                     {pendingDay ? (
                       employeeType === "FULLTIME" ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-600 text-white font-semibold">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-700 text-white font-semibold">
                           Nghỉ / Chờ duyệt
                         </span>
                       ) : (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-600 text-white font-semibold">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-600 text-white font-semibold">
                           Đăng ký / Chờ duyệt
                         </span>
                       )
-                    ) : workingDay ? (
+                    ) : approvedOffDay ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-700 text-white font-semibold">
+                        {employeeType === "FULLTIME"
+                          ? "Đã duyệt nghỉ"
+                          : "Từ chối"}
+                      </span>
+                    ) : approvedWorkingDay ? (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-600 text-white font-semibold">
                         Đi làm
                       </span>
+                    ) : rejectedDay ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-600 text-white font-semibold">
+                        Từ chối
+                      </span>
                     ) : employeeType === "FULLTIME" ? (
                       isSelected ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-600 text-white font-semibold">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-700 text-white font-semibold">
                           Nghỉ / Chờ duyệt
                         </span>
                       ) : isAvailable ? (
@@ -419,8 +755,8 @@ export default function TimeKeeping() {
                       ) : null
                     ) : employeeType === "PARTTIME" ? (
                       selectedShifts.some((s) => s.work_date === dateStr) ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-600 text-white font-semibold">
-                          Đã đăng ký
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-600 text-white font-semibold">
+                          Đăng ký / Chờ duyệt
                         </span>
                       ) : isAvailable ? (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-semibold">
@@ -433,64 +769,109 @@ export default function TimeKeeping() {
                   {/* shift */}
                   {(isAvailable || hasRegisteredDay) && (
                     <div className="mt-2 space-y-1 text-[10px]">
-                      {(hasRegisteredDay ? registeredDay : hasSchedule).map(
-                        (s: any, idx: number) => {
-                          const shiftId = getShiftId(s);
+                      {visibleShifts.map((s: any, idx: number) => {
+                        const shiftId = getShiftId(s);
 
-                          const isShiftSelected = selectedShifts.some(
-                            (x) =>
-                              x.work_date === dateStr &&
-                              Number(x.shift_id) === Number(shiftId),
-                          );
+                        const isShiftSelected = selectedShifts.some(
+                          (x) =>
+                            x.work_date === dateStr &&
+                            Number(x.shift_id) === Number(shiftId),
+                        );
 
-                          return (
-                            <button
-                              key={idx}
-                              disabled={hasRegistered}
-                              onClick={(e) => {
-                                e.stopPropagation();
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
 
-                                if (employeeType === "PARTTIME") {
-                                  handleSelectDay(dateStr, true, shiftId);
-                                }
-                              }}
-                              className={`w-full rounded-md px-1.5 py-1 font-medium transition
-  ${
-    employeeType === "PARTTIME" && isShiftSelected
-      ? "bg-green-100 text-green-700 border-green-500"
-      : s.status === "PENDING"
+                              if (isRegisterLocked || hasRegistered) return;
+
+                              if (employeeType === "PARTTIME") {
+                                handleSelectDay(dateStr, true, shiftId);
+                              }
+
+                              if (employeeType === "FULLTIME") {
+                                handleSelectDay(dateStr, true);
+                              }
+                            }}
+                            className={`w-full rounded-md px-1.5 py-1 font-medium transition text-center
+${
+  // FULLTIME đã chọn nghỉ / chờ duyệt
+  employeeType === "FULLTIME" && isSelected
+    ? "bg-red-100 border-red-600 text-red-700 ring-1 ring-red-300"
+    : // PARTTIME đã chọn ca
+      employeeType === "PARTTIME" && isShiftSelected
+      ? "bg-amber-100 border-amber-500 text-amber-800 ring-1 ring-amber-300"
+      : // Đã gửi chờ duyệt
+        s.status === "PENDING"
         ? employeeType === "FULLTIME"
-          ? "bg-red-100 text-red-700 border border-red-300"
-          : "bg-green-100 text-green-700 border border-green-300"
-        : employeeType === "FULLTIME" && isSelected
-          ? "bg-red-100 text-red-700 border border-red-300"
-          : employeeType === "PARTTIME"
-            ? "bg-amber-100 text-amber-600 "
-            : "bg-amber-100 text-amber-700 border border-amber-200"
-  }
-  ${
-    employeeType === "PARTTIME" && !hasRegistered
-      ? "hover:bg-gray-50 cursor-pointer"
-      : ""
-  }
+          ? "bg-red-100 border-red-600 text-red-700"
+          : "bg-amber-100 border-amber-500 text-amber-800"
+        : // Đã duyệt nghỉ / từ chối
+          s.status === "OFF"
+          ? "bg-red-100 border-red-700 text-red-800"
+          : // Đi làm / đã duyệt
+            ["SCHEDULED", "WORKING", "BREAK", "COMPLETED"].includes(s.status)
+            ? "bg-amber-100 border-amber-500 text-amber-800"
+            : // Bị từ chối
+              s.status === "REJECT"
+              ? "bg-red-50 border-red-400 text-red-700"
+              : // Chưa chọn
+                employeeType === "FULLTIME"
+                ? "bg-amber-100 border-amber-300 text-amber-800"
+                : "border-t-2 bg-amber-50 border-amber-200 text-amber-700"
+}
+${
+  employeeType === "PARTTIME" && !isRegisterLocked
+    ? " hover:bg-amber-50 cursor-pointer"
+    : employeeType === "FULLTIME" && !isRegisterLocked
+      ? " cursor-pointer"
+      : " cursor-default"
+}
+${
+  isRegisterLocked &&
+  !["PENDING", "OFF", "REJECT", "SCHEDULED", "WORKING", "BREAK", "COMPLETED"].includes(
+    s.status,
+  )
+    ? "opacity-60"
+    : ""
+}
 `}
-                            >
-                              {(s.shift_name || s.name) ?? "Ca làm"} •{" "}
-                              {(s.start_time || "")?.slice(0, 5)} -{" "}
-                              {(s.end_time || "")?.slice(0, 5)}
-                              {employeeType === "PARTTIME" &&
-                                isShiftSelected && (
-                                  <div className="mt-1 text-[9px] font-semibold text-green-700">
-                                    Đã đăng ký
-                                  </div>
-                                )}
-                            </button>
-                          );
-                        },
+                          >
+                            <span className="font-semibold">
+                              {`${s.shift_name || s.name || "Ca làm"} : ${(
+                                s.start_time || ""
+                              ).slice(0, 5)} - ${(s.end_time || "").slice(
+                                0,
+                                5,
+                              )}`}
+                            </span>
+
+                            {employeeType === "PARTTIME" && isShiftSelected && (
+                              <div className="mt-1 text-[9px] font-semibold text-amber-700">
+                                Đã chọn
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+
+                      {hiddenShiftCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedDate(dateStr);
+                          }}
+                          className="w-full rounded-md border border-dashed border-gray-300 bg-gray-50 py-1 text-[10px] font-medium text-gray-600 hover:bg-gray-100"
+                        >
+                          +{hiddenShiftCount} ca khác
+                        </button>
                       )}
                     </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
@@ -503,7 +884,7 @@ export default function TimeKeeping() {
                 className={`px-4 py-2 rounded-xl font-semibold text-base transition
         ${
           canRegister && !isAfterClose && !isBeforeOpen
-            ? "bg-amber-500 hover:bg-amber-600 text-white"
+            ? "bg-amber-600 hover:bg-amber-700 text-white"
             : "bg-gray-300 text-gray-500 cursor-not-allowed"
         }
       `}
@@ -523,7 +904,7 @@ export default function TimeKeeping() {
               {employeeType === "FULLTIME" && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm">
                   {hasRegistered && (
-                    <div className="px-0 flex justify-center font-bold mb-1 text-lg">
+                    <div className="px-0 flex justify-center font-bold mb-1 text-lg ">
                       Bạn đã đăng ký lịch tháng này.
                     </div>
                   )}
@@ -552,49 +933,385 @@ export default function TimeKeeping() {
           )}
         </div>
 
-        {/* TODAY + SUMMARY */}
-        <div className="grid grid-cols-3 gap-3 md:gap-6 mb-6">
-          {/* TODAY INFO */}
-          <div className="col-span-2 bg-white rounded-2xl shadow-md p-6 flex flex-col justify-between">
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h3
-                  className="text-base md:text-xl font-semibold
-                text-gray-800"
+        {expandedDate && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">
+                    Các ca ngày {expandedDate.split("-").reverse().join("/")}
+                  </h3>
+
+                  <p className="text-sm text-gray-500 mt-1">
+                    Chọn ca bạn muốn đăng ký
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setExpandedDate(null)}
+                  className="rounded-lg px-3 py-1 text-sm text-gray-500 hover:bg-gray-100"
                 >
-                  Hôm nay, 06/08/2024
-                </h3>
-                <span className="text-sm bg-amber-100 text-amber-600 px-3 py-1 rounded-full font-medium">
-                  Đang làm
-                </span>
+                  Đóng
+                </button>
               </div>
 
-              <div className="space-y-2 md:space-y-3 text-gray-700 text-sm md:text-base">
-                <p className="flex items-center gap-2 ">
-                  <span>Thời gian làm việc:</span>
-                  <b>08 giờ 00 phút</b>
-                </p>
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                {(scheduleMap[expandedDate] || []).map(
+                  (s: any, idx: number) => {
+                    const shiftId = getShiftId(s);
 
-                <p className="flex items-center gap-2">
-                  <span>Vào:</span> <b>09:00</b>
-                </p>
+                    const isShiftSelected = selectedShifts.some(
+                      (x) =>
+                        x.work_date === expandedDate &&
+                        Number(x.shift_id) === Number(shiftId),
+                    );
 
-                <p className="flex items-center gap-2">
-                  <span>Ra:</span> <b>--:--</b>
-                </p>
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          if (isRegisterLocked) return;
+                          handleSelectDay(expandedDate, true, shiftId);
+                        }}
+                        className={`w-full rounded-xl border px-4 py-3 text-left transition
+${
+  isShiftSelected
+    ? "border-amber-500 bg-amber-100 ring-1 ring-amber-300"
+    : isRegisterLocked
+      ? "border-stone-200 bg-stone-50 opacity-60 cursor-not-allowed"
+      : "border-amber-200 bg-white hover:border-amber-400 hover:bg-amber-50"
+}
+`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold text-gray-800">
+                              {s.shift_name || s.name || "Ca làm"}
+                            </div>
 
-                <p className="flex items-center gap-2 text-amber-600 font-semibold">
-                  Tổng công: 0.5
+                            <div className="mt-1 text-sm text-gray-500">
+                              {(s.start_time || "")?.slice(0, 5)} -{" "}
+                              {(s.end_time || "")?.slice(0, 5)}
+                            </div>
+                          </div>
+
+                          {isShiftSelected && (
+                            <div className="rounded-full bg-amber-600 px-2 py-1 text-xs font-semibold text-white">
+                              Đã chọn
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TODAY + SUMMARY */}
+        <div className="grid grid-cols-3 gap-3 md:gap-6 mb-6">
+          {/* LEFT */}
+          <div className="col-span-2 bg-white rounded-2xl shadow-md p-6 flex flex-col justify-between">
+            <div>
+              {/* Ngày chấm công */}
+              <div className="mb-4">
+                <p className="text-sm font-semibold text-amber-700">
+                  Ngày chấm công
                 </p>
+                <p className="mt-1 text-base md:text-lg font-bold text-gray-800">
+                  {new Date(todayStr).toLocaleDateString("vi-VN", {
+                    weekday: "long",
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}
+                </p>
+              </div>
+
+              {/* Thông tin ca làm + thời gian đã làm */}
+              <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                <div className="flex justify-between items-center gap-x-6 gap-y-2 text-sm px-2">
+                  <div>
+                    <span className="text-gray-500">Ca:</span>{" "}
+                    <span className="font-semibold text-gray-800">
+                      {(
+                        todayRecord?.start_time ||
+                        todaySchedule?.start_time ||
+                        "--"
+                      )?.slice(0, 5)}
+                      {" - "}
+                      {(
+                        todayRecord?.end_time ||
+                        todaySchedule?.end_time ||
+                        "--"
+                      )?.slice(0, 5)}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-500">Đã làm:</span>{" "}
+                    <span className="font-semibold text-amber-600">
+                      {(() => {
+                        if (!todayRecord?.check_in_time) return "--";
+
+                        const start = new Date(
+                          todayRecord.check_in_time,
+                        ).getTime();
+
+                        const end = todayRecord?.check_out_time
+                          ? new Date(todayRecord.check_out_time).getTime()
+                          : Date.now();
+
+                        let worked = Math.floor((end - start) / 60000);
+
+                        // Trừ thời gian nghỉ trưa nếu có
+                        if (todayRecord?.break_start_time) {
+                          const breakStart = new Date(
+                            todayRecord.break_start_time,
+                          ).getTime();
+
+                          const breakEnd = todayRecord?.break_end_time
+                            ? new Date(todayRecord.break_end_time).getTime()
+                            : Date.now();
+
+                          worked -= Math.floor((breakEnd - breakStart) / 60000);
+                        }
+
+                        if (worked < 0) worked = 0;
+
+                        const hours = Math.floor(worked / 60);
+                        const minutes = worked % 60;
+
+                        return `${hours}h ${String(minutes).padStart(2, "0")}p`;
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Giờ vào / ra */}
+              <div className="mb-2 flex flex-wrap gap-6 text-sm">
+                <div>
+                  <span className="text-gray-500">Vào:</span>{" "}
+                  <span className="font-semibold text-gray-800">
+                    {todayRecord?.check_in_time
+                      ? new Date(todayRecord.check_in_time).toLocaleTimeString(
+                          "vi-VN",
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )
+                      : "--:--"}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-gray-500">Ra:</span>{" "}
+                  <span className="font-semibold text-gray-800">
+                    {todayRecord?.check_out_time
+                      ? new Date(todayRecord.check_out_time).toLocaleTimeString(
+                          "vi-VN",
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )
+                      : "--:--"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Fulltime mới hiện giờ nghỉ / tiếp tục */}
+              {isFulltime && (
+                <div className="mb-4 flex flex-wrap gap-6 text-sm">
+                  <div>
+                    <span className="text-gray-500">Nghỉ:</span>{" "}
+                    <span className="font-semibold text-gray-800">
+                      {todayRecord?.break_start_time
+                        ? new Date(
+                            todayRecord.break_start_time,
+                          ).toLocaleTimeString("vi-VN", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "--:--"}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-500">Tiếp tục:</span>{" "}
+                    <span className="font-semibold text-gray-800">
+                      {todayRecord?.break_end_time
+                        ? new Date(
+                            todayRecord.break_end_time,
+                          ).toLocaleTimeString("vi-VN", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "--:--"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Tổng công */}
+              <div className="border-t border-gray-200 pt-3">
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-amber-600 text-sm font-medium">
+                    Tổng công hôm nay
+                  </span>
+
+                  <span className="font-semibold text-amber-600">
+                    {(() => {
+                      if (!todayRecord?.check_in_time) return "0 công";
+
+                      const start = new Date(
+                        todayRecord.check_in_time,
+                      ).getTime();
+
+                      const end = todayRecord?.check_out_time
+                        ? new Date(todayRecord.check_out_time).getTime()
+                        : Date.now();
+
+                      let workedMinutes = Math.floor((end - start) / 60000);
+
+                      // Trừ giờ nghỉ trưa
+                      if (todayRecord?.break_start_time) {
+                        const breakStart = new Date(
+                          todayRecord.break_start_time,
+                        ).getTime();
+
+                        const breakEnd = todayRecord?.break_end_time
+                          ? new Date(todayRecord.break_end_time).getTime()
+                          : Date.now();
+
+                        workedMinutes -= Math.floor(
+                          (breakEnd - breakStart) / 60000,
+                        );
+                      }
+
+                      if (workedMinutes < 0) workedMinutes = 0;
+
+                      const workedHours = workedMinutes / 60;
+
+                      // Fulltime: đủ 8h = 1 công
+                      if (isFulltime) {
+                        let workPoint = workedHours / 8;
+
+                        // Làm tròn về các mốc 0.25
+                        workPoint = Math.floor(workPoint * 4) / 4;
+
+                        if (workPoint > 1) workPoint = 1;
+
+                        return `${workPoint.toFixed(
+                          workPoint % 1 === 0 ? 0 : 2,
+                        )} công`;
+                      }
+
+                      // Parttime: hiển thị theo giờ
+                      return `${workedHours.toFixed(1)} giờ`;
+                    })()}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <button className="mt-4 md:mt-6 bg-amber-500 hover:bg-amber-600 text-white py-2 md:py-3 text-sm md:text-base rounded-xl font-semibold transition">
-              Chấm công ngay
-            </button>
+            {employeeBranch && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+                <p className="font-semibold text-amber-700">
+                  Cơ sở chấm công: {employeeBranch.name}
+                </p>
+
+                <p className="mt-1 text-gray-600">{employeeBranch.address}</p>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Bán kính cho phép: {employeeBranch.allowed_radius}m
+                </p>
+              </div>
+            )}
+
+            {locationError && (
+              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                {locationError}
+              </div>
+            )}
+
+            {/* BUTTONS phải nằm trong cùng khối bên trái */}
+            <div className="mt-6 flex flex-wrap gap-3">
+              {canCheckIn && (
+                <button
+                  onClick={handleCheckIn}
+                  disabled={checkingLocation}
+                  className="bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
+                >
+                  {isFulltime &&
+                  todayRecord?.break_start_time &&
+                  !todayRecord?.break_end_time
+                    ? "Quay lại làm việc"
+                    : "Chấm công vào ca"}
+                </button>
+              )}
+
+              {canCheckOut && (
+                <button
+                  onClick={handleCheckOut}
+                  disabled={checkingLocation}
+                  className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
+                >
+                  Chấm công ra ca
+                </button>
+              )}
+
+              {canStartBreak && (
+                <button
+                  onClick={() =>
+                    dispatch(startBreak(Number(todayRecord.id)) as any)
+                  }
+                  className="bg-sky-500 hover:bg-sky-600 text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
+                >
+                  Nghỉ trưa
+                </button>
+              )}
+
+              {canEndBreak && (
+                <button
+                  onClick={() =>
+                    dispatch(endBreak(Number(todayRecord.id)) as any)
+                  }
+                  className="bg-indigo-500 hover:bg-indigo-600 text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
+                >
+                  Tiếp tục làm việc
+                </button>
+              )}
+              {canRequestOT && (
+                <button className="bg-violet-500 hover:bg-violet-600 text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition">
+                  Gửi yêu cầu OT
+                </button>
+              )}
+
+              {!canCheckIn &&
+                !canCheckOut &&
+                !canRequestOT &&
+                !canStartBreak &&
+                !canEndBreak && (
+                  <div className="text-sm text-gray-500 italic py-2">
+                    {todayRecord?.status === "OFF"
+                      ? "Hôm nay bạn được nghỉ"
+                      : isBeforeShift
+                        ? "Chưa đến thời gian chấm công"
+                        : isAfterShift
+                          ? "Ca làm hôm nay đã kết thúc"
+                          : "Hiện chưa có thao tác nào khả dụng"}
+                  </div>
+                )}
+            </div>
           </div>
 
-          {/* SUMMARY RIGHT */}
+          {/* RIGHT */}
           <div className="flex flex-col gap-4 md:gap-4 font-semibold text-2xl">
             <div className="bg-white rounded-2xl shadow-md p-8 text-center hover:shadow-lg transition ">
               <p className="text-gray-700 text-sm">Tổng công</p>

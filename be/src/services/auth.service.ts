@@ -172,6 +172,7 @@ export const getStaffById = async (id: number) => {
         s.rating,
         s.employee_type,
         s.note,
+        s.branch_id,
 
         p.name AS position
 

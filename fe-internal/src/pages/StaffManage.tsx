@@ -24,8 +24,8 @@ import {
   fetchStaffById,
   clearSelectedStaff,
 } from "../features/staff/staffSlice";
-import PositionModal from "../components/PositionModal";
-import StaffModal from "../components/StaffModal";
+import PositionModal from "../modal/PositionModal";
+import StaffModal from "../modal/StaffModal";
 
 export default function StaffManage() {
   const dispatch = useAppDispatch();

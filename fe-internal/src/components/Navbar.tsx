@@ -210,6 +210,64 @@ export default function Navbar({ open, setOpen }: any) {
                     </ul>
                   </div>
                 </li>
+
+                <li className="relative">
+                  <div
+                    onClick={() => toggleMenu("product")}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-amber-50 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Users size={18} />
+                      {open && <span>Sản phẩm & Dịch vụ</span>}
+                    </div>
+
+                    {open && (
+                      <ChevronDown
+                        size={16}
+                        className={`transition-transform duration-300 ${
+                          openMenu === "product" ? "rotate-180" : ""
+                        }`}
+                      />
+                    )}
+                  </div>
+
+                  {/* SUB MENU */}
+                  <div
+                    className={`
+      overflow-hidden transition-all duration-300
+      ${openMenu === "product" ? "max-h-40 mt-1" : "max-h-0"}
+    `}
+                  >
+                    <ul className="ml-8 flex flex-col gap-1 text-sm">
+                      <li>
+                        <Link
+                          to="/product"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Sản phẩm
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
+                          to="/service"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Dịch vụ
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
+                          to="/staff/payroll"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          ???
+                        </Link>
+                      </li>
+                    </ul>
+                  </div>
+                </li>
               </ul>
             </div>
 
