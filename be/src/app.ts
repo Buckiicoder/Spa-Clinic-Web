@@ -9,7 +9,10 @@ import scheduleRoutes from "./routes/schedule.routes.js"
 import staffRoutes from "./routes/staff.routes.js"
 import positionRoutes from "./routes/position.routes.js"
 import branchRoutes from "./routes/branch.routes.js"
+import productRoutes from "./routes/product.routes.js"
+import productCategoryRoutes from "./routes/productCategory.routes.js"
 import TimeKeepingRoutes from "./routes/timekeeping.routes.js"
+import inventoryTransactionRoutes from "./routes/inventoryTransaction.routes.js"
 import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -47,6 +50,9 @@ app.use("/api/staff", staffRoutes);
 app.use("/api/position", positionRoutes);
 app.use("/api/timekeeping", TimeKeepingRoutes);
 app.use("/api/branch", branchRoutes);
+app.use("/api/product", productRoutes);
+app.use("/api/product-categories", productCategoryRoutes);
+app.use("/api/inventory-transactions", inventoryTransactionRoutes);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

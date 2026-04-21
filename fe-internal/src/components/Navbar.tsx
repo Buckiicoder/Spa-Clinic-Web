@@ -238,13 +238,22 @@ export default function Navbar({ open, setOpen }: any) {
       ${openMenu === "product" ? "max-h-40 mt-1" : "max-h-0"}
     `}
                   >
-                    <ul className="ml-8 flex flex-col gap-1 text-sm">
+                    <ul className="ml-8 flex flex-col gap-1 text-sm font-medium">
                       <li>
                         <Link
                           to="/product"
                           className="block px-3 py-2 rounded-lg hover:bg-amber-50"
                         >
                           Sản phẩm
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
+                          to="/inventory"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Nhập/Xuất kho
                         </Link>
                       </li>
 
@@ -257,14 +266,14 @@ export default function Navbar({ open, setOpen }: any) {
                         </Link>
                       </li>
 
-                      <li>
+                      {/* <li>
                         <Link
                           to="/staff/payroll"
                           className="block px-3 py-2 rounded-lg hover:bg-amber-50"
                         >
                           ???
                         </Link>
-                      </li>
+                      </li> */}
                     </ul>
                   </div>
                 </li>

@@ -8,6 +8,9 @@ import staffReducer from "../features/staff/staffSlice";
 import positionReducer from "../features/position/positionSlice";
 import timekeepingReducer from "../features/timekeeping/timekeepingSlice";
 import branchReducer from "../features/branch/branchSlice";
+import productReducer from "../features/product/productSlice";
+import productCategoryReducer from "../features/productCategory/productCategorySlice";
+import inventoryTransactionReducer from "../features/inventoryTransaction/inventoryTransactionSlice";
 
 export const store = configureStore({
   reducer: {
@@ -20,6 +23,9 @@ export const store = configureStore({
     position: positionReducer,
     timekeeping: timekeepingReducer,
     branch: branchReducer,
+    product: productReducer,
+    productCategory: productCategoryReducer,
+    inventoryTransaction: inventoryTransactionReducer,
   },
 });
 

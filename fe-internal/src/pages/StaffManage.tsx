@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../app/hook";
+import {
+  ChevronDown,
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronLeft,
+  ChevronRight,
+  Image as ImageIcon,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Search,
+} from "lucide-react";
 import {
   fetchPositions,
   fetchPositionById,
@@ -191,12 +202,16 @@ export default function StaffManage() {
               </button>
             </div>
 
-            <div className="mb-4">
+            <div className="relative w-full max-w-xl mb-4">
+              <Search
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+              />
               <input
                 placeholder="Tìm theo tên chức vụ..."
                 value={searchPosition}
                 onChange={(e) => setSearchPosition(e.target.value)}
-                className="border px-4 py-2 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="h-12 w-full rounded-2xl border border-gray-200 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-black"
               />
             </div>
 
@@ -276,10 +291,14 @@ export default function StaffManage() {
             </div>
 
             {/* SEARCH (UI trước, chưa gắn API) */}
-            <div className="mb-4">
+            <div className="relative w-full max-w-xl mb-4">
+              <Search
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+              />
               <input
-                placeholder="Tìm theo mã, tên, số điện thoại..."
-                className="border px-4 py-2 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-amber-400"
+                placeholder="Tìm theo , tên, số điện thoại..."
+                className="h-12 w-full rounded-2xl border border-gray-200 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-black"
               />
             </div>
 

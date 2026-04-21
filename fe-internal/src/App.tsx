@@ -13,6 +13,7 @@ import MainLayout from "./components/MainLayout";
 import StaffManage from "./pages/StaffManage";
 import TKManageDetail from "./pages/TKManageDetail";
 import Product from "./pages/Product";
+import Inventory from "./pages/Inventory";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -98,6 +99,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Product />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/inventory"
+            element={
+              <ProtectedRoute>
+                <Inventory />
               </ProtectedRoute>
             }
           />

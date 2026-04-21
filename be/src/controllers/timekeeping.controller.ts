@@ -40,11 +40,11 @@ export const getTimekeepingByMonth = async (req: Request, res: Response) => {
 
 export const createTimekeeping = async (req: Request, res: Response) => {
   try {
-    console.log("REQ BODY", req.body);
+    // console.log("REQ BODY", req.body);
 
     const parsed = createTimekeepingSchema.parse(req.body);
 
-    console.log("PARSED RECORDS", parsed.records);
+    // console.log("PARSED RECORDS", parsed.records);
 
     const result = await timekeepingService.createTimekeepingBulk(
       parsed.records,

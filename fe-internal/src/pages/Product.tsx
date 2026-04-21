@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronsLeft,
@@ -11,42 +11,46 @@ import {
   Plus,
   Search,
 } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "../app/hook";
+import {
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  fetchProducts,
+  selectProducts,
+  selectProductLoading,
+} from "../features/product/productSlice";
+import ProductModal from "../modal/ProductModal";
+import { getImageUrl, formatPrice } from "../features/product/productFunction";
+
 
 export default function Product() {
+  const dispatch = useAppDispatch();
+
+  const products = useAppSelector(selectProducts);
+  const loading = useAppSelector(selectProductLoading);
+
   const [search, setSearch] = useState("");
   const [onlyActive, setOnlyActive] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const [openModal, setOpenModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
-  // mock data tạm thời
-  const products = [
-    {
-      id: 1,
-      name: "Áo",
-      sku: "-",
-      originalPrice: 30000,
-      currentPrice: 30000,
-      unit: "cái",
-      active: true,
-    },
-    {
-      id: 2,
-      name: "Quần jean",
-      sku: "QJ001",
-      originalPrice: 450000,
-      currentPrice: 399000,
-      unit: "cái",
-      active: false,
-    },
-  ];
+  useEffect(() => {
+    dispatch(fetchProducts());
+  }, [dispatch]);
 
   const filteredProducts = useMemo(() => {
     return products.filter((item) => {
-      const matchSearch =
-        item.name.toLowerCase().includes(search.toLowerCase()) ||
-        item.sku.toLowerCase().includes(search.toLowerCase());
+      const keyword = search.toLowerCase();
 
-      const matchStatus = onlyActive ? item.active : true;
+      const matchSearch =
+        item.name.toLowerCase().includes(keyword) ||
+        item.code.toLowerCase().includes(keyword) ||
+        (item.barcode || "").toLowerCase().includes(keyword);
+
+      const matchStatus = onlyActive ? item.is_active : true;
 
       return matchSearch && matchStatus;
     });
@@ -59,20 +63,60 @@ export default function Product() {
     page * limit,
   );
 
-  const formatPrice = (value: number) =>
-    value.toLocaleString("vi-VN") + "đ";
+  const handleSubmit = async (data: any) => {
+    try {
+      if (selectedProduct) {
+        await dispatch(
+          updateProduct({
+            id: selectedProduct.id,
+            data,
+          }),
+        ).unwrap();
+      } else {
+        await dispatch(createProduct(data)).unwrap();
+      }
+
+      setOpenModal(false);
+      setSelectedProduct(null);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const handleOpenEdit = (product: any) => {
+    setSelectedProduct(product);
+    setOpenModal(true);
+  };
+
+  const handleDelete = async (e: React.MouseEvent, product: any) => {
+    e.stopPropagation();
+
+    const confirmed = window.confirm(
+      `Bạn có chắc muốn xóa sản phẩm "${product.name}" không?`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await dispatch(deleteProduct(product.id)).unwrap();
+    } catch (err) {
+      console.log(err);
+      alert("Xóa sản phẩm thất bại");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f7f7f7] p-6">
       <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
         {/* Header */}
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Sản phẩm</h1>
+        <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <h1 className="text-2xl font-bold text-black">Sản phẩm</h1>
 
           <button
-            className="flex items-center gap-2 rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
+            className="flex items-center gap-2 rounded-xl bg-amber-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
             onClick={() => {
-              // TODO: mở modal thêm sản phẩm
+              setSelectedProduct(null);
+              setOpenModal(true);
             }}
           >
             <Plus size={18} />
@@ -119,7 +163,6 @@ export default function Product() {
                   }`}
                 />
               </button>
-
               Chỉ đang bán
             </label>
           </div>
@@ -127,111 +170,118 @@ export default function Product() {
 
         {/* Table */}
         <div className="overflow-hidden rounded-2xl border border-gray-200">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-gray-700">
+          <div className="overflow-x-auto rounded-xl border">
+            <table className="w-full text-sm">
+              <thead className="bg-amber-50 text-gray-700">
                 <tr>
-                  <th className="w-16 px-4 py-4"></th>
-
-                  {[
-                    "Tên",
-                    "SKU",
-                    "Giá bán",
-                    "Giá bán hiện tại",
-                    "ĐVT",
-                    "Trạng thái",
-                    "Thao tác",
-                  ].map((header) => (
-                    <th
-                      key={header}
-                      className="px-4 py-4 text-left font-semibold"
-                    >
-                      <div className="flex items-center gap-1">
-                        {header}
-                        {header !== "Thao tác" && (
-                          <ChevronDown size={14} className="text-gray-400" />
-                        )}
-                      </div>
-                    </th>
-                  ))}
+                  <th className="p-3 text-left">Mã</th>
+                  <th className="p-3 text-left">Ảnh</th>
+                  <th className="p-3 text-left">Tên sản phẩm</th>
+                  <th className="p-3 text-left">Mã</th>
+                  <th className="p-3 text-left">Giá niêm yết</th>
+                  <th className="p-3 text-left">Giá hiện tại</th>
+                  <th className="p-3 text-left">Tồn kho</th>
+                  <th className="p-3 text-left">ĐVT</th>
+                  <th className="p-3 text-left">Trạng thái</th>
+                  <th className="p-3 text-left">Hành động</th>
                 </tr>
               </thead>
 
               <tbody>
-                {paginatedProducts.length > 0 ? (
+                {!loading &&
                   paginatedProducts.map((item) => (
                     <tr
                       key={item.id}
-                      className="border-t border-gray-100 transition hover:bg-gray-50"
+                      onClick={() => handleOpenEdit(item)}
+                      className="cursor-pointer border-t transition hover:bg-amber-50"
                     >
-                      {/* ảnh */}
-                      <td className="px-4 py-4">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-400">
-                          <ImageIcon size={24} />
-                        </div>
+                      <td className="p-3 font-medium">{item.code}</td>
+
+                      <td className="px-1 py-3">
+                        {item.image_url ? (
+    <img
+      src={getImageUrl(item.image_url)}
+      alt={item.name}
+      onError={(e) => {
+        e.currentTarget.style.display = "none";
+      }}
+      className="h-12 w-12 rounded-lg border object-cover"
+    />
+  ) : (
+    <div className="flex h-12 w-12 items-center justify-center rounded-lg border bg-gray-50 text-gray-400">
+      <ImageIcon size={18} />
+    </div>
+  )}
                       </td>
 
-                      <td className="px-4 py-4 font-medium text-gray-900">
-                        {item.name}
+                      <td className="p-3">
+                        <div className="font-medium">{item.name}</div>
+
+                        {item.category_name && (
+                          <div className="text-xs text-gray-400">
+                            {item.category_name}
+                          </div>
+                        )}
                       </td>
 
-                      <td className="px-4 py-4 text-gray-600">{item.sku}</td>
+                      <td className="p-3">{item.code}</td>
 
-                      <td className="px-4 py-4 text-gray-900">
-                        {formatPrice(item.originalPrice)}
-                      </td>
+                      <td className="p-3">{formatPrice(item.sale_price)}</td>
 
-                      <td className="px-4 py-4 text-gray-900">
-                        {formatPrice(item.currentPrice)}
-                      </td>
+                      <td className="p-3">{formatPrice(item.current_price)}</td>
 
-                      <td className="px-4 py-4 text-gray-600">{item.unit}</td>
+                      <td className="p-3">{item.stock_quantity}</td>
 
-                      <td className="px-4 py-4">
+                      <td className="p-3">{item.unit}</td>
+
+                      <td className="p-3">
                         <span
-                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
-                            item.active
-                              ? "border-green-300 bg-green-50 text-green-600"
-                              : "border-red-300 bg-red-50 text-red-600"
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            item.is_active
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
                           }`}
                         >
-                          {item.active ? "Đang bán" : "Ngừng bán"}
+                          {item.is_active ? "Đang bán" : "Ngừng bán"}
                         </span>
                       </td>
 
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-2">
+                      <td className="p-3">
+                        <div className="flex gap-2">
                           <button
-                            className="flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-100"
-                            onClick={() => {
-                              // TODO: mở modal sửa
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEdit(item);
                             }}
+                            className="rounded-lg bg-amber-500 px-3 py-1 text-xs text-white transition hover:bg-amber-600"
                           >
-                            <Pencil size={16} />
                             Sửa
                           </button>
 
                           <button
-                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-600 transition hover:bg-gray-100"
+                            onClick={(e) => handleDelete(e, item)}
+                            className="rounded-lg border px-3 py-1 text-xs transition hover:bg-gray-100"
                           >
-                            <MoreHorizontal size={18} />
+                            Xóa
                           </button>
                         </div>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="px-4 py-14 text-center text-gray-400"
-                    >
-                      Không có sản phẩm nào
-                    </td>
-                  </tr>
-                )}
+                  ))}
               </tbody>
             </table>
+
+            {loading && (
+              <div className="py-10 text-center text-gray-400">
+                Đang tải dữ liệu...
+              </div>
+            )}
+
+            {!loading && paginatedProducts.length === 0 && (
+              <div className="py-10 text-center text-gray-400">
+                Không có dữ liệu
+              </div>
+            )}
           </div>
         </div>
 
@@ -290,7 +340,9 @@ export default function Product() {
                 <button
                   className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-400 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={page === totalPage}
-                  onClick={() => setPage((prev) => Math.min(totalPage, prev + 1))}
+                  onClick={() =>
+                    setPage((prev) => Math.min(totalPage, prev + 1))
+                  }
                 >
                   <ChevronRight size={18} />
                 </button>
@@ -307,6 +359,16 @@ export default function Product() {
           </div>
         </div>
       </div>
+
+      <ProductModal
+        open={openModal}
+        onClose={() => {
+          setOpenModal(false);
+          setSelectedProduct(null);
+        }}
+        initialData={selectedProduct}
+        onSubmit={handleSubmit}
+      />
     </div>
   );
 }
