@@ -18,6 +18,10 @@ export const initSocket = (server: http.Server) => {
     socket.on("join-reception", () => {
       socket.join("reception");
     });
+
+    socket.on("join-doctor", () => {
+      socket.join("doctor");
+    });
   });
 
   return io;

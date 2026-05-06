@@ -12,40 +12,33 @@ export const createBookingPublic = async (req: Request, res: Response) => {
 
     let user = await bookingService.findUserByContact(phone, email);
 
-    // 👉 nếu chưa có user → tạo guest user
     if (!user) {
       user = await bookingService.createGuestUser(data.name, phone, email);
     }
 
-    const created_by = req.user?.id;
-
-    // 👉 tạo booking
-    const booking = await bookingService.createBooking({
+    const bookingRaw = await bookingService.createBooking({
       customer_id: user.id,
       service_id: data.service_id,
       booking_date: data.booking_date,
       booking_time: data.booking_time,
       quantity: data.quantity,
-      created_by: user.id
+      created_by: user.id,
+      note: data.note,
     });
 
-    //Socket emit
-    const io = getIO();
-    io.to("reception").emit("booking:created", {
-      ...booking,
-      customer_name: user.name,
-      phone: user.phone,
-      email: user.email,
-    });
+    const booking = await bookingService.getBookingById(bookingRaw.id);
 
-    return res.json({
+    getIO().to("reception").emit("booking:created", booking);
+
+    res.json({
       message: "Booking created",
       booking,
     });
   } catch (err: any) {
-    return res.status(400).json({ message: err.message });
+    res.status(400).json({ message: err.message });
   }
 };
+
 export const createBookingByStaff = async (req: Request, res: Response) => {
   try {
     const data = createBookingSchema.parse(req.body);
@@ -53,40 +46,38 @@ export const createBookingByStaff = async (req: Request, res: Response) => {
     const phone = data.phone || null;
     const email = data.email || null;
 
+    // 🔹 1. tìm user
     let user = await bookingService.findUserByContact(phone, email);
 
-    // 👉 nếu chưa có user → tạo guest user
+    // 🔹 2. chưa có → tạo
     if (!user) {
       user = await bookingService.createGuestUser(data.name, phone, email);
     }
 
-    const created_by = req.user?.id;
+    // 🔹 3. tạo customer (internal info)
+    await bookingService.upsertCustomer(user.id, data);
 
-    // 👉 tạo booking
-    const booking = await bookingService.createBooking({
+    // 🔹 4. tạo booking
+    const bookingRaw = await bookingService.createBooking({
       customer_id: user.id,
       service_id: data.service_id,
       booking_date: data.booking_date,
       booking_time: data.booking_time,
       quantity: data.quantity,
       created_by: req.user.id,
+      note: data.note,
     });
 
-    //Socket emit
-    const io = getIO();
-    io.to("reception").emit("booking:created", {
-      ...booking,
-      customer_name: user.name,
-      phone: user.phone,
-      email: user.email,
-    });
+    const booking = await bookingService.getBookingById(bookingRaw.id);
 
-    return res.json({
+    getIO().to("reception").emit("booking:created", booking);
+
+    res.json({
       message: "Booking created",
       booking,
     });
   } catch (err: any) {
-    return res.status(400).json({ message: err.message });
+    res.status(400).json({ message: err.message });
   }
 };
 
@@ -109,27 +100,68 @@ export const getBookingById = async (req: Request, res: Response) => {
   }
 };
 
+export const updateBookingAndCustomer = async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+    const data = req.body;
 
-export const confirmBooking = async (req: Request, res: Response) => {
-  const booking = await bookingService.confirmBooking(req.params.id);
+    // 🔹 clean data
+    const cleanData = {
+      ...data,
+      referrer_id: data.referrer_id === "" ? null : Number(data.referrer_id),
+    };
 
-  const io = getIO();
-  io.to("reception").emit("booking:updated", booking);
+    // 🔹 1. update booking
+    const bookingRaw = await bookingService.updateBooking(id, cleanData);
 
-  res.json(booking);
+    if (!bookingRaw) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    await bookingService.upsertCustomer(bookingRaw.customer_id, cleanData);
+
+    // 🔹 3. get full booking
+    const booking = await bookingService.getBookingById(id);
+
+    getIO().to("reception").emit("booking:updated", booking);
+
+    res.json(booking);
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
 };
 
 export const checkInBooking = async (req: Request, res: Response) => {
-  const booking = await bookingService.checkInBooking(req.params.id);
+  try {
+    const id = req.params.id;
 
-  const io = getIO();
-  io.to("reception").emit("booking:updated", booking);
+    const bookingRaw = await bookingService.checkInBooking(id, req.user.id);
 
-  res.json(booking);
+    if (!bookingRaw) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // 🔹 update visit
+    await bookingService.updateCustomerVisit(bookingRaw.customer_id);
+
+    const booking = await bookingService.getBookingById(id);
+
+    const io = getIO();
+    io.to("reception").emit("booking:updated", booking);
+
+    res.json(booking);
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
 };
 
-
 export const deleteBooking = async (req: Request, res: Response) => {
+  const booking = await bookingService.getBookingById(req.params.id);
+
+  if (!booking) {
+    return res.status(404).json({ message: "Booking not found" });
+  }
+
   await bookingService.deleteBooking(req.params.id);
 
   const io = getIO();
@@ -148,7 +180,7 @@ export const searchCustomers = async (req: Request, res: Response) => {
 
     const customers = await bookingService.searchCustomers(
       phone as string,
-      email as string
+      email as string,
     );
 
     return res.json(customers);

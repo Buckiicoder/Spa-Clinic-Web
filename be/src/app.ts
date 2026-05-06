@@ -13,6 +13,9 @@ import productRoutes from "./routes/product.routes.js"
 import productCategoryRoutes from "./routes/productCategory.routes.js"
 import TimeKeepingRoutes from "./routes/timekeeping.routes.js"
 import inventoryTransactionRoutes from "./routes/inventoryTransaction.routes.js"
+import customerRoutes from "./routes/customer.routes.js"
+import treatmentRoutes from "./routes/treatment.routes.js"
+import doctorRoutes from "./routes/doctor.routes.js"
 import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -53,6 +56,9 @@ app.use("/api/branch", branchRoutes);
 app.use("/api/product", productRoutes);
 app.use("/api/product-categories", productCategoryRoutes);
 app.use("/api/inventory-transactions", inventoryTransactionRoutes);
+app.use("/api/customer", customerRoutes);
+app.use("/api/treatment", treatmentRoutes);
+app.use("/api/doctor", doctorRoutes);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

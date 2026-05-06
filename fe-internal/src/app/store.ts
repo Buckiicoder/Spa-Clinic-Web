@@ -11,6 +11,9 @@ import branchReducer from "../features/branch/branchSlice";
 import productReducer from "../features/product/productSlice";
 import productCategoryReducer from "../features/productCategory/productCategorySlice";
 import inventoryTransactionReducer from "../features/inventoryTransaction/inventoryTransactionSlice";
+import customerReducer from "../features/customer/customerSlice";
+import treatmentReducer from "../features/treatment/treatmentSlice";
+import doctorReducer from "../features/doctor/doctorSlice";
 
 export const store = configureStore({
   reducer: {
@@ -26,6 +29,9 @@ export const store = configureStore({
     product: productReducer,
     productCategory: productCategoryReducer,
     inventoryTransaction: inventoryTransactionReducer,
+    customer: customerReducer,
+    treatment: treatmentReducer,
+    doctor: doctorReducer,
   },
 });
 

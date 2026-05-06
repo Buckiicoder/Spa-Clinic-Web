@@ -1,18 +1,25 @@
 import { useEffect, useState } from "react";
-import Navbar from "../components/Navbar";
 import { io } from "socket.io-client";
 import { useAppDispatch, useAppSelector } from "../app/hook";
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   fetchBookings,
-  checkInBooking,
+  // checkInBooking,
   bookingCreated,
   bookingUpdated,
   bookingDeleted,
 } from "../features/internalBooking/bookingSlice";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import {
+  MoreHorizontal,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 
 export default function ReceptionDashboard() {
   const navigate = useNavigate();
@@ -133,112 +140,113 @@ export default function ReceptionDashboard() {
   };
 
   // ✅ action
-  const handleCheckIn = (id: string) => {
-    dispatch(checkInBooking(id));
-  };
+const handleCheckIn = (id: string) => {
+  navigate(`/booking/${id}?action=checkin`);
+};
 
   const handleView = (id: string) => {
     navigate(`/booking/${id}`);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-amber-50 font-sans text-brown-900 border-2">
+    <div className="min-h-screen bg-[#f7f7f7] p-6">
       {/* <Navbar /> */}
 
-      <div className="max-w-[1800px] mx-auto px-3 md:px-6 py-4">
+      <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
         {/* Table */}
         {/* HEADER */}
-        <div className="mb-6 flex items-center justify-between">
-          <h3 className="text-lg md:text-2xl font-bold text-amber-600">
-            Quản lý đặt lịch
-          </h3>
+        <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <h1 className="text-2xl font-bold text-black">Quản lý đặt lịch</h1>
 
           <button
             onClick={() => navigate("/booking")}
-            className="px-5 py-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-white rounded-xl font-semibold shadow hover:from-amber-500 hover:to-yellow-600 transition"
+            className="flex items-center gap-2 rounded-xl bg-amber-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
           >
             + Đặt lịch
           </button>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl shadow-md mb-6 flex flex-col md:flex-row gap-3">
-          {/* SEARCH */}
-          <input
-            type="text"
-            placeholder="Tìm theo tên, SĐT..."
-            className="w-full md:w-72 px-4 py-1 border rounded-xl 
-focus:ring-2 focus:ring-amber-400 
-transition-all duration-300 ease-in-out 
-hover:shadow-md focus:scale-[1.02]"
-            onChange={(e) =>
-              setFilters({ ...filters, keyword: e.target.value })
-            }
-          />
+        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex w-full flex-col gap-4 lg:flex-row lg:items-center">
+            <div className="relative w-full max-w-xl">
+              <Search
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+              />
 
-          {/* STATUS */}
-          <select
-            className="w-full md:w-72 px-4 py-1 border rounded-xl 
-focus:ring-2 focus:ring-amber-400 
-transition-all duration-300 ease-in-out 
-hover:shadow-md focus:scale-[1.02]"
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="PENDING">Chưa đến</option>
-            <option value="CONFIRMED">Chưa xác nhận</option>
-            <option value="CHECKED_IN">Đã đến</option>
-            <option value="COMPLETED">Hoàn thành</option>
-            <option value="CANCELLED">Đã hủy</option>
-          </select>
+              <input
+                type="text"
+                value={filters.keyword}
+                placeholder="Tìm theo tên, SĐT..."
+                onChange={(e) =>
+                  setFilters({ ...filters, keyword: e.target.value })
+                }
+                className="h-12 w-full rounded-2xl border border-gray-200 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-black"
+              />
+            </div>
 
-          {/* DATE */}
-          <div className="relative w-[200px]">
-            <DatePicker
-              selected={selectedDate}
-              onChange={(date: Date | null) => {
-                setSelectedDate(date);
-                setFilters({
-                  ...filters,
-                  date: date ? date.toISOString().split("T")[0] : "",
-                });
-              }}
-              placeholderText="Chọn ngày"
-              dateFormat="dd/MM/yyyy"
-              onKeyDown={(e) => e.preventDefault()} // ❌ chặn nhập tay
-              className="w-full px-4 py-1 border rounded-xl pr-10
-    transition-all duration-300 ease-in-out
-    hover:shadow-md focus:ring-2 focus:ring-amber-400 cursor-pointer"
-            />
+            {/* STATUS */}
+            <select
+              value={filters.status}
+              onChange={(e) =>
+                setFilters({ ...filters, status: e.target.value })
+              }
+              className="h-12 rounded-2xl border border-gray-200 bg-white px-4 text-sm outline-none transition focus:border-black"
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="PENDING">Chưa đến</option>
+              <option value="CONFIRMED">Chưa xác nhận</option>
+              <option value="CHECKED_IN">Đã đến</option>
+              <option value="COMPLETED">Hoàn thành</option>
+              <option value="CANCELLED">Đã hủy</option>
+            </select>
 
-            {/* ❌ NÚT CLEAR */}
-            {selectedDate && (
-              <button
-                onClick={() => {
-                  setSelectedDate(null);
-                  setFilters({ ...filters, date: "" });
+            {/* DATE */}
+            <div className="relative w-full max-w-[220px]">
+              <DatePicker
+                selected={selectedDate}
+                onChange={(date: Date | null) => {
+                  setSelectedDate(date);
+                  setFilters({
+                    ...filters,
+                    date: date ? date.toISOString().split("T")[0] : "",
+                  });
                 }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
-              >
-                ✕
-              </button>
-            )}
+                placeholderText="Chọn ngày"
+                dateFormat="dd/MM/yyyy"
+                onKeyDown={(e) => e.preventDefault()}
+                className="h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 pr-10 text-sm outline-none transition focus:border-black"
+              />
+
+              {selectedDate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedDate(null);
+                    setFilters({ ...filters, date: "" });
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
 
-          <div className="overflow-x-auto">
-            <table className="w-full table-fixed text-sm md:text-base">
-              <thead className="bg-amber-100 text-amber-700">
+        <div className="overflow-hidden rounded-2xl border border-gray-200">
+          <div className="overflow-x-auto rounded-xl border">
+            <table className="w-full text-sm">
+              <thead className="bg-amber-50 text-gray-700">
                 <tr>
-                  <th className="px-3 py-3 w-[100px]">Mã</th>
-                  <th className="px-3 py-3 w-[150px]">Khách</th>
-                  <th className="px-3 py-3 w-[120px]">SĐT</th>
-                  <th className="px-3 py-3 w-[160px]">Dịch vụ</th>
-                  <th className="px-3 py-3 w-[100px]">Thời gian</th>
-                  <th className="px-3 py-3 w-[30px]">SL</th>
-                  <th className="px-3 py-3 w-[130px]">Trạng thái</th>
-                  <th className="px-3 py-3 w-[90px] text-center">Thao tác</th>
+                  <th className="p-3 px-4 text-left">Mã</th>
+                  <th className="p-3 text-left">Khách</th>
+                  <th className="p-3 text-left">SĐT</th>
+                  <th className="p-3 text-left">Dịch vụ</th>
+                  <th className="p-3 text-left">Thời gian</th>
+                  <th className="p-3 text-left">SL</th>
+                  <th className="p-3 text-left">Trạng thái</th>
+                  <th className="p-3 text-left">Thao tác</th>
                 </tr>
               </thead>
 
@@ -255,18 +263,18 @@ hover:shadow-md focus:scale-[1.02]"
                   <tr
                     key={b.id}
                     onClick={() => handleView(b.id)}
-                    className="border-t cursor-pointer hover:bg-amber-50 transition"
+                    className="cursor-pointer border-t transition hover:bg-amber-50"
                   >
-                    <td className="px-6 py-4 ">{b.booking_code}</td>
-                    <td className="px-4 py-4 ">{b.name}</td>
-                    <td className="px-6 py-4 ">{b.phone}</td>
-                    <td className="px-6 py-4 ">{b.service_name}</td>
-                    <td className="px-5 py-3">
+                    <td className="p-3 font-semibold">{b.booking_code}</td>
+                    <td className="p-3">{b.name}</td>
+                    <td className="p-3">{b.phone}</td>
+                    <td className="p-3 font-semibold">{b.service_name}</td>
+                    <td className="p-3">
                       <div className="flex flex-col text-sm">
                         <span>
                           {new Date(b.booking_date).toLocaleDateString("vi-VN")}
                         </span>
-                        <span className="text-gray-600 text-s">
+                        <span className="text-xs text-gray-400">
                           {b.booking_time}
                         </span>
                       </div>
@@ -284,16 +292,16 @@ hover:shadow-md focus:scale-[1.02]"
                           e.stopPropagation();
                           setOpenMenu(openMenu === b.id ? null : b.id);
                         }}
-                        className="px-2 py-1 rounded-lg hover:bg-gray-100"
+                        className="rounded-lg p-2 transition hover:bg-gray-100"
                       >
-                        ⋯
+                        <MoreHorizontal size={18} />
                       </button>
 
                       {openMenu === b.id && (
-                        <div className="absolute right-4 mt-2 w-36 bg-white border rounded-xl shadow-lg z-10 animate-fadeIn">
+                        <div className="absolute right-3 top-10 z-20 w-40 rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
                           <button
                             onClick={() => handleView(b.id)}
-                            className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                            className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-100"
                           >
                             👁 Xem
                           </button>
@@ -311,57 +319,71 @@ hover:shadow-md focus:scale-[1.02]"
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
 
-            <div className="flex items-center justify-between px-6 py-4 border-t text-sm">
-              {/* LEFT */}
-              <div>
-                {(page - 1) * limit + 1}–
-                {Math.min(page * limit, filteredBookings.length)} trên{" "}
-                {filteredBookings.length} bản ghi
-              </div>
+        <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <p className="text-sm text-gray-500">
+            {(page - 1) * limit + 1}–
+            {Math.min(page * limit, filteredBookings.length)} trên{" "}
+            {filteredBookings.length} bản ghi.
+          </p>
 
-              {/* RIGHT */}
-              <div className="flex items-center gap-4">
-                {/* chọn số dòng */}
-                <div className="flex items-center gap-2">
-                  <span>Số hàng mỗi trang</span>
-                  <select
-                    value={limit}
-                    onChange={(e) => {
-                      setLimit(Number(e.target.value));
-                      setPage(1);
-                    }}
-                    className="border rounded-lg px-2 py-1"
-                  >
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                  </select>
-                </div>
+          <div className="flex flex-col items-start gap-4 lg:flex-row lg:items-center">
+            <div className="flex items-center gap-3 text-sm text-gray-700">
+              <span className="font-medium">Số hàng mỗi trang</span>
 
-                {/* page info */}
-                <div>
-                  Trang {page} / {totalPages || 1}
-                </div>
+              <select
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="h-10 rounded-xl border border-gray-200 bg-white px-4 outline-none"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
 
-                {/* buttons */}
-                <div className="flex gap-2">
-                  <button
-                    disabled={page === 1}
-                    onClick={() => setPage((prev) => prev - 1)}
-                    className="px-2 py-1 border rounded disabled:opacity-50"
-                  >
-                    {"<"}
-                  </button>
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-gray-700">
+                Trang {page} trên {totalPages || 1}
+              </span>
 
-                  <button
-                    disabled={page === totalPages || totalPages === 0}
-                    onClick={() => setPage((prev) => prev + 1)}
-                    className="px-2 py-1 border rounded disabled:opacity-50"
-                  >
-                    {">"}
-                  </button>
-                </div>
+              <div className="flex items-center gap-2">
+                <button
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-400 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={page === 1}
+                  onClick={() => setPage(1)}
+                >
+                  <ChevronsLeft size={18} />
+                </button>
+
+                <button
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-400 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={page === 1}
+                  onClick={() => setPage((prev) => prev - 1)}
+                >
+                  <ChevronLeft size={18} />
+                </button>
+
+                <button
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-400 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={page === totalPages || totalPages === 0}
+                  onClick={() => setPage((prev) => prev + 1)}
+                >
+                  <ChevronRight size={18} />
+                </button>
+
+                <button
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-400 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={page === totalPages || totalPages === 0}
+                  onClick={() => setPage(totalPages)}
+                >
+                  <ChevronsRight size={18} />
+                </button>
               </div>
             </div>
           </div>

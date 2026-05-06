@@ -1,18 +1,16 @@
 import { Router } from "express";
-import * as bookingService from "../controllers/booking.controller.js";
+import * as bookingController from "../controllers/booking.controller.js";
 import { authCustomerMiddleware, authStaffMiddleware } from "../middleware/auth.middleware.js";
 const router = Router();
 
-router.post("/customer",bookingService. createBookingPublic);
-router.post("/staff", authStaffMiddleware,bookingService. createBookingByStaff);
+router.post("/customer",bookingController.createBookingPublic);
+router.post("/staff", authStaffMiddleware,bookingController. createBookingByStaff);
 
-router.get("/", bookingService.getBookings);
-router.get("/search", bookingService.searchCustomers);
-router.get("/:id", bookingService.getBookingById);
-router.patch("/:id/confirm", bookingService.confirmBooking);
-router.patch("/:id/check-in", bookingService.checkInBooking);
-router.delete("/:id", bookingService.deleteBooking);
-
-
+router.get("/", authStaffMiddleware,bookingController.getBookings);
+router.get("/search", bookingController.searchCustomers);
+router.get("/:id", bookingController.getBookingById);
+router.patch("/:id", authStaffMiddleware, bookingController.updateBookingAndCustomer);
+router.patch("/:id/check-in", authStaffMiddleware, bookingController.checkInBooking);
+router.delete("/:id", authStaffMiddleware, bookingController.deleteBooking);
 
 export default router;

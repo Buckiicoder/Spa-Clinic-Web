@@ -174,7 +174,7 @@ export default function Product() {
             <table className="w-full text-sm">
               <thead className="bg-amber-50 text-gray-700">
                 <tr>
-                  <th className="p-3 text-left">Mã</th>
+                  <th className="p-3 text-left">ID</th>
                   <th className="p-3 text-left">Ảnh</th>
                   <th className="p-3 text-left">Tên sản phẩm</th>
                   <th className="p-3 text-left">Mã</th>
@@ -189,13 +189,13 @@ export default function Product() {
 
               <tbody>
                 {!loading &&
-                  paginatedProducts.map((item) => (
+                  paginatedProducts.map((item: any) => (
                     <tr
                       key={item.id}
                       onClick={() => handleOpenEdit(item)}
                       className="cursor-pointer border-t transition hover:bg-amber-50"
                     >
-                      <td className="p-3 font-medium">{item.code}</td>
+                      <td className="p-3 font-medium">{item.id}</td>
 
                       <td className="px-1 py-3">
                         {item.image_url ? (

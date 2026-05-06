@@ -9,6 +9,9 @@ import {
   CalendarCheck,
   Users,
   ChevronDown,
+  DamIcon,
+  BriefcaseMedical,
+  ShoppingBasket,
 } from "lucide-react";
 
 export default function Navbar({ open, setOpen }: any) {
@@ -92,7 +95,7 @@ export default function Navbar({ open, setOpen }: any) {
                 {/* Dashboard */}
                 <li className="group relative">
                   <Link
-                    to="/"
+                    to="/trangchu"
                     className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
                   >
                     <LayoutDashboard size={18} />
@@ -148,6 +151,27 @@ export default function Navbar({ open, setOpen }: any) {
       group-hover:opacity-100 transition whitespace-nowrap"
                     >
                       Check lịch
+                    </span>
+                  )}
+                </li>
+
+                {/* Check lịch */}
+                <li className="group relative">
+                  <Link
+                    to="/doctor"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
+                  >
+                    <BriefcaseMedical size={18} />
+                    {open && <span>Bác sĩ</span>}
+                  </Link>
+
+                  {!open && (
+                    <span
+                      className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
+      bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 
+      group-hover:opacity-100 transition whitespace-nowrap"
+                    >
+                      Bác sĩ
                     </span>
                   )}
                 </li>
@@ -217,7 +241,7 @@ export default function Navbar({ open, setOpen }: any) {
                     className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-amber-50 cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <Users size={18} />
+                      <ShoppingBasket size={18} />
                       {open && <span>Sản phẩm & Dịch vụ</span>}
                     </div>
 
@@ -250,6 +274,24 @@ export default function Navbar({ open, setOpen }: any) {
 
                       <li>
                         <Link
+                          to="/service"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Dịch vụ
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
+                          to="/treatment"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Quy trình liệu trình
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
                           to="/inventory"
                           className="block px-3 py-2 rounded-lg hover:bg-amber-50"
                         >
@@ -257,14 +299,7 @@ export default function Navbar({ open, setOpen }: any) {
                         </Link>
                       </li>
 
-                      <li>
-                        <Link
-                          to="/service"
-                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
-                        >
-                          Dịch vụ
-                        </Link>
-                      </li>
+                      
 
                       {/* <li>
                         <Link
