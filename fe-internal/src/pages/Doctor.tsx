@@ -199,7 +199,7 @@ export default function DoctorExamination() {
             <button
               onClick={() => setTab("done")}
               className={`flex-1 py-2 text-sm ${
-                tab === "done" ? "border-b-2 border-blue-500 font-medium" : ""
+                tab === "done" ? "border-b-2 border-amber-500 font-medium " : ""
               }`}
             >
               Đã tư vấn hôm nay

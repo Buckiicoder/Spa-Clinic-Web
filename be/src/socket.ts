@@ -22,6 +22,10 @@ export const initSocket = (server: http.Server) => {
     socket.on("join-doctor", () => {
       socket.join("doctor");
     });
+
+    socket.on("join-manager", () => {
+  socket.join("manager");
+});
   });
 
   return io;

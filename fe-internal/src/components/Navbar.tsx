@@ -225,6 +225,24 @@ export default function Navbar({ open, setOpen }: any) {
 
                       <li>
                         <Link
+                          to="/manager-assign"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Gán ca làm khách
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
+                          to="/technician"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Nhân viên làm dịch vụ
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
                           to="/staff/payroll"
                           className="block px-3 py-2 rounded-lg hover:bg-amber-50"
                         >

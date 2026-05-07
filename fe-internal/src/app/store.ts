@@ -14,6 +14,7 @@ import inventoryTransactionReducer from "../features/inventoryTransaction/invent
 import customerReducer from "../features/customer/customerSlice";
 import treatmentReducer from "../features/treatment/treatmentSlice";
 import doctorReducer from "../features/doctor/doctorSlice";
+import technicianReducer from "../features/technician/technicianSlice";
 
 export const store = configureStore({
   reducer: {
@@ -32,6 +33,7 @@ export const store = configureStore({
     customer: customerReducer,
     treatment: treatmentReducer,
     doctor: doctorReducer,
+    technician: technicianReducer,
   },
 });
 

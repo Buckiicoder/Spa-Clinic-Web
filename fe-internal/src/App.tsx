@@ -19,6 +19,8 @@ import Dashboard from "./pages/Dashboard";
 import Doctor from "./pages/Doctor";
 import Treatment from "./pages/Treatment";
 import BookingForm from "./pages/BookingForm";
+import ManagerAssign from "./pages/ManagerAssign";
+import Technician from "./pages/Technician";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -145,6 +147,22 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Doctor />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manager-assign"
+            element={
+              <ProtectedRoute>
+                <ManagerAssign />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/technician"
+            element={
+              <ProtectedRoute>
+                <Technician />
               </ProtectedRoute>
             }
           />
