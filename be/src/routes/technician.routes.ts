@@ -47,18 +47,4 @@ router.get(
   technicianController.getSessionDetail,
 );
 
-// bắt đầu làm
-router.patch(
-  "/session/:id/start",
-  authStaffMiddleware,
-  technicianController.startSession,
-);
-
-// hoàn thành
-router.patch(
-  "/session/:id/complete",
-  authStaffMiddleware,
-  technicianController.completeSession,
-);
-
 export default router;

@@ -60,25 +60,27 @@ export const createService = async (req: Request, res: Response) => {
 
     // chỉ check có package hay không
     if (isLeaf && (!parsed.packages || parsed.packages.length === 0)) {
-      return res
-        .status(400)
-        .json({ message: "Chưa thêm gói dịch vụ" });
+      return res.status(400).json({ message: "Chưa thêm gói dịch vụ" });
     }
 
     const service = await serviceServices.createService(parsed);
 
     return res.json(service);
   } catch (err: any) {
-    console.error(err);
+    console.error("CREATE SERVICE ERROR:", err);
 
     if (err.name === "ZodError") {
-      return res.status(400).json(err.errors);
+      return res.status(400).json({
+        message: "Validate thất bại",
+        errors: err.errors,
+      });
     }
 
-    return res.status(500).json({ message: "Tạo thất bại" });
+    return res.status(500).json({
+      message: err.message || "Tạo thất bại",
+    });
   }
 };
-
 
 // UPDATE
 export const updateService = async (req: Request, res: Response) => {
@@ -88,9 +90,7 @@ export const updateService = async (req: Request, res: Response) => {
     const parsed = updateServiceSchema.parse(req.body);
 
     const isLeaf =
-      parsed.parent_id !== null &&
-      parsed.area &&
-      parsed.area.trim().length > 0;
+      parsed.parent_id !== null && parsed.area && parsed.area.trim().length > 0;
 
     if (isLeaf && (!parsed.packages || parsed.packages.length === 0)) {
       return res.status(400).json({
@@ -111,7 +111,6 @@ export const updateService = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Cập nhật thất bại" });
   }
 };
-
 
 // DELETE
 export const deleteService = async (req: Request, res: Response) => {

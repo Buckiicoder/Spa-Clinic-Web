@@ -17,6 +17,7 @@ import customerRoutes from "./routes/customer.routes.js"
 import treatmentRoutes from "./routes/treatment.routes.js"
 import doctorRoutes from "./routes/doctor.routes.js"
 import technicianRoutes from "./routes/technician.routes.js"
+import trackingRoutes from "./routes/tracking.routes.js"
 import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -61,6 +62,7 @@ app.use("/api/customer", customerRoutes);
 app.use("/api/treatment", treatmentRoutes);
 app.use("/api/doctor", doctorRoutes);
 app.use("/api/technician", technicianRoutes);
+app.use("/api/tracking", trackingRoutes);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

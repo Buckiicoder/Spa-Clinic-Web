@@ -1,18 +1,24 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-
+import Toast from "../components/Toast";
 import { useAppDispatch, useAppSelector } from "../app/hook";
 
 import {
   fetchMySessions,
   fetchSessionDetail,
-  startSession,
-  completeSession,
   selectMySessions,
   selectSessionDetail,
 } from "../features/technician/technicianSlice";
+
+import {
+  startTrackingSession,
+  completeTrackingSession,
+  completeStepTracking,
+  pauseTrackingSession,
+  resumeTrackingSession,
+} from "../features/tracking/trackingSlice";
+
 import { io } from "socket.io-client";
 import { motion } from "framer-motion";
-
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 
 import "react-circular-progressbar/dist/styles.css";
@@ -20,6 +26,10 @@ import "react-circular-progressbar/dist/styles.css";
 export default function Technician() {
   const dispatch = useAppDispatch();
   const socketRef = useRef<any>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
 
   const sessions = useAppSelector(selectMySessions);
 
@@ -29,10 +39,17 @@ export default function Technician() {
   const [activeStepIndex, setActiveStepIndex] = useState(0);
 
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-
   const [stepStartedAt, setStepStartedAt] = useState<number | null>(null);
+  const processingStepRef = useRef(false);
 
   const intervalRef = useRef<any>(null);
+
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+
+  const [completeForm, setCompleteForm] = useState({
+    skin_reaction: "",
+  });
+  const [tab, setTab] = useState<"assigned" | "completed">("assigned");
 
   useEffect(() => {
     dispatch(fetchMySessions());
@@ -49,38 +66,133 @@ export default function Technician() {
       await dispatch(fetchMySessions());
     });
 
-    socket.on("session:updated", async () => {
+    socket.on("tracking:session_started", async () => {
       await dispatch(fetchMySessions());
+
+      if (selectedSession?.id) {
+        await dispatch(fetchSessionDetail(selectedSession.id));
+      }
     });
+
+    socket.on("tracking:step_completed", async () => {
+      if (selectedSession?.id) {
+        await dispatch(fetchSessionDetail(selectedSession.id));
+      }
+    });
+
+    socket.on("tracking:paused", async () => {
+      if (selectedSession?.id) {
+        await dispatch(fetchSessionDetail(selectedSession.id));
+      }
+    });
+
+    socket.on("tracking:resumed", async () => {
+      if (selectedSession?.id) {
+        await dispatch(fetchSessionDetail(selectedSession.id));
+      }
+    });
+
+    socket.on("tracking:session_completed", async () => {
+      await dispatch(fetchMySessions());
+
+      if (selectedSession?.id) {
+        await dispatch(fetchSessionDetail(selectedSession.id));
+      }
+    });
+
+    socket.on("session:updated", async () => {
+  await dispatch(fetchMySessions());
+
+  if (selectedSession?.id) {
+    await dispatch(
+      fetchSessionDetail(selectedSession.id),
+    );
+  }
+});
 
     return () => {
       socket.disconnect();
     };
-  }, [dispatch]);
+  }, [dispatch, selectedSession?.id]);
 
   const assignedSessions = useMemo(() => {
-    return sessions.filter((s: any) =>
-      ["assigned", "in_progress"].includes(s.status),
-    );
-  }, [sessions]);
+  return sessions.filter((s: any) =>
+    [
+      "assigned",
+      "in_progress",
+      "paused",
+      "transfer_pending",
+    ].includes(s.status),
+  );
+}, [sessions]);
+
+  const completedSessions = useMemo(() => {
+  return sessions.filter((s: any) =>
+    ["done", "partial_done"].includes(s.status),
+  );
+}, [sessions]);
+
+  const displaySessions =
+  tab === "assigned"
+    ? assignedSessions
+    : completedSessions;
 
   const handleCompleteSession = useCallback(async () => {
     if (!selectedSession) return;
 
+    /**
+     * 🔥 chưa hoàn thành hết step
+     */
+    const isNotFinished =
+      selectedSession.current_step_no < selectedSession.total_steps;
+
+    if (isNotFinished) {
+      const confirmComplete = window.confirm(
+        "Khách chưa hoàn thành toàn bộ quy trình dịch vụ.\n\nCác bước còn lại sẽ bị hủy bỏ.\n\nBạn có chắc muốn hoàn thành buổi dịch vụ ngay bây giờ?",
+      );
+
+      if (!confirmComplete) {
+        return;
+      }
+
+      await dispatch(
+        completeTrackingSession({
+          id: selectedSession.id,
+          data: {
+            skin_reaction: "",
+          },
+        }),
+      );
+
+      await dispatch(fetchMySessions());
+
+      await dispatch(fetchSessionDetail(selectedSession.id));
+
+      return;
+    }
+    setShowCompleteModal(true);
+  }, [dispatch, selectedSession]);
+
+  const handleSubmitCompleteForm = async () => {
+    if (!selectedSession) return;
+
     await dispatch(
-      completeSession({
+      completeTrackingSession({
         id: selectedSession.id,
-        data: {
-          doctor_note: "",
-          skin_reaction: "",
-          customer_feedback: "",
-          rating: 5,
-        },
+        data: completeForm,
       }),
     );
 
+    setShowCompleteModal(false);
+
+    setCompleteForm({
+      skin_reaction: "",
+    });
+
     await dispatch(fetchMySessions());
-  }, [dispatch, selectedSession]);
+
+    await dispatch(fetchSessionDetail(selectedSession.id));
+  };
 
   useEffect(() => {
     setActiveStepIndex(0);
@@ -100,113 +212,146 @@ export default function Technician() {
     ? Math.min((elapsedSeconds / totalDurationSeconds) * 100, 100)
     : 0;
 
-useEffect(() => {
-  if (
-    selectedSession?.status !== "in_progress" ||
-    !steps.length
-  ) {
-    return;
-  }
+  useEffect(() => {
+    if (!selectedSession?.current_step_no) return;
 
-  // 🔥 chưa có thời gian bắt đầu
-  if (!stepStartedAt) {
-    setStepStartedAt(Date.now());
-    return;
-  }
+    const index = steps.findIndex(
+      (s: any) => s.step_no === selectedSession.current_step_no,
+    );
 
-  clearInterval(intervalRef.current);
+    if (index >= 0) {
+      setActiveStepIndex(index);
+    }
+  }, [selectedSession?.current_step_no, steps]);
 
-  intervalRef.current = setInterval(() => {
-    const currentStep =
-      steps[activeStepIndex];
-
-    if (!currentStep) {
-      clearInterval(intervalRef.current);
+  useEffect(() => {
+    if (selectedSession?.status !== "in_progress" || !steps.length) {
       return;
     }
 
-    const durationSeconds =
-      currentStep.duration_minutes * 60;
+    if (!currentStep?.started_at) {
+      return;
+    }
 
-    // 🔥 thời gian thực tế
-    const realElapsed = Math.floor(
-      (Date.now() - stepStartedAt) / 1000,
-    );
+    const startedTime = new Date(currentStep.started_at).getTime();
 
-    setElapsedSeconds(realElapsed);
+    setStepStartedAt(startedTime);
 
-    // 🔥 hoàn thành step
-    if (realElapsed >= durationSeconds) {
-      // còn step tiếp theo
-      if (
-        activeStepIndex <
-        steps.length - 1
-      ) {
-        setActiveStepIndex(
-          (prev) => prev + 1,
-        );
+    clearInterval(intervalRef.current);
 
-        setElapsedSeconds(0);
+    intervalRef.current = setInterval(async () => {
+      const latestStep = steps[activeStepIndex];
 
-        setStepStartedAt(Date.now());
-
+      if (!latestStep) {
+        clearInterval(intervalRef.current);
         return;
       }
 
-      // 🔥 complete session
+      const durationSeconds = latestStep.duration_minutes * 60;
+
+      const realElapsed = Math.floor((Date.now() - startedTime) / 1000);
+
+      setElapsedSeconds(realElapsed);
+
+      /**
+       * 🔥 complete step
+       */
+      if (realElapsed >= durationSeconds && !processingStepRef.current) {
+        processingStepRef.current = true;
+
+        clearInterval(intervalRef.current);
+
+        try {
+          /**
+           * 🔥 update backend tracking
+           */
+          await dispatch(
+            completeStepTracking({
+              id: selectedSession.id,
+              current_step_no: latestStep.step_no,
+            }),
+          );
+
+          //  reload realtime detail
+          await dispatch(fetchSessionDetail(selectedSession.id));
+
+          //  step cuối -> complete session
+          if (activeStepIndex >= steps.length - 1) {
+            await handleCompleteSession();
+          }
+        } finally {
+          processingStepRef.current = false;
+        }
+      }
+    }, 1000);
+
+    return () => {
       clearInterval(intervalRef.current);
-
-      handleCompleteSession();
-    }
-  }, 1000);
-
-  return () => {
-    clearInterval(intervalRef.current);
-  };
-}, [
-  selectedSession?.status,
-  activeStepIndex,
-  steps,
-  stepStartedAt,
-  handleCompleteSession,
-]);
+    };
+  }, [
+    selectedSession?.status,
+    selectedSession?.id,
+    activeStepIndex,
+    currentStep?.started_at,
+    steps,
+    dispatch,
+    handleCompleteSession,
+  ]);
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "assigned":
-        return "bg-blue-100 text-blue-700";
+  switch (status) {
+    case "assigned":
+      return "bg-indigo-100 text-indigo-700";
 
-      case "in_progress":
-        return "bg-amber-100 text-amber-700";
+    case "in_progress":
+      return "bg-blue-100 text-blue-700";
 
-      case "done":
-        return "bg-green-100 text-green-700";
+    case "paused":
+      return "bg-yellow-100 text-yellow-700";
 
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
-  };
+    case "transfer_pending":
+      return "bg-purple-100 text-purple-700";
+
+    case "partial_done":
+      return "bg-orange-100 text-orange-700";
+
+    case "done":
+      return "bg-green-100 text-green-700";
+
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+};
 
   const getStatusText = (status: string) => {
-    switch (status) {
-      case "assigned":
-        return "Đã phân ca";
+  switch (status) {
+    case "assigned":
+      return "Chờ tiếp nhận";
 
-      case "in_progress":
-        return "Đang thực hiện";
+    case "in_progress":
+      return "Đang thực hiện";
 
-      case "done":
-        return "Hoàn thành";
+    case "paused":
+      return "Tạm dừng";
 
-      default:
-        return status;
-    }
-  };
+    case "transfer_pending":
+      return "Chờ chuyển ca";
+
+    case "partial_done":
+      return "Hoàn thành sớm";
+
+    case "done":
+      return "Đã hoàn thành";
+
+    default:
+      return status;
+  }
+};
 
   const handleReceiveCustomer = async () => {
     if (!selectedSession) return;
 
-    await dispatch(startSession(selectedSession.id));
+    await dispatch(startTrackingSession(selectedSession.id));
     await dispatch(fetchMySessions());
     await dispatch(fetchSessionDetail(selectedSession.id));
     setStepStartedAt(Date.now());
@@ -225,8 +370,32 @@ useEffect(() => {
             </p>
           </div>
 
+          <div className="flex border-b mb-4">
+  <button
+    onClick={() => setTab("assigned")}
+    className={`flex-1 py-2 text-sm transition ${
+      tab === "assigned"
+        ? "border-b-2 border-amber-500 font-semibold"
+        : "text-gray-500"
+    }`}
+  >
+    Đang chờ phục vụ
+  </button>
+
+  <button
+    onClick={() => setTab("completed")}
+    className={`flex-1 py-2 text-sm transition ${
+      tab === "completed"
+        ? "border-b-2 border-green-500 font-semibold"
+        : "text-gray-500"
+    }`}
+  >
+    Đã hoàn thành
+  </button>
+</div>
+
           <div className="space-y-3 max-h-[78vh] overflow-auto pr-1">
-            {assignedSessions.map((s: any) => (
+            {displaySessions.map((s: any) => (
               <div
                 key={s.id}
                 onClick={() => dispatch(fetchSessionDetail(s.id))}
@@ -274,9 +443,11 @@ useEffect(() => {
               </div>
             ))}
 
-            {assignedSessions.length === 0 && (
+            {displaySessions.length === 0 && (
               <div className="text-center text-sm text-gray-400 py-10">
-                Chưa có khách hàng nào
+                {tab === "assigned"
+  ? "Chưa có khách hàng đang chờ"
+  : "Chưa có ca hoàn thành"}
               </div>
             )}
           </div>
@@ -301,7 +472,7 @@ useEffect(() => {
                 </div>
 
                 {/* ACTION BUTTON */}
-                <div>
+                <div className="flex gap-3">
                   {selectedSession.status === "assigned" ? (
                     <button
                       onClick={handleReceiveCustomer}
@@ -310,11 +481,71 @@ useEffect(() => {
                       Nhận khách
                     </button>
                   ) : selectedSession.status === "in_progress" ? (
+                    <>
+                      {selectedSession?.pause_count < 1 &&
+                        selectedSession?.status === "in_progress" && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await dispatch(
+                                  pauseTrackingSession(selectedSession.id),
+                                ).unwrap();
+
+                                setToast({
+                                  message:
+                                    "Đã tạm dừng dịch vụ. Thời gian tối đa 3 phút.",
+                                  type: "success",
+                                });
+
+                                await dispatch(
+                                  fetchSessionDetail(selectedSession.id),
+                                );
+                              } catch (err: any) {
+                                setToast({
+                                  message: err || "Không thể tạm dừng dịch vụ",
+                                  type: "error",
+                                });
+                              }
+                            }}
+                            className="px-5 py-2 rounded-2xl bg-gray-500 text-white font-medium"
+                          >
+                            Tạm dừng
+                          </button>
+                        )}
+
+                      <button
+                        onClick={handleCompleteSession}
+                        className="px-5 py-2 rounded-2xl bg-green-600 text-white font-medium hover:bg-green-700 transition"
+                      >
+                        Hoàn thành
+                      </button>
+                    </>
+                  ) : selectedSession.status === "paused" ? (
                     <button
-                      onClick={handleCompleteSession}
-                      className="px-5 py-2 rounded-2xl bg-green-600 text-white font-medium hover:bg-green-700 transition"
+                      onClick={async () => {
+                        try {
+                          await dispatch(
+                            resumeTrackingSession(selectedSession.id),
+                          ).unwrap();
+
+                          setToast({
+                            message: "Đã tiếp tục dịch vụ",
+                            type: "success",
+                          });
+
+                          await dispatch(
+                            fetchSessionDetail(selectedSession.id),
+                          );
+                        } catch (err: any) {
+                          setToast({
+                            message: err || "Không thể tiếp tục dịch vụ",
+                            type: "error",
+                          });
+                        }
+                      }}
+                      className="px-5 py-2 rounded-2xl bg-green-600 text-white font-medium"
                     >
-                      Hoàn thành
+                      Tiếp tục
                     </button>
                   ) : (
                     <button
@@ -419,9 +650,10 @@ useEffect(() => {
                     </div>
                   ) : (
                     steps.map((step: any, index: number) => {
-                      const isActive = index === activeStepIndex;
+                      const isActive =
+                        step.step_no === selectedSession?.current_step_no;
 
-                      const isDone = index < activeStepIndex;
+                      const isDone = step.tracking_status === "completed";
 
                       return (
                         <motion.div
@@ -555,6 +787,58 @@ useEffect(() => {
           )}
         </div>
       </div>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {showCompleteModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-5">Hoàn thành dịch vụ</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Phản ứng da
+                </label>
+
+                <textarea
+                  value={completeForm.skin_reaction}
+                  onChange={(e) =>
+                    setCompleteForm((prev) => ({
+                      ...prev,
+                      skin_reaction: e.target.value,
+                    }))
+                  }
+                  rows={3}
+                  className="w-full border rounded-2xl px-4 py-3"
+                  placeholder="Ví dụ: Da hơi đỏ nhẹ sau treatment..."
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowCompleteModal(false)}
+                className="px-5 py-2 rounded-2xl border"
+              >
+                Hủy
+              </button>
+
+              <button
+                onClick={handleSubmitCompleteForm}
+                className="px-5 py-2 rounded-2xl bg-green-600 text-white"
+              >
+                Lưu & Hoàn thành
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

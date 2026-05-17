@@ -42,7 +42,7 @@ export const registerService = async (data: RegisterInput) => {
     userId,
   ]);
 
-  return signToken(userResult.rows[0]);
+  return userResult.rows[0];
 };
 
 export const createOTPService = async (

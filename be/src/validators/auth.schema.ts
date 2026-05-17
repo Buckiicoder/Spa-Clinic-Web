@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const registerSchema = z.object({
   name: z.string().min(2),
-  gender: z.enum(["nam", "nu"]),
+  gender: z.enum(["male", "female"]),
   contact: z.string(),
   password: z.string().min(6),
 })

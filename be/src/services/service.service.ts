@@ -119,75 +119,70 @@ export const getServiceDetail = async (id: number) => {
           'unit', sp.unit,
           'duration_per_unit', sp.duration_per_unit,
 
-          'treatment_plan', (
-            SELECT jsonb_build_object(
-              'id', tp.id,
-              'name', tp.name,
-              'total_sessions', tp.total_sessions,
-              'description', tp.description,
+          'phases', (
+  SELECT COALESCE(json_agg(
+    jsonb_build_object(
+      'id', ph.id,
+      'name', ph.name,
+      'from_session', ph.from_session,
+      'to_session', ph.to_session,
+      'objective', ph.objective,
 
-              'phases', (
-                SELECT COALESCE(json_agg(
-                  jsonb_build_object(
-                    'id', ph.id,
-                    'name', ph.name,
-                    'from_session', ph.from_session,
-                    'to_session', ph.to_session,
+      'sessions', (
+        SELECT COALESCE(json_agg(
+          jsonb_build_object(
+            'id', st.id,
+            'session_no', st.session_no,
+            'title', st.title,
 
-                    'sessions', (
-                      SELECT COALESCE(json_agg(
-                        jsonb_build_object(
-                          'id', st.id,
-                          'session_no', st.session_no,
-                          'title', st.title,
+            'steps', (
+              SELECT COALESCE(json_agg(
+                jsonb_build_object(
+                  'id', step.id,
+                  'step_no', step.step_no,
+                  'name', step.name,
+                  'duration_minutes', step.duration_minutes,
 
-                          'steps', (
-                            SELECT COALESCE(json_agg(
-                              jsonb_build_object(
-                                'id', step.id,
-                                'step_no', step.step_no,
-                                'name', step.name,
-                                'duration_minutes', step.duration_minutes,
+                  'products', (
+                    SELECT COALESCE(json_agg(
+                      jsonb_build_object(
+                        'product_id', p.id,
+                        'name', p.name,
+                        'quantity', tsp.quantity
+                      )
+                    ), '[]')
 
-                                'products', (
-                                  SELECT COALESCE(json_agg(
-                                    jsonb_build_object(
-                                      'product_id', p.id,
-                                      'name', p.name,
-                                      'quantity', tsp.quantity
-                                    )
-                                  ), '[]')
-                                  FROM treatment_step_products tsp
-                                  JOIN products p ON p.id = tsp.product_id
-                                  WHERE tsp.step_id = step.id
-                                )
+                    FROM treatment_step_products tsp
 
-                              )
-                            ), '[]')
-                            FROM treatment_session_steps step
-                           WHERE step.session_id = st.id
-AND step.is_template = false
+                    JOIN products p
+                      ON p.id = tsp.product_id
 
-                          )
-
-                        )
-                      ), '[]')
-                      FROM treatment_sessions st
-WHERE st.treatment_plan_id = tp.id
-AND st.phase_id = ph.id
-AND st.is_template = false
-                    )
-
+                    WHERE tsp.step_id = step.id
                   )
-                ), '[]')
-                FROM treatment_plan_phases ph
-                WHERE ph.treatment_plan_id = tp.id
-              )
+
+                )
+              ), '[]')
+
+              FROM treatment_session_steps step
+
+              WHERE step.session_id = st.id
             )
-            FROM treatment_plans tp
-            WHERE tp.service_id = s.id
-            LIMIT 1
+
           )
+        ), '[]')
+
+        FROM treatment_sessions st
+
+        WHERE st.phase_id = ph.id
+      )
+
+    )
+  ), '[]')
+
+  FROM treatment_plan_phases ph
+
+  WHERE ph.package_id = sp.id
+)
         )
       ) FILTER (WHERE sp.id IS NOT NULL), '[]') AS packages
 
@@ -246,25 +241,12 @@ export const createService = async (data: any) => {
 
     // 2. create packages + treatment_plan
     for (const pkg of packages) {
-      // create treatment_plan trước
-      const planRes = await client.query(
-        `
-        INSERT INTO treatment_plans
-        (service_id, name, total_sessions, description, is_active)
-        VALUES ($1,$2,$3,$4,true)
-        RETURNING *
-        `,
-        [service.id, pkg.name, pkg.total_sessions || 0, null],
-      );
-
-      const plan = planRes.rows[0];
-
       // create package (link plan_id)
       await client.query(
         `
         INSERT INTO service_packages
-        (service_id, name, price, total_sessions, unit, duration_per_unit, treatment_plan_id, is_active)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,true)
+        (service_id, name, price, total_sessions, unit, duration_per_unit, is_active)
+        VALUES ($1,$2,$3,$4,$5,$6,true)
         `,
         [
           service.id,
@@ -272,8 +254,8 @@ export const createService = async (data: any) => {
           pkg.price,
           pkg.total_sessions || 0,
           pkg.unit || "buổi",
-          pkg.duration_per_unit || null,
-          plan.id,
+          pkg.duration_per_unit || null
+          // plan.id,
         ],
       );
     }
@@ -374,24 +356,12 @@ export const updateService = async (id: number, data: any) => {
           ],
         );
       } else {
-        // tạo treatment_plan trước
-        const planRes = await client.query(
-          `
-  INSERT INTO treatment_plans
-  (service_id, name, total_sessions, description, is_active)
-  VALUES ($1,$2,$3,$4,true)
-  RETURNING *
-`,
-          [id, pkg.name, pkg.total_sessions || 0, null],
-        );
-
-        const plan = planRes.rows[0];
 
         await client.query(
           `
   INSERT INTO service_packages
-  (service_id, name, price, total_sessions, unit, duration_per_unit, treatment_plan_id, is_active)
-  VALUES ($1,$2,$3,$4,$5,$6,$7,true)
+  (service_id, name, price, total_sessions, unit, duration_per_unit, is_active)
+  VALUES ($1,$2,$3,$4,$5,$6,true)
 `,
           [
             id,
@@ -400,7 +370,6 @@ export const updateService = async (id: number, data: any) => {
             pkg.total_sessions,
             pkg.unit,
             pkg.duration_per_unit,
-            plan.id,
           ],
         );
       }

@@ -164,8 +164,8 @@ export default function Register() {
               onChange={handleChange}
               className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:ring-2 focus:ring-amber-400 outline-none"
             >
-              <option value="nam">Nam</option>
-              <option value="nu">Nữ</option>
+              <option value="male">Nam</option>
+              <option value="female">Nữ</option>
             </select>
             {errors.gender && (
               <p className="text-red-500 text-sm mt-1">{errors.gender}</p>

@@ -15,6 +15,7 @@ import customerReducer from "../features/customer/customerSlice";
 import treatmentReducer from "../features/treatment/treatmentSlice";
 import doctorReducer from "../features/doctor/doctorSlice";
 import technicianReducer from "../features/technician/technicianSlice";
+import trackingReducer from "../features/tracking/trackingSlice";
 
 export const store = configureStore({
   reducer: {
@@ -34,6 +35,7 @@ export const store = configureStore({
     treatment: treatmentReducer,
     doctor: doctorReducer,
     technician: technicianReducer,
+    tracking: trackingReducer,
   },
 });
 

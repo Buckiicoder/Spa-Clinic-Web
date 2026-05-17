@@ -12,8 +12,5 @@ export const assignTechnicianSchema = z.object({
  * 🔹 KTV hoàn thành session
  */
 export const completeSessionSchema = z.object({
-  doctor_note: z.string().optional(),
   skin_reaction: z.string().optional(),
-  customer_feedback: z.string().optional(),
-  rating: z.number().min(0).max(5).optional(),
 });

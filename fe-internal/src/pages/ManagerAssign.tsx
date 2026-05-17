@@ -22,9 +22,9 @@ export default function ManagerAssign() {
   const [toast, setToast] = useState<any>(null);
   const socketRef = useRef<any>(null);
 
-  const [tab, setTab] = useState<"waiting_assign" | "assigned" | "working">(
-    "waiting_assign",
-  );
+  const [tab, setTab] = useState<
+    "waiting_assign" | "assigned" | "working" | "completed"
+  >("waiting_assign");
 
   useEffect(() => {
     dispatch(fetchConsultedToday());
@@ -32,70 +32,72 @@ export default function ManagerAssign() {
   }, []);
 
   useEffect(() => {
-  socketRef.current = io("http://localhost:5000");
+    socketRef.current = io("http://localhost:5000");
 
-  const socket = socketRef.current;
+    const socket = socketRef.current;
 
-  // 🔥 join manager room
-  socket.emit("join-manager");
+    // 🔥 join manager room
+    socket.emit("join-manager");
 
-  // 🔥 realtime khi có thay đổi session
-  socket.on("session:updated", async () => {
-    const updatedBookings = await dispatch(
-      fetchConsultedToday(),
-    ).unwrap();
+    // 🔥 realtime khi có thay đổi session
+    socket.on("session:updated", async () => {
+      const updatedBookings = await dispatch(fetchConsultedToday()).unwrap();
 
-    await dispatch(fetchTechnicians());
+      await dispatch(fetchTechnicians());
 
-    // 🔥 update selected booking realtime
-    if (selectedBooking) {
-      const fresh = updatedBookings.find(
-        (x: any) =>
-          x.session_id === selectedBooking.session_id,
-      );
+      // 🔥 update selected booking realtime
+      if (selectedBooking) {
+        const fresh = updatedBookings.find(
+          (x: any) => x.session_id === selectedBooking.session_id,
+        );
 
-      setSelectedBooking(fresh || null);
-    }
-  });
+        setSelectedBooking(fresh || null);
+      }
+    });
 
-  // 🔥 realtime khi manager khác assign
-  socket.on("session:assigned", async () => {
-    const updatedBookings = await dispatch(
-      fetchConsultedToday(),
-    ).unwrap();
+    // 🔥 realtime khi manager khác assign
+    socket.on("session:assigned", async () => {
+      const updatedBookings = await dispatch(fetchConsultedToday()).unwrap();
 
-    await dispatch(fetchTechnicians());
+      await dispatch(fetchTechnicians());
 
-    if (selectedBooking) {
-      const fresh = updatedBookings.find(
-        (x: any) =>
-          x.session_id === selectedBooking.session_id,
-      );
+      if (selectedBooking) {
+        const fresh = updatedBookings.find(
+          (x: any) => x.session_id === selectedBooking.session_id,
+        );
 
-      setSelectedBooking(fresh || null);
-    }
-  });
+        setSelectedBooking(fresh || null);
+      }
+    });
 
-  return () => {
-    socket.disconnect();
-  };
-}, [selectedBooking]);
+    return () => {
+      socket.disconnect();
+    };
+  }, [selectedBooking]);
 
   const waitingBookings = useMemo(() => {
     return consultedToday.filter(
-      (b: any) => !b.technician_id && b.status === "scheduled",
+      (b: any) => !b.technician_id && ["scheduled"].includes(b.status),
     );
   }, [consultedToday]);
 
   const assignedBookings = useMemo(() => {
     return consultedToday.filter(
-      (b: any) => b.technician_id && b.status === "assigned",
+      (b: any) => b.technician_id && ["assigned"].includes(b.status),
     );
   }, [consultedToday]);
 
   const workingBookings = useMemo(() => {
     return consultedToday.filter(
-      (b: any) => b.technician_id && b.status === "in_progress",
+      (b: any) =>
+        b.technician_id &&
+        ["in_progress", "paused", "transfer_pending"].includes(b.status),
+    );
+  }, [consultedToday]);
+
+  const completedBookings = useMemo(() => {
+    return consultedToday.filter((b: any) =>
+      ["done", "partial_done"].includes(b.status),
     );
   }, [consultedToday]);
 
@@ -104,7 +106,9 @@ export default function ManagerAssign() {
       ? waitingBookings
       : tab === "assigned"
         ? assignedBookings
-        : workingBookings;
+        : tab === "working"
+          ? workingBookings
+          : completedBookings;
 
   const handleAssign = async (sessionId: number, technicianId: number) => {
     try {
@@ -122,7 +126,7 @@ export default function ManagerAssign() {
 
       // 🔥 update selected booking realtime
       const updatedBooking = updatedBookings.find(
-        (x: any) => x.booking_id === selectedBooking?.booking_id,
+        (x: any) => x.session_id === selectedBooking?.session_id,
       );
 
       if (updatedBooking) {
@@ -146,10 +150,22 @@ export default function ManagerAssign() {
       case "scheduled":
         return "bg-amber-100 text-amber-700";
 
+      case "assigned":
+        return "bg-indigo-100 text-indigo-700";
+
       case "in_progress":
         return "bg-blue-100 text-blue-700";
 
-      case "completed":
+      case "paused":
+        return "bg-yellow-100 text-yellow-700";
+
+      case "transfer_pending":
+        return "bg-purple-100 text-purple-700";
+
+      case "partial_done":
+        return "bg-orange-100 text-orange-700";
+
+      case "done":
         return "bg-green-100 text-green-700";
 
       default:
@@ -160,37 +176,51 @@ export default function ManagerAssign() {
   const getStatusText = (status: string) => {
     switch (status) {
       case "scheduled":
-        return "Đã tư vấn";
+        return "Chờ phân ca";
+
+      case "assigned":
+        return "Đã phân KTV";
 
       case "in_progress":
         return "Đang thực hiện";
 
-      case "completed":
-        return "Hoàn thành";
+      case "paused":
+        return "Tạm dừng";
+
+      case "transfer_pending":
+        return "Chờ chuyển ca";
+
+      case "partial_done":
+        return "Hoàn thành sớm";
+
+      case "done":
+        return "Đã hoàn thành";
 
       default:
         return status;
     }
   };
 
- const getAvailableTechnicians = (currentSession: any) => {
-  return technicians.filter((t: any) => {
-    // 🔥 giữ technician hiện tại
-    if (t.id === currentSession.technician_id) {
-      return true;
-    }
+  const getAvailableTechnicians = (currentSession: any) => {
+    return technicians.filter((t: any) => {
+      // 🔥 giữ technician hiện tại
+      if (t.id === currentSession.technician_id) {
+        return true;
+      }
 
-    // 🔥 technician đang có session khác
-    const isBusy = consultedToday.some(
-      (session: any) =>
-        session.technician_id === t.id &&
-        session.session_id !== currentSession.session_id &&
-        ["assigned", "in_progress"].includes(session.status),
-    );
+      // 🔥 technician đang có session khác
+      const isBusy = consultedToday.some(
+        (session: any) =>
+          session.technician_id === t.id &&
+          session.session_id !== currentSession.session_id &&
+          ["assigned", "in_progress", "paused", "transfer_pending"].includes(
+            session.status,
+          ),
+      );
 
-    return !isBusy;
-  });
-};
+      return !isBusy;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[#f7f7f7] p-6">
@@ -230,6 +260,17 @@ export default function ManagerAssign() {
               }`}
             >
               Đang làm
+            </button>
+
+            <button
+              onClick={() => setTab("completed")}
+              className={`flex-1 py-2 text-sm transition ${
+                tab === "completed"
+                  ? "border-b-2 border-gray-700 font-semibold"
+                  : "text-gray-500"
+              }`}
+            >
+              Hoàn thành
             </button>
           </div>
 
@@ -282,19 +323,11 @@ export default function ManagerAssign() {
                     </span>
 
                     <span
-                      className={`text-[11px] px-2 py-1 rounded-full ${
-                        tab === "waiting_assign"
-                          ? "bg-amber-100 text-amber-700"
-                          : tab === "assigned"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-green-100 text-green-700"
-                      }`}
+                      className={`text-[11px] px-2 py-1 rounded-full ${getStatusColor(
+                        b.status,
+                      )}`}
                     >
-                      {tab === "waiting_assign"
-                        ? "Chờ phân"
-                        : tab === "assigned"
-                          ? "Đã phân"
-                          : "Đang thực hiện"}
+                      {getStatusText(b.status)}
                     </span>
                   </div>
                 </div>
@@ -441,13 +474,21 @@ export default function ManagerAssign() {
                             {selectedBooking.current_step_name ||
                               "Chưa bắt đầu"}
                           </p>
+
+                          <p className="text-xs text-gray-400 mt-1">
+                            Step {selectedBooking.tracking_step_no || 0}
+                          </p>
                         </div>
 
                         <div>
-                          <p className="text-gray-500">Dự kiến xong</p>
+                          <p className="text-gray-500">Còn lại</p>
 
                           <p className="font-medium">
-                            {selectedBooking.estimated_end_time || "--:--"}
+                            {selectedBooking.remaining_seconds
+                              ? `${Math.floor(
+                                  selectedBooking.remaining_seconds / 60,
+                                )} phút`
+                              : "--"}
                           </p>
                         </div>
                       </div>
@@ -463,16 +504,20 @@ export default function ManagerAssign() {
                             Number(e.target.value),
                           )
                         }
-                        disabled={selectedBooking.status === "completed"}
+                        disabled={["done", "partial_done"].includes(
+                          selectedBooking.status,
+                        )}
                         className="w-full border rounded-xl px-3 py-2 text-sm"
                       >
                         <option value="">Chọn kỹ thuật viên</option>
 
-                        {getAvailableTechnicians(selectedBooking).map((t: any) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
+                        {getAvailableTechnicians(selectedBooking).map(
+                          (t: any) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name}
+                            </option>
+                          ),
+                        )}
                       </select>
                     </div>
                   </div>
@@ -482,7 +527,12 @@ export default function ManagerAssign() {
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                       <span>Tiến độ session</span>
 
-                      <span>{selectedBooking.progress_percent || 0}%</span>
+                      <span>
+                        {selectedBooking.completed_steps || 0}/
+                        {selectedBooking.total_steps || 0}
+                        {" • "}
+                        {selectedBooking.progress_percent || 0}%
+                      </span>
                     </div>
 
                     <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
@@ -495,6 +545,18 @@ export default function ManagerAssign() {
                     </div>
                   </div>
                 </div>
+
+                <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+  <span className="pl-4 pb-2">
+    {selectedBooking.current_tracking_status ||
+      "Waiting"}
+  </span>
+
+  <span className="pr-4 pb-3">
+    Tạm dừng:{" "}
+    {selectedBooking.current_step_pause_count || 0}
+  </span>
+</div>
               </div>
 
               {/* TECHNICIAN LIST */}
@@ -541,7 +603,9 @@ export default function ManagerAssign() {
                             t.is_busy ? "text-red-500" : "text-green-600"
                           }`}
                         >
-                          {t.is_busy ? "Đang chờ nhận khách" : "Sẵn sàng nhận ca"}
+                          {t.is_busy
+                            ? "Đang phục vụ khách"
+                            : "Sẵn sàng nhận ca"}
                         </p>
                       </div>
 

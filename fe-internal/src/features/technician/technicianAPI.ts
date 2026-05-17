@@ -30,10 +30,10 @@ export const getMySessionsAPI = () =>
 export const getSessionDetailAPI = (id: number) =>
   api.get(`/technician/session/${id}`);
 
-// 🔹 bắt đầu session
-export const startSessionAPI = (id: number) =>
-  api.patch(`/technician/session/${id}/start`);
+// // 🔹 bắt đầu session
+// export const startSessionAPI = (id: number) =>
+//   api.patch(`/technician/session/${id}/start`);
 
-// 🔹 hoàn thành session
-export const completeSessionAPI = (id: number, data: any) =>
-  api.patch(`/technician/session/${id}/complete`, data);
+// // 🔹 hoàn thành session
+// export const completeSessionAPI = (id: number, data: any) =>
+//   api.patch(`/technician/session/${id}/complete`, data);

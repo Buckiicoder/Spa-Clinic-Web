@@ -5,8 +5,6 @@ import {
   assignTechnicianAPI,
   getMySessionsAPI,
   getSessionDetailAPI,
-  startSessionAPI,
-  completeSessionAPI,
 } from "./technicianAPI";
 
 interface TechnicianState {
@@ -89,31 +87,6 @@ export const fetchSessionDetail = createAsyncThunk(
   },
 );
 
-// 🔹 start
-export const startSession = createAsyncThunk(
-  "technician/startSession",
-  async (id: number) => {
-    const res = await startSessionAPI(id);
-    return res.data;
-  },
-);
-
-// 🔹 complete
-export const completeSession = createAsyncThunk(
-  "technician/completeSession",
-  async (
-    { id, data }: { id: number; data: any },
-    { dispatch },
-  ) => {
-    const res = await completeSessionAPI(id, data);
-
-    // 🔥 reload list
-    dispatch(fetchMySessions());
-
-    return res.data;
-  },
-);
-
 const technicianSlice = createSlice({
   name: "technician",
   initialState,
@@ -149,24 +122,6 @@ const technicianSlice = createSlice({
     //
     builder.addCase(fetchSessionDetail.fulfilled, (state, action) => {
       state.selectedSession = action.payload;
-    });
-
-    //
-    // START SESSION
-    //
-    builder.addCase(startSession.fulfilled, (state, action) => {
-      if (state.selectedSession) {
-        state.selectedSession.status = action.payload.status;
-      }
-    });
-
-    //
-    // COMPLETE SESSION
-    //
-    builder.addCase(completeSession.fulfilled, (state, action) => {
-      if (state.selectedSession) {
-        state.selectedSession.status = action.payload.status;
-      }
     });
   },
 });
