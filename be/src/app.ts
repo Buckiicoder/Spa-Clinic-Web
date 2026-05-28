@@ -34,21 +34,38 @@ import { fileURLToPath } from "url";
 const app = express();
 
 //demo
-app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174"],
-  credentials: true
-}))
+// app.use(cors({
+//   origin: ["http://localhost:5173", "http://localhost:5174"],
+//   credentials: true
+// }))
 
 //reality
-// app.use(
-//   cors({
-//     origin: [
-//       "https://spa-clinic-web.vercel.app",
-//       "https://spa-clinic-mk6vzac1d-buckiicoders-projects.vercel.app",
-//     ],
-//     credentials: true,
-//   }),
-// );
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.CLIENT_URL_PREVIEW,
+  "http://localhost:5173",
+  "http://localhost:5174",
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // cho phép request server-to-server hoặc postman
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(
+        new Error(`CORS blocked for origin: ${origin}`),
+      );
+    },
+    credentials: true,
+  }),
+);
 
 app.options("*", cors());
 app.use(express.json());
