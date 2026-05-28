@@ -588,23 +588,23 @@ flex flex-col
   );
 }
 
-function InfoCard({ label, value }: { label: string; value: any }) {
-  return (
-    <div
-      className="
-        bg-white
-        rounded-2xl
-        border border-stone-200
-        p-5
-        shadow-sm
-      "
-    >
-      <p className="text-sm text-gray-500 mb-2">{label}</p>
+// function InfoCard({ label, value }: { label: string; value: any }) {
+//   return (
+//     <div
+//       className="
+//         bg-white
+//         rounded-2xl
+//         border border-stone-200
+//         p-5
+//         shadow-sm
+//       "
+//     >
+//       <p className="text-sm text-gray-500 mb-2">{label}</p>
 
-      <p className="font-bold text-gray-800 break-words">{value}</p>
-    </div>
-  );
-}
+//       <p className="font-bold text-gray-800 break-words">{value}</p>
+//     </div>
+//   );
+// }
 
 function SmallInfo({ label, value }: { label: string; value: any }) {
   return (
