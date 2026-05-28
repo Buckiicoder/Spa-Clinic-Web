@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const createProductSchema = z.object({
-  barcode: z.string().max(100).optional().nullable().transform((value) => value?.trim() || null),
+  barcode: z.string().max(100).optional().nullable().transform((value) => value?.trim() || undefined),
 
   name: z.string().min(1, "Tên sản phẩm không được để trống").max(255),
 
@@ -30,7 +30,7 @@ export const createProductSchema = z.object({
 });
 
 export const updateProductSchema = z.object({
-  barcode: z.string().max(100).optional().nullable(),
+  barcode: z.string().max(100).optional().nullable().transform((value) => value?.trim() || undefined),
   name: z.string().min(1).max(255).optional(),
   description: z.string().optional().nullable().transform((val) => val ?? undefined),
   category_id: z.number().int().positive().optional().nullable().transform((val) => val ?? undefined),
