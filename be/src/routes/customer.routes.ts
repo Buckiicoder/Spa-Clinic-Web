@@ -5,7 +5,9 @@ import {
   getCustomerDetail,
   createCustomer,
   updateCustomer,
+  getMyServiceHistory
 } from "../controllers/customer.controller.js";
+import { authCustomerMiddleware } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
@@ -22,5 +24,10 @@ router.post("/", createCustomer);
 
 // UPDATE
 router.put("/:id", updateCustomer);
+
+router.get(
+  "/me/service-history",
+ authCustomerMiddleware, getMyServiceHistory
+);
 
 export default router;

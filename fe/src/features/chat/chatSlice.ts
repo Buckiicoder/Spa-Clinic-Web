@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 
 import { sendChatMessageAPI } from "./chatAPI";
 
-import { ChatMessage, ChatState } from "./chatTypes";
+// import { ChatMessage, ChatState } from "./chatTypes";
 
 export interface ChatMessage {
   from: "user" | "assistant";

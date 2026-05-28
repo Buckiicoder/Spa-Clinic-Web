@@ -3,13 +3,15 @@ import authReducer from '../features/auth/authSlice'
 import bookingReducer from '../features/booking/bookingSlice'
 import serviceReducer from '../features/service/serviceSlice'
 import chatReducer from '../features/chat/chatSlice'
+import customerPortalReducer from '../features/customer/customerSlice'
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     booking: bookingReducer,
     service: serviceReducer,
-    chat: chatReducer
+    chat: chatReducer,
+    customerPortal: customerPortalReducer,
   }
 })
 

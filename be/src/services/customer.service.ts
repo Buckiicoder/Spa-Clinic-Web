@@ -722,3 +722,154 @@ export const updateCustomer = async (user_id: number, data: any) => {
     client.release();
   }
 };
+
+export const getCustomerServiceHistory = async (user_id: number) => {
+  //
+  // =========================
+  // CUSTOMER BASIC INFO
+  // =========================
+  //
+
+  const customerResult = await db.query(
+    `
+    SELECT
+      u.id,
+      u.name,
+      u.email,
+      u.phone,
+      u.avatar,
+
+      c.total_spending,
+      c.rank,
+      c.loyalty_points
+
+    FROM users u
+
+    LEFT JOIN customers c
+      ON c.user_id = u.id
+
+    WHERE
+      u.id = $1
+      AND u.role = 'CUSTOMER'
+
+    LIMIT 1
+    `,
+    [user_id],
+  );
+
+  const customer = customerResult.rows[0];
+
+  if (!customer) {
+    throw new Error("Khách hàng không tồn tại");
+  }
+
+  //
+  // =========================
+  // SERVICE PACKAGES
+  // =========================
+  //
+
+  const profilesResult = await db.query(
+    `
+    SELECT
+      csp.id,
+
+      csp.total_sessions,
+      csp.used_sessions,
+
+      csp.status,
+      csp.started_at,
+      csp.completed_at,
+
+      csp.created_at,
+
+      -- SERVICE
+      s.id AS service_id,
+      s.name AS service_name,
+
+      -- PACKAGE
+      sp.id AS package_id,
+      sp.name AS package_name,
+      sp.price AS package_price,
+      sp.total_sessions AS package_total_sessions,
+      sp.unit,
+
+      -- PAYMENT SUMMARY
+      COALESCE(SUM(p.paid_amount), 0) AS total_paid
+
+    FROM customer_service_profiles csp
+
+    LEFT JOIN services s
+      ON s.id = csp.service_id
+
+    LEFT JOIN service_packages sp
+      ON sp.id = csp.package_id
+
+    LEFT JOIN payment_items pi
+      ON pi.profile_id = csp.id
+
+    LEFT JOIN payments p
+      ON p.id = pi.payment_id
+
+    WHERE csp.customer_id = $1
+
+    GROUP BY
+      csp.id,
+      s.id,
+      sp.id
+
+    ORDER BY csp.created_at DESC
+    `,
+    [user_id],
+  );
+
+  //
+  // =========================
+  // PAYMENTS
+  // =========================
+  //
+
+  const paymentsResult = await db.query(
+    `
+    SELECT
+      p.id,
+      p.payment_code,
+
+      p.final_amount,
+      p.paid_amount,
+      p.remaining_amount,
+
+      p.status,
+      p.created_at,
+
+      JSON_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+          'item_name', pi.item_name,
+          'quantity', pi.quantity,
+          'final_amount', pi.final_amount
+        )
+      ) FILTER (
+        WHERE pi.id IS NOT NULL
+      ) AS items
+
+    FROM payments p
+
+    LEFT JOIN payment_items pi
+      ON pi.payment_id = p.id
+
+    WHERE p.customer_id = $1
+
+    GROUP BY p.id
+
+    ORDER BY p.created_at DESC
+    `,
+    [user_id],
+  );
+
+  return {
+    customer,
+    profiles: profilesResult.rows,
+    payments: paymentsResult.rows,
+    total_spending: customer.total_spending || 0,
+  };
+};

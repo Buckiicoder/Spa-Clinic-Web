@@ -96,3 +96,23 @@ export const updateCustomer = async (
     });
   }
 };
+
+export const getMyServiceHistory = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const user_id = req.user.id;
+
+    const data =
+      await customerServices.getCustomerServiceHistory(
+        user_id,
+      );
+
+    return res.json(data);
+  } catch (err: any) {
+    return res.status(400).json({
+      message: err.message,
+    });
+  }
+};
