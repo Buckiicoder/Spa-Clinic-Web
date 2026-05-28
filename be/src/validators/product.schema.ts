@@ -7,7 +7,7 @@ export const createProductSchema = z.object({
 
   description: z.string().optional().nullable().transform((val) => val ?? undefined),
 
-  category_id: z.number().int().positive().optional().nullable().transform((val) => val ?? undefined),
+  category_id: z.number().int().positive("Phân loại sản phẩm là bắt buộc"),
 
   unit: z.string().min(1).max(30).default("cái"),
 
@@ -33,7 +33,7 @@ export const updateProductSchema = z.object({
   barcode: z.string().max(100).optional().nullable().transform((value) => value?.trim() || undefined),
   name: z.string().min(1).max(255).optional(),
   description: z.string().optional().nullable().transform((val) => val ?? undefined),
-  category_id: z.number().int().positive().optional().nullable().transform((val) => val ?? undefined),
+  category_id: z.number().int().positive().optional(),
   unit: z.string().min(1).max(30).optional(),
   sale_price: z.number().min(0).optional(),
   current_price: z.number().min(0).optional(),
