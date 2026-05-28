@@ -4,13 +4,13 @@ export type InventoryTransactionItemInput = {
   product_id: number;
   quantity: number;
   unit_price: number;
-  note?: string;
+  note?: string | null;
 };
 
 export type InventoryTransactionInput = {
   code: string;
   type: "IMPORT" | "EXPORT" | "ADJUST";
-  note?: string;
+  note?: string | null;
   total_extra_cost?: number;
   transaction_date?: string;
   items: InventoryTransactionItemInput[];

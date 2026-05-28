@@ -42,7 +42,7 @@ export const createProduct = async (req: Request, res: Response) => {
 
     const data = {
       ...parsed,
-      barcode: parsed.barcode?.trim() || null,
+      barcode: parsed.barcode?.trim() || undefined,
     };
 
     // chỉ check barcode nếu có nhập
@@ -87,7 +87,7 @@ export const updateProduct = async (req: Request, res: Response) => {
 
     const data = {
       ...parsed,
-      barcode: parsed.barcode?.trim() || null,
+      barcode: parsed.barcode?.trim() || undefined,
     };
 
     const existing = await productService.getProductById(id);

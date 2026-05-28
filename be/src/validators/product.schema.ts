@@ -5,9 +5,9 @@ export const createProductSchema = z.object({
 
   name: z.string().min(1, "Tên sản phẩm không được để trống").max(255),
 
-  description: z.string().optional().nullable(),
+  description: z.string().optional().nullable().transform((val) => val ?? undefined),
 
-  category_id: z.number().int().positive().optional().nullable(),
+  category_id: z.number().int().positive().optional().nullable().transform((val) => val ?? undefined),
 
   unit: z.string().min(1).max(30).default("cái"),
 
@@ -24,7 +24,7 @@ export const createProductSchema = z.object({
       z.literal(""),
       z.null(),
     ])
-    .optional(),
+    .optional().transform((val) => val || undefined),
 
   is_active: z.boolean().default(true),
 });
@@ -32,8 +32,8 @@ export const createProductSchema = z.object({
 export const updateProductSchema = z.object({
   barcode: z.string().max(100).optional().nullable(),
   name: z.string().min(1).max(255).optional(),
-  description: z.string().optional().nullable(),
-  category_id: z.number().int().positive().optional().nullable(),
+  description: z.string().optional().nullable().transform((val) => val ?? undefined),
+  category_id: z.number().int().positive().optional().nullable().transform((val) => val ?? undefined),
   unit: z.string().min(1).max(30).optional(),
   sale_price: z.number().min(0).optional(),
   current_price: z.number().min(0).optional(),
@@ -45,6 +45,6 @@ export const updateProductSchema = z.object({
       z.literal(""),
       z.null(),
     ])
-    .optional(),
+    .optional().transform((val) => val || undefined),
   is_active: z.boolean().optional(),
 });

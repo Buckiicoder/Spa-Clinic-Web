@@ -41,7 +41,7 @@ export const updateTimekeepingSchema = z.object({
   break_start_time: z.string().datetime().optional(),
   break_end_time: z.string().datetime().optional(),
   status: timekeepingStatusEnum.optional(),
-  reject_reason: z.string().nullable().optional(),
+  reject_reason: z.string().nullable().optional().transform((val) => val || undefined),
 });
 
 // 🔹 GET theo user + tháng

@@ -12,7 +12,7 @@ export const inventoryTransactionItemSchema = z.object({
     .number()
     .min(0, "Đơn giá phải lớn hơn hoặc bằng 0"),
 
-  note: z.string().optional().nullable(),
+  note: z.string().optional().nullable().transform((val) => val ?? undefined),
 });
 
 export const createInventoryTransactionSchema = z.object({
@@ -23,7 +23,7 @@ export const createInventoryTransactionSchema = z.object({
 
   type: z.enum(["IMPORT", "EXPORT", "ADJUST"]),
 
-  note: z.string().optional().nullable(),
+  note: z.string().nullable().optional().transform((val) => val ?? undefined),
 
   total_extra_cost: z.number().min(0).optional().default(0),
 

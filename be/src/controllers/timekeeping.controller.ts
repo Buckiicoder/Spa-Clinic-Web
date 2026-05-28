@@ -124,7 +124,6 @@ export const rejectTimekeepingOff = async (req: Request, res: Response) => {
 
     const updated = await timekeepingService.updateTimekeepingAndReturn(id, {
       status: "SCHEDULED",
-      reject_reason: null,
     });
 
     return res.json({
@@ -211,14 +210,14 @@ export const checkOut = async (req: Request, res: Response) => {
 
     const current = await timekeepingService.getTimekeepingById(id);
 
-    if (!current.start_time || !current.end_time) {
-      throw new Error("Ca làm chưa có thời gian bắt đầu/kết thúc");
-    }
-
     if (!current) {
       return res.status(404).json({
         message: "Không tìm thấy ca làm",
       });
+    }
+
+    if (!current.start_time || !current.end_time) {
+      throw new Error("Ca làm chưa có thời gian bắt đầu/kết thúc");
     }
 
     if (current.check_out_time) {
@@ -249,34 +248,34 @@ export const checkOut = async (req: Request, res: Response) => {
     const workedAfterBreak = Math.max(totalMinutes - totalBreakMinutes, 0);
 
     // SHIFT DURATION
-    const workDate = new Date(current.work_date)
-  .toISOString()
-  .split("T")[0];
+    const workDate =
+      typeof current.work_date === "string"
+        ? current.work_date.split("T")[0]
+        : new Date(
+            current.work_date.getTime() -
+              current.work_date.getTimezoneOffset() * 60000,
+          )
+            .toISOString()
+            .split("T")[0];
 
-const shiftStart = new Date(
-  `${workDate}T${current.start_time}`,
-);
+    const shiftStart = new Date(`${workDate}T${current.start_time}`);
 
-const shiftEnd = new Date(
-  `${workDate}T${current.end_time}`,
-);
+    const shiftEnd = new Date(`${workDate}T${current.end_time}`);
 
-if (
-  Number.isNaN(shiftStart.getTime()) ||
-  Number.isNaN(shiftEnd.getTime())
-) {
-  throw new Error(
-    "Không thể parse thời gian ca làm",
-  );
-}
+    if (
+      Number.isNaN(shiftStart.getTime()) ||
+      Number.isNaN(shiftEnd.getTime())
+    ) {
+      throw new Error("Không thể parse thời gian ca làm");
+    }
 
-console.log({
-  workDate,
-  start_time: current.start_time,
-  end_time: current.end_time,
-  shiftStart,
-  shiftEnd,
-});
+    console.log({
+      workDate,
+      start_time: current.start_time,
+      end_time: current.end_time,
+      shiftStart,
+      shiftEnd,
+    });
 
     const shiftMinutes = Math.max(
       0,
