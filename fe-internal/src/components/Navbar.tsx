@@ -12,6 +12,10 @@ import {
   DamIcon,
   BriefcaseMedical,
   ShoppingBasket,
+  Volume,
+  ClipboardClock,
+  UserStar,
+  MonitorCog
 } from "lucide-react";
 
 export default function Navbar({ open, setOpen }: any) {
@@ -49,9 +53,9 @@ export default function Navbar({ open, setOpen }: any) {
       {!open && (
         <button
           onClick={() => {
-  setOpen(true);
-  setOpenMenu(null);
-}}
+            setOpen(true);
+            setOpenMenu(null);
+          }}
           className="fixed top-4 left-4 z-[60] bg-white px-2 py-1 rounded-lg shadow border border-gray-300"
         >
           ☰
@@ -134,6 +138,27 @@ export default function Navbar({ open, setOpen }: any) {
                   )}
                 </li>
 
+                {/* Chấm công */}
+                <li className="group relative">
+                  <Link
+                    to="/timekeepingdaily"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
+                  >
+                    <ClipboardClock size={18} />
+                    {open && <span>Quản lý chấm công</span>}
+                  </Link>
+
+                  {!open && (
+                    <span
+                      className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
+      bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 
+      group-hover:opacity-100 transition whitespace-nowrap"
+                    >
+                      Chấm công
+                    </span>
+                  )}
+                </li>
+
                 {/* Check lịch */}
                 <li className="group relative">
                   <Link
@@ -155,7 +180,7 @@ export default function Navbar({ open, setOpen }: any) {
                   )}
                 </li>
 
-                {/* Check lịch */}
+                {/* Bác sĩ */}
                 <li className="group relative">
                   <Link
                     to="/doctor"
@@ -172,6 +197,70 @@ export default function Navbar({ open, setOpen }: any) {
       group-hover:opacity-100 transition whitespace-nowrap"
                     >
                       Bác sĩ
+                    </span>
+                  )}
+                </li>
+
+                {/* Giảm giá */}
+                <li className="group relative">
+                  <Link
+                    to="/discount"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
+                  >
+                    <Volume size={18} />
+                    {open && <span>Mã giảm giá</span>}
+                  </Link>
+
+                  {!open && (
+                    <span
+                      className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
+      bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 
+      group-hover:opacity-100 transition whitespace-nowrap"
+                    >
+                      Mã giảm giá
+                    </span>
+                  )}
+                </li>
+
+                {/* Khách hàng */}
+                <li className="group relative">
+                  <Link
+                    to="/customer"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
+                  >
+                    <UserStar size={18} />
+                    {open && <span>Khách hàng</span>}
+                  </Link>
+
+                  {!open && (
+                    <span
+                      className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
+      bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 
+      group-hover:opacity-100 transition whitespace-nowrap"
+                    >
+                      Khách hàng
+                    </span>
+                  )}
+                </li>
+
+
+                {/* Nhân viên làm dịch vụ */}
+                <li className="group relative">
+                  <Link
+                    to="/technician"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
+                  >
+                    <MonitorCog size={18} />
+                    {open && <span>Nhân viên làm dịch vụ</span>}
+                  </Link>
+
+                  {!open && (
+                    <span
+                      className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
+      bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 
+      group-hover:opacity-100 transition whitespace-nowrap"
+                    >
+                      Khách hàng
                     </span>
                   )}
                 </li>
@@ -234,16 +323,7 @@ export default function Navbar({ open, setOpen }: any) {
 
                       <li>
                         <Link
-                          to="/technician"
-                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
-                        >
-                          Nhân viên làm dịch vụ
-                        </Link>
-                      </li>
-
-                      <li>
-                        <Link
-                          to="/staff/payroll"
+                          to="/payroll"
                           className="block px-3 py-2 rounded-lg hover:bg-amber-50"
                         >
                           Bảng lương
@@ -316,8 +396,6 @@ export default function Navbar({ open, setOpen }: any) {
                           Nhập/Xuất kho
                         </Link>
                       </li>
-
-                      
 
                       {/* <li>
                         <Link

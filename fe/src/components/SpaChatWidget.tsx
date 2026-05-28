@@ -1,68 +1,135 @@
 import { useState, useRef, useEffect } from "react";
-import { Send } from "lucide-react";
+import { Send, MessageCircle, Trash2 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../app/hook";
-import { sendMessage, addUserMessage, selectChat } from "../features/chat/chatSlice";
+import {
+  sendMessage,
+  addUserMessage,
+  clearChat,
+  selectChat,
+} from "../features/chat/chatSlice";
 
 export default function SpaChatWidget() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-
   const dispatch = useAppDispatch();
-  const { messages, loading } = useAppSelector(selectChat);
 
+  const { messages, loading, error } = useAppSelector(selectChat);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+  // AUTO SCROLL
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [messages, loading]);
 
   const handleSend = async () => {
-    if (!input.trim() || loading) return;
+    if (!input.trim()) return;
 
-    const text = input;
+    if (loading) return;
 
-    // 👇 thêm message user vào redux ngay
+    const text = input.trim();
+
+    // add message immediately
     dispatch(addUserMessage(text));
 
     setInput("");
 
-    // 👇 gọi API qua thunk
-    dispatch(sendMessage({ message: text }));
+    // call AI
+    dispatch(
+      sendMessage({
+        message: text,
+      }),
+    );
   };
 
+  // QUICK ACTION
+  const quickActions = [
+    "Tư vấn trị nám",
+    "Tư vấn trị mụn",
+    "Tư vấn trị thâm",
+    "Đặt lịch chăm sóc da",
+  ];
+
+  // UI
+
   return (
-    <div className="fixed bottom-3 right-3 z-50">
+    <div className="fixed bottom-4 right-4 z-50">
+      {/* CLOSED BUTTON */}
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-3 rounded-full shadow-lg"
+          className="bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-xl w-14 h-14 flex items-center justify-center transition"
         >
-          Chat
+          <MessageCircle size={26} />
         </button>
       )}
 
+      {/* CHAT BOX */}
       {open && (
-        <div className="w-100 h-[460px] bg-white rounded-xl shadow-xl flex flex-col overflow-hidden">
-          {/* Header */}
-          <div className="bg-amber-500 text-white px-4 py-3 flex justify-between items-center">
-            <span className="font-semibold">SpaClinic</span>
-            <button onClick={() => setOpen(false)}>✕</button>
+        <div className="w-[400px] h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
+          {/* HEADER */}
+          <div className="bg-amber-500 text-white px-4 py-3 flex items-center justify-between">
+            <div>
+              <p className="font-semibold">SpaClinic Assistant</p>
+
+              <p className="text-xs opacity-90">Tư vấn & đặt lịch</p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* CLEAR CHAT */}
+              <button
+                onClick={() => dispatch(clearChat())}
+                className="hover:bg-white/20 p-1 rounded-lg"
+              >
+                <Trash2 size={18} />
+              </button>
+
+              {/* CLOSE */}
+              <button
+                onClick={() => setOpen(false)}
+                className="hover:bg-white/20 px-2 py-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 p-3 space-y-2 overflow-y-auto bg-amber-50">
-            {messages.map((msg: any, i: any) => (
+          {/* QUICK ACTION */}
+          <div className="px-3 pt-3 pb-1 flex gap-2 overflow-auto scrollbar-hide">
+            {quickActions.map((item) => (
+              <button
+                key={item}
+                onClick={() => {
+                  dispatch(addUserMessage(item));
+
+                  dispatch(
+                    sendMessage({
+                      message: item,
+                    }),
+                  );
+                }}
+                className="whitespace-nowrap text-xs border border-amber-300 text-amber-600 px-3 py-1.5 rounded-full hover:bg-amber-50 transition"
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          {/* MESSAGES */}
+          <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3 bg-amber-50">
+            {messages.map((msg: any, index: number) => (
               <div
-                key={i}
+                key={index}
                 className={`flex ${
                   msg.from === "user" ? "justify-end" : "justify-start"
                 }`}
               >
                 <div
-                  className={`px-3 py-2 rounded-xl max-w-[70%] text-sm ${
+                  className={`px-4 py-2 rounded-2xl max-w-[80%] text-sm whitespace-pre-wrap break-words ${
                     msg.from === "user"
-                      ? "bg-amber-500 text-white"
-                      : "bg-white border"
+                      ? "bg-amber-500 text-white rounded-br-md"
+                      : "bg-white border border-gray-200 text-gray-700 rounded-bl-md"
                   }`}
                 >
                   {msg.text}
@@ -70,30 +137,53 @@ export default function SpaChatWidget() {
               </div>
             ))}
 
+            {/* LOADING */}
             {loading && (
-              <div className="text-xs text-gray-400">
-                Spa đang trả lời...
+              <div className="flex justify-start">
+                <div className="bg-white border border-gray-200 px-4 py-2 rounded-2xl text-sm text-gray-500">
+                  Spa đang trả lời...
+                </div>
+              </div>
+            )}
+
+            {/* ERROR */}
+            {error && (
+              <div className="text-center text-xs text-red-500">
+                {typeof error === "string" ? error : "Có lỗi xảy ra"}
               </div>
             )}
 
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
-          <div className="p-2 border-t flex items-center gap-2">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Nhập tin nhắn..."
-              className="flex-1 border rounded-xl px-3 py-2 text-sm focus:outline-none"
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            />
-            <button
-              onClick={handleSend}
-              className="bg-amber-500 text-white p-2 rounded-xl"
-            >
-              <Send size={18} />
-            </button>
+          {/* INPUT */}
+          <div className="border-t bg-white p-3">
+            <div className="flex items-center gap-2">
+              <input
+                value={input}
+                disabled={loading}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Nhập nội dung..."
+                className="flex-1 border border-gray-300 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSend();
+                  }
+                }}
+              />
+
+              <button
+                onClick={handleSend}
+                disabled={loading}
+                className="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white w-11 h-11 rounded-2xl flex items-center justify-center transition"
+              >
+                <Send size={18} />
+              </button>
+            </div>
+
+            <p className="text-[11px] text-gray-400 mt-2 px-1">
+              Spa AI hỗ trợ tư vấn dịch vụ và đặt lịch nhanh chóng.
+            </p>
           </div>
         </div>
       )}

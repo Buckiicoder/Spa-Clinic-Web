@@ -1,43 +1,56 @@
 import { z } from "zod";
 
-// ================= PROFILE =================
-export const createCustomerProfileSchema = z.object({
-  customer_id: z.number(),
-  service_id: z.number(),
-  package_id: z.number(),
+// ================= GET ALL =================
 
-  doctor_id: z.number().optional(),
-  technician_id: z.number().optional(),
+export const getCustomersQuerySchema = z.object({
+  search: z.string().optional(),
 
-  total_sessions: z.number().min(1),
-  used_sessions: z.number().optional(),
+  page: z.coerce.number().optional(),
 
-  status: z
-    .enum(["in_progress", "completed", "cancelled"])
+  limit: z.coerce.number().optional(),
+
+  rank: z.string().optional(),
+
+  status: z.string().optional(),
+
+  is_active: z.coerce.boolean().optional(),
+});
+
+// ================= CREATE =================
+
+export const createCustomerSchema = z.object({
+  name: z.string().min(1),
+
+  phone: z.string().min(10).max(11),
+
+  email: z.string().email().optional().or(z.literal("")),
+
+  avatar: z.string().optional(),
+
+  gender: z
+    .enum(["male", "female", "other"])
     .optional(),
 
-  started_at: z.string().optional(),
-  completed_at: z.string().optional(),
+  dob: z.string().optional(),
+
+  city: z.string().optional(),
+
+  ward: z.string().optional(),
+
+  address_detail: z.string().optional(),
+
+  source: z.string().optional(),
 
   note: z.string().optional(),
+
+  status: z.string().optional(),
 });
 
-// ================= SESSION =================
-export const createSessionSchema = z.object({
-  profile_id: z.number(),
-  session_no: z.number(),
+// ================= UPDATE =================
 
-  service_date: z.string(),
+export const updateCustomerSchema =
+  createCustomerSchema.partial().extend({
+    is_active: z.boolean().optional(),
 
-  technician_id: z.number().optional(),
-
-  doctor_note: z.string().optional(),
-  skin_reaction: z.string().optional(),
-  customer_feedback: z.string().optional(),
-
-  rating: z.number().min(0).max(5).optional(),
-
-  status: z
-    .enum(["scheduled", "done", "missed", "cancelled"])
-    .optional(),
-});
+    referrer_id: z.number().optional(),
+  });

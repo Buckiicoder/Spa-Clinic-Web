@@ -19,6 +19,8 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Bell,
+  Wallet,
 } from "lucide-react";
 
 export default function ReceptionDashboard() {
@@ -140,13 +142,21 @@ export default function ReceptionDashboard() {
   };
 
   // ✅ action
-const handleCheckIn = (id: string) => {
-  navigate(`/booking/${id}?action=checkin`);
-};
+  const handleCheckIn = (id: string) => {
+    navigate(`/booking/${id}?action=checkin`);
+  };
 
   const handleView = (id: string) => {
     navigate(`/booking/${id}`);
   };
+
+const handlePayment = (
+  customerId: number
+) => {
+  navigate(
+    `/payment/customer/${customerId}`
+  );
+};
 
   return (
     <div className="min-h-screen bg-[#f7f7f7] p-6">
@@ -246,6 +256,7 @@ const handleCheckIn = (id: string) => {
                   <th className="p-3 text-left">Thời gian</th>
                   <th className="p-3 text-left">SL</th>
                   <th className="p-3 text-left">Trạng thái</th>
+                  <th className="p-3 text-left">Thanh toán</th>
                   <th className="p-3 text-left">Thao tác</th>
                 </tr>
               </thead>
@@ -282,6 +293,39 @@ const handleCheckIn = (id: string) => {
 
                     <td className="px-4 py-4 ">{b.quantity}</td>
                     <td className="px-6 py-4 ">{renderStatus(b.status)}</td>
+
+                    <td className="p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <Bell size={20} className="text-gray-600" />
+
+                          {b.has_unpaid_payment && (
+                            <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-red-500" />
+                          )}
+                        </div>
+
+                        {b.has_unpaid_payment ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+
+                              handlePayment(b.customer_id);
+                            }}
+                            className="flex items-center gap-2 rounded-xl bg-amber-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-amber-700"
+                          >
+                            <Wallet size={14} />
+                            Thanh toán
+                            {b.unpaid_profiles > 0 && (
+                              <span>({b.unpaid_profiles})</span>
+                            )}
+                          </button>
+                        ) : (
+                          <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                            Đã thanh toán
+                          </span>
+                        )}
+                      </div>
+                    </td>
 
                     <td
                       className="px-3 py-3 text-center relative"

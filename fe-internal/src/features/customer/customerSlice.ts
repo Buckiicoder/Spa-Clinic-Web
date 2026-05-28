@@ -1,41 +1,49 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+
 import {
   getCustomersAPI,
   getCustomerDetailAPI,
-  createCustomerProfileAPI,
-  getProfilesByCustomerAPI,
-  createSessionAPI,
-  getSessionsByProfileAPI,
+  createCustomerAPI,
+  updateCustomerAPI,
 } from "./customerAPI";
 
 // ================= TYPES =================
+
 interface CustomerState {
   customers: any[];
+
   selectedCustomer: any | null;
 
-  profiles: any[];
-  sessionsByProfile: Record<number, any[]>;
-
   loading: boolean;
+
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+  };
 }
 
 const initialState: CustomerState = {
   customers: [],
+
   selectedCustomer: null,
 
-  profiles: [],
-  sessionsByProfile: {},
-
   loading: false,
+
+  pagination: {
+    page: 1,
+    limit: 20,
+    total: 0,
+  },
 };
 
 // ================= CUSTOMER =================
 
 // FETCH ALL
 export const fetchCustomers = createAsyncThunk(
-  "customer/fetchAll",
-  async () => {
-    const res = await getCustomersAPI();
+  "customer/fetchCustomers",
+  async (params: any = {}) => {
+    const res = await getCustomersAPI(params);
     return res.data;
   },
 );
@@ -49,43 +57,31 @@ export const fetchCustomerDetail = createAsyncThunk(
   },
 );
 
-// ================= PROFILE =================
-
-// CREATE PROFILE
-export const createCustomerProfile = createAsyncThunk(
-  "customer/createProfile",
+// CREATE
+export const createCustomer = createAsyncThunk(
+  "customer/create",
   async (data: any) => {
-    const res = await createCustomerProfileAPI(data);
+    const res = await createCustomerAPI(data);
     return res.data;
   },
 );
 
-// GET PROFILES
-export const fetchProfilesByCustomer = createAsyncThunk(
-  "customer/fetchProfiles",
-  async (customerId: number) => {
-    const res = await getProfilesByCustomerAPI(customerId);
-    return res.data;
-  },
-);
+// UPDATE
+export const updateCustomer = createAsyncThunk(
+  "customer/update",
+  async ({
+    id,
+    data,
+  }: {
+    id: number;
+    data: any;
+  }) => {
+    const res = await updateCustomerAPI(id, data);
 
-// ================= SESSION =================
-
-// CREATE SESSION
-export const createSession = createAsyncThunk(
-  "customer/createSession",
-  async (data: any) => {
-    const res = await createSessionAPI(data);
-    return res.data;
-  },
-);
-
-// GET SESSIONS
-export const fetchSessionsByProfile = createAsyncThunk(
-  "customer/fetchSessions",
-  async (profileId: number) => {
-    const res = await getSessionsByProfileAPI(profileId);
-    return res.data;
+    return {
+      id,
+      data: res.data,
+    };
   },
 );
 
@@ -93,16 +89,17 @@ export const fetchSessionsByProfile = createAsyncThunk(
 
 const customerSlice = createSlice({
   name: "customer",
+
   initialState,
+
   reducers: {
     clearSelectedCustomer: (state) => {
       state.selectedCustomer = null;
-      state.profiles = [];
-      state.sessionsByProfile = {};
     },
   },
+
   extraReducers: (builder) => {
-    // ================= CUSTOMER =================
+    // ================= FETCH ALL =================
 
     builder.addCase(fetchCustomers.pending, (state) => {
       state.loading = true;
@@ -110,60 +107,73 @@ const customerSlice = createSlice({
 
     builder.addCase(fetchCustomers.fulfilled, (state, action) => {
       state.loading = false;
-      state.customers = action.payload;
+
+      state.customers = action.payload.data;
+
+      state.pagination = action.payload.pagination;
     });
 
     builder.addCase(fetchCustomers.rejected, (state) => {
       state.loading = false;
     });
 
+    // ================= DETAIL =================
+
     builder.addCase(fetchCustomerDetail.fulfilled, (state, action) => {
       state.selectedCustomer = action.payload;
     });
 
-    // ================= PROFILE =================
+    // ================= CREATE =================
 
-    builder.addCase(fetchProfilesByCustomer.fulfilled, (state, action) => {
-      state.profiles = action.payload;
+    builder.addCase(createCustomer.fulfilled, (state, action) => {
+      state.customers.unshift({
+        ...action.payload.user,
+        ...action.payload.customer,
+      });
     });
 
-    builder.addCase(createCustomerProfile.fulfilled, (state, action) => {
-      state.profiles.unshift(action.payload);
-    });
+    // ================= UPDATE =================
 
-    // ================= SESSION =================
+    builder.addCase(updateCustomer.fulfilled, (state, action) => {
+      const index = state.customers.findIndex(
+        (item) => item.id === action.payload.id,
+      );
 
-    builder.addCase(fetchSessionsByProfile.fulfilled, (state, action) => {
-      const profileId = action.meta.arg;
-      state.sessionsByProfile[profileId] = action.payload;
-    });
-
-    builder.addCase(createSession.fulfilled, (state, action) => {
-      const profileId = action.payload.profile_id;
-
-      if (!state.sessionsByProfile[profileId]) {
-        state.sessionsByProfile[profileId] = [];
+      if (index !== -1) {
+        state.customers[index] = {
+          ...state.customers[index],
+          ...action.payload.data,
+        };
       }
 
-      state.sessionsByProfile[profileId].push(action.payload);
+      if (
+  state.selectedCustomer?.customer?.id ===
+  action.payload.id
+) {
+  state.selectedCustomer.customer = {
+    ...state.selectedCustomer.customer,
+    ...action.payload.data,
+  };
+}
     });
   },
 });
 
-export const { clearSelectedCustomer } = customerSlice.actions;
+export const { clearSelectedCustomer } =
+  customerSlice.actions;
 
 export default customerSlice.reducer;
 
 // ================= SELECTORS =================
 
-export const selectCustomers = (state: any) => state.customer.customers;
+export const selectCustomers = (state: any) =>
+  state.customer.customers;
 
 export const selectSelectedCustomer = (state: any) =>
   state.customer.selectedCustomer;
 
-export const selectProfiles = (state: any) => state.customer.profiles;
+export const selectCustomerPagination = (state: any) =>
+  state.customer.pagination;
 
-export const selectSessionsByProfile = (profileId: number) => (state: any) =>
-  state.customer.sessionsByProfile[profileId] || [];
-
-export const selectCustomerLoading = (state: any) => state.customer.loading;
+export const selectCustomerLoading = (state: any) =>
+  state.customer.loading;

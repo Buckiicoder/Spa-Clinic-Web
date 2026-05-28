@@ -3,82 +3,96 @@ import * as customerServices from "../services/customer.service.js";
 
 // ================= CUSTOMER =================
 
-// 🔹 GET ALL CUSTOMERS
-export const getCustomers = async (req: Request, res: Response) => {
+// GET ALL
+export const getCustomers = async (
+  req: Request,
+  res: Response,
+) => {
   try {
-    const data = await customerServices.getCustomers();
+    const data = await customerServices.getCustomers({
+      search: req.query.search,
+      page: Number(req.query.page || 1),
+      limit: Number(req.query.limit || 20),
+
+      rank: req.query.rank || null,
+      status: req.query.status || null,
+
+      is_active:
+        req.query.is_active !== undefined
+          ? req.query.is_active === "true"
+          : null,
+    });
+
     return res.json(data);
-  } catch {
-    return res.status(500).json({ message: "Lấy danh sách khách thất bại" });
-  }
-};
-
-// 🔹 GET DETAIL CUSTOMER
-export const getCustomerDetail = async (req: Request, res: Response) => {
-  try {
-    const id = Number(req.params.id);
-    const data = await customerServices.getCustomerDetail(id);
-
-    if (!data) {
-      return res.status(404).json({ message: "Không tìm thấy khách hàng" });
-    }
-
-    return res.json(data);
-  } catch {
-    return res.status(500).json({ message: "Lỗi server" });
-  }
-};
-
-// ================= PROFILE =================
-
-// 🔹 CREATE PROFILE (thêm liệu trình)
-export const createCustomerProfile = async (req: Request, res: Response) => {
-  try {
-    const profile = await customerServices.createCustomerServiceProfile(
-      req.body,
-    );
-    return res.json(profile);
   } catch (err: any) {
-    console.error("CREATE PROFILE ERROR:", err);
+    console.error(err);
 
     return res.status(500).json({
-      message: "Tạo liệu trình thất bại",
-      error: err.message,
+      message: "Lấy danh sách khách hàng thất bại",
     });
   }
 };
 
-// 🔹 GET PROFILES BY CUSTOMER
-export const getProfilesByCustomer = async (req: Request, res: Response) => {
+// GET DETAIL
+export const getCustomerDetail = async (
+  req: Request,
+  res: Response,
+) => {
   try {
-    const customerId = Number(req.params.customerId);
-    const data = await customerServices.getProfilesByCustomer(customerId);
+    const id = Number(req.params.id);
+
+    const data =
+      await customerServices.getCustomerDetail(id);
+
     return res.json(data);
-  } catch {
-    return res.status(500).json({ message: "Lấy liệu trình thất bại" });
-  }
-};
-
-// ================= SESSION =================
-
-// 🔹 CREATE SESSION (1 buổi)
-export const createSession = async (req: Request, res: Response) => {
-  try {
-    const session = await customerServices.createSession(req.body);
-    return res.json(session);
-  } catch (err) {
+  } catch (err: any) {
     console.error(err);
-    return res.status(500).json({ message: "Tạo buổi thất bại" });
+
+    return res.status(500).json({
+      message: err.message || "Lấy chi tiết thất bại",
+    });
   }
 };
 
-// 🔹 GET SESSIONS BY PROFILE
-export const getSessionsByProfile = async (req: Request, res: Response) => {
+// CREATE
+export const createCustomer = async (
+  req: Request,
+  res: Response,
+) => {
   try {
-    const profileId = Number(req.params.profileId);
-    const data = await customerServices.getSessionsByProfile(profileId);
+    const data =
+      await customerServices.createCustomer(req.body);
+
+    return res.status(201).json(data);
+  } catch (err: any) {
+    console.error(err);
+
+    return res.status(500).json({
+      message: err.message || "Tạo khách thất bại",
+    });
+  }
+};
+
+// UPDATE
+export const updateCustomer = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const user_id = Number(req.params.id);
+
+    const data =
+      await customerServices.updateCustomer(
+        user_id,
+        req.body,
+      );
+
     return res.json(data);
-  } catch {
-    return res.status(500).json({ message: "Lấy danh sách buổi thất bại" });
+  } catch (err: any) {
+    console.error(err);
+
+    return res.status(500).json({
+      message: err.message || "Cập nhật thất bại",
+    });
   }
 };

@@ -219,13 +219,14 @@ export const createService = async (data: any) => {
 
     const {
       name,
-      area,
-      parent_id,
-      description,
-      duration,
-      is_active,
+      parent_id = null,
+      description = null,
+      duration = null,
+      is_active = true,
       packages = [],
     } = data;
+
+    const area = data.area && data.area.trim() !== "" ? data.area.trim() : null;
 
     // 1. create service
     const serviceRes = await client.query(
@@ -239,25 +240,29 @@ export const createService = async (data: any) => {
 
     const service = serviceRes.rows[0];
 
+    const isLeaf = parent_id != null && area != null;
+
     // 2. create packages + treatment_plan
-    for (const pkg of packages) {
-      // create package (link plan_id)
-      await client.query(
-        `
+    if (isLeaf) {
+      for (const pkg of packages) {
+        // create package (link plan_id)
+        await client.query(
+          `
         INSERT INTO service_packages
         (service_id, name, price, total_sessions, unit, duration_per_unit, is_active)
         VALUES ($1,$2,$3,$4,$5,$6,true)
         `,
-        [
-          service.id,
-          pkg.name,
-          pkg.price,
-          pkg.total_sessions || 0,
-          pkg.unit || "buổi",
-          pkg.duration_per_unit || null
-          // plan.id,
-        ],
-      );
+          [
+            service.id,
+            pkg.name,
+            pkg.price,
+            pkg.total_sessions || 0,
+            pkg.unit || "buổi",
+            pkg.duration_per_unit || null,
+            // plan.id,
+          ],
+        );
+      }
     }
 
     await client.query("COMMIT");
@@ -278,6 +283,10 @@ export const updateService = async (id: number, data: any) => {
     await client.query("BEGIN");
 
     const { packages = [], ...serviceData } = data;
+
+    if (serviceData.area === undefined || serviceData.area === "") {
+      serviceData.area = null;
+    }
 
     // update service
     const fields = [];
@@ -356,7 +365,6 @@ export const updateService = async (id: number, data: any) => {
           ],
         );
       } else {
-
         await client.query(
           `
   INSERT INTO service_packages

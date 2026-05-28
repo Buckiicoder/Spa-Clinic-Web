@@ -19,9 +19,7 @@ export type TimekeepingDetailInput = {
   is_full_work?: boolean;
 };
 
-//
 // 🔹 GET AVAILABLE SCHEDULE (lấy lịch mở cho FE đăng ký)
-//
 
 export const getAvailableSchedule = async (month: number, year: number) => {
   const result = await db.query(
@@ -347,20 +345,6 @@ export const updateTimekeepingAndReturn = async (
   }
 };
 
-// export const updateTimekeepingStatus = async (id: number, status: string) => {
-//   const result = await db.query(
-//     `
-//     UPDATE timekeeping_daily
-//     SET status = $1
-//     WHERE id = $2
-//     RETURNING *
-//     `,
-//     [status, id],
-//   );
-
-//   return result.rows[0];
-// };
-
 // 🔹 DELETE (hủy đăng ký ca)
 export const deleteTimekeeping = async (id: number) => {
   await db.query(`DELETE FROM timekeeping_daily WHERE id = $1`, [id]);
@@ -431,294 +415,297 @@ export const deleteTimekeeping = async (id: number) => {
 //   return result.rows[0];
 // };
 
-export const checkIn = async () => {
-  const client = await db.connect();
+// export const checkIn = async () => {
+//   const client = await db.connect();
 
-  try {
-    await client.query("BEGIN");
+//   try {
+//     await client.query("BEGIN");
 
-    const record = await getTimekeepingWithShift(id);
+//     const record = await getTimekeepingWithShift(id);
 
-    if (!record) {
-      throw new Error("Không tìm thấy ca chấm công");
-    }
+//     if (!record) {
+//       throw new Error("Không tìm thấy ca chấm công");
+//     }
 
-    if (!["SCHEDULED", "ABSENT"].includes(record.status)) {
-      throw new Error("Ca này không thể check-in");
-    }
+//     if (!["SCHEDULED", "ABSENT"].includes(record.status)) {
+//       throw new Error("Ca này không thể check-in");
+//     }
 
-    if (record.check_in_time) {
-      throw new Error("Bạn đã check-in trước đó");
-    }
+//     if (record.check_in_time) {
+//       throw new Error("Bạn đã check-in trước đó");
+//     }
 
-    const now = new Date();
+//     const now = new Date();
 
-    const updated = await client.query(
-      `
-      UPDATE timekeeping_daily
-      SET
-        check_in_time = NOW(),
-        status = 'WORKING'
-      WHERE id = $1
-      RETURNING *
-      `,
-      [id],
-    );
+//     const updated = await client.query(
+//       `
+//       UPDATE timekeeping_daily
+//       SET
+//         check_in_time = NOW(),
+//         status = 'WORKING'
+//       WHERE id = $1
+//       RETURNING *
+//       `,
+//       [id],
+//     );
 
-    await client.query(
-      `
-      INSERT INTO timekeeping_details (
-        timekeeping_id,
-        check_in_lat,
-        check_in_lng
-      )
-      VALUES ($1, $2, $3)
-      ON CONFLICT (timekeeping_id)
-      DO UPDATE SET
-        check_in_lat = EXCLUDED.check_in_lat,
-        check_in_lng = EXCLUDED.check_in_lng
-      `,
-      [id, lat ?? null, lng ?? null],
-    );
+//     await client.query(
+//       `
+//       INSERT INTO timekeeping_details (
+//         timekeeping_id,
+//         check_in_lat,
+//         check_in_lng
+//       )
+//       VALUES ($1, $2, $3)
+//       ON CONFLICT (timekeeping_id)
+//       DO UPDATE SET
+//         check_in_lat = EXCLUDED.check_in_lat,
+//         check_in_lng = EXCLUDED.check_in_lng
+//       `,
+//       [id, lat ?? null, lng ?? null],
+//     );
 
-    await client.query("COMMIT");
+//     await client.query("COMMIT");
 
-    return updated.rows[0];
-  } catch (err) {
-    await client.query("ROLLBACK");
-    throw err;
-  } finally {
-    client.release();
-  }
-};
+//     return updated.rows[0];
+//   } catch (err) {
+//     await client.query("ROLLBACK");
+//     throw err;
+//   } finally {
+//     client.release();
+//   }
+// };
 
-export const startBreak = async (id: number) => {
-  const client = await db.connect();
+// export const startBreak = async (id: number) => {
+//   const client = await db.connect();
 
-  try {
-    await client.query("BEGIN");
+//   try {
+//     await client.query("BEGIN");
 
-    const record = await getTimekeepingWithShift(id);
+//     const record = await getTimekeepingWithShift(id);
 
-    if (!record) {
-      throw new Error("Không tìm thấy ca chấm công");
-    }
+//     if (!record) {
+//       throw new Error("Không tìm thấy ca chấm công");
+//     }
 
-    if (record.status !== "WORKING") {
-      throw new Error("Chỉ có thể bắt đầu nghỉ khi đang làm việc");
-    }
+//     if (record.status !== "WORKING") {
+//       throw new Error("Chỉ có thể bắt đầu nghỉ khi đang làm việc");
+//     }
 
-    if (record.break_start_time) {
-      throw new Error("Bạn đã bắt đầu nghỉ trước đó");
-    }
+//     if (record.break_start_time) {
+//       throw new Error("Bạn đã bắt đầu nghỉ trước đó");
+//     }
 
-    const updated = await client.query(
-      `
-      UPDATE timekeeping_daily
-      SET
-        break_start_time = NOW(),
-        status = 'BREAK'
-      WHERE id = $1
-      RETURNING *
-      `,
-      [id],
-    );
+//     const updated = await client.query(
+//       `
+//       UPDATE timekeeping_daily
+//       SET
+//         break_start_time = NOW(),
+//         status = 'BREAK'
+//       WHERE id = $1
+//       RETURNING *
+//       `,
+//       [id],
+//     );
 
-    await client.query("COMMIT");
+//     await client.query("COMMIT");
 
-    return updated.rows[0];
-  } catch (err) {
-    await client.query("ROLLBACK");
-    throw err;
-  } finally {
-    client.release();
-  }
-};
+//     return updated.rows[0];
+//   } catch (err) {
+//     await client.query("ROLLBACK");
+//     throw err;
+//   } finally {
+//     client.release();
+//   }
+// };
 
-export const endBreak = async (id: number) => {
-  const client = await db.connect();
+// export const endBreak = async (id: number) => {
+//   const client = await db.connect();
 
-  try {
-    await client.query("BEGIN");
+//   try {
+//     await client.query("BEGIN");
 
-    const record = await getTimekeepingWithShift(id);
+//     const record = await getTimekeepingWithShift(id);
 
-    if (!record) {
-      throw new Error("Không tìm thấy ca chấm công");
-    }
+//     if (!record) {
+//       throw new Error("Không tìm thấy ca chấm công");
+//     }
 
-    if (record.status !== "BREAK") {
-      throw new Error("Ca này hiện không ở trạng thái nghỉ");
-    }
+//     if (record.status !== "BREAK") {
+//       throw new Error("Ca này hiện không ở trạng thái nghỉ");
+//     }
 
-    if (!record.break_start_time) {
-      throw new Error("Chưa bắt đầu nghỉ");
-    }
+//     if (!record.break_start_time) {
+//       throw new Error("Chưa bắt đầu nghỉ");
+//     }
 
-    const updated = await client.query(
-      `
-      UPDATE timekeeping_daily
-      SET
-        break_end_time = NOW(),
-        status = 'WORKING'
-      WHERE id = $1
-      RETURNING *
-      `,
-      [id],
-    );
+//     const updated = await client.query(
+//       `
+//       UPDATE timekeeping_daily
+//       SET
+//         break_end_time = NOW(),
+//         status = 'WORKING'
+//       WHERE id = $1
+//       RETURNING *
+//       `,
+//       [id],
+//     );
 
-    const breakMinutesResult = await client.query(
-      `
-      SELECT EXTRACT(EPOCH FROM (break_end_time - break_start_time))/60 AS break_minutes
-      FROM timekeeping_daily
-      WHERE id = $1
-      `,
-      [id],
-    );
+//     const breakMinutesResult = await client.query(
+//       `
+//       SELECT EXTRACT(EPOCH FROM (break_end_time - break_start_time))/60 AS break_minutes
+//       FROM timekeeping_daily
+//       WHERE id = $1
+//       `,
+//       [id],
+//     );
 
-    const breakMinutes = Math.round(
-      Number(breakMinutesResult.rows[0]?.break_minutes || 0),
-    );
+//     const breakMinutes = Math.round(
+//       Number(breakMinutesResult.rows[0]?.break_minutes || 0),
+//     );
 
-    await client.query(
-      `
-      INSERT INTO timekeeping_details (
-        timekeeping_id,
-        break_minutes
-      )
-      VALUES ($1, $2)
-      ON CONFLICT (timekeeping_id)
-      DO UPDATE SET
-        break_minutes = COALESCE(timekeeping_details.break_minutes, 0) + $2
-      `,
-      [id, breakMinutes],
-    );
+//     await client.query(
+//       `
+//       INSERT INTO timekeeping_details (
+//         timekeeping_id,
+//         break_minutes
+//       )
+//       VALUES ($1, $2)
+//       ON CONFLICT (timekeeping_id)
+//       DO UPDATE SET
+//         break_minutes = COALESCE(timekeeping_details.break_minutes, 0) + $2
+//       `,
+//       [id, breakMinutes],
+//     );
 
-    await client.query("COMMIT");
+//     await client.query("COMMIT");
 
-    return updated.rows[0];
-  } catch (err) {
-    await client.query("ROLLBACK");
-    throw err;
-  } finally {
-    client.release();
-  }
-};
+//     return updated.rows[0];
+//   } catch (err) {
+//     await client.query("ROLLBACK");
+//     throw err;
+//   } finally {
+//     client.release();
+//   }
+// };
 
-export const checkOut = async (id: number, lat?: number, lng?: number) => {
-  const client = await db.connect();
 
-  try {
-    await client.query("BEGIN");
 
-    const record = await getTimekeepingWithShift(id);
+// export const checkOut = async (id: number, lat?: number, lng?: number) => {
+//   const client = await db.connect();
 
-    if (!record) {
-      throw new Error("Không tìm thấy ca chấm công");
-    }
+//   try {
+//     await client.query("BEGIN");
 
-    if (!["WORKING", "BREAK"].includes(record.status)) {
-      throw new Error("Ca này không thể check-out");
-    }
+//     const record = await getTimekeepingWithShift(id);
 
-    if (!record.check_in_time) {
-      throw new Error("Bạn chưa check-in");
-    }
+//     if (!record) {
+//       throw new Error("Không tìm thấy ca chấm công");
+//     }
 
-    if (record.check_out_time) {
-      throw new Error("Bạn đã check-out trước đó");
-    }
+//     if (!["WORKING", "BREAK"].includes(record.status)) {
+//       throw new Error("Ca này không thể check-out");
+//     }
 
-    // nếu đang nghỉ thì tự động kết thúc nghỉ
-    let extraBreakMinutes = 0;
+//     if (!record.check_in_time) {
+//       throw new Error("Bạn chưa check-in");
+//     }
 
-    if (record.status === "BREAK" && record.break_start_time) {
-      const breakDiff = await client.query(
-        `
-        SELECT EXTRACT(EPOCH FROM (NOW() - break_start_time))/60 AS break_minutes
-        FROM timekeeping_daily
-        WHERE id = $1
-        `,
-        [id],
-      );
+//     if (record.check_out_time) {
+//       throw new Error("Bạn đã check-out trước đó");
+//     }
 
-      extraBreakMinutes = Math.round(
-        Number(breakDiff.rows[0]?.break_minutes || 0),
-      );
-    }
+//     // nếu đang nghỉ thì tự động kết thúc nghỉ
+//     let extraBreakMinutes = 0;
 
-    const updated = await client.query(
-      `
-      UPDATE timekeeping_daily
-      SET
-        break_end_time = CASE
-          WHEN status = 'BREAK' AND break_start_time IS NOT NULL
-          THEN NOW()
-          ELSE break_end_time
-        END,
-        check_out_time = NOW(),
-        status = 'COMPLETED'
-      WHERE id = $1
-      RETURNING *
-      `,
-      [id],
-    );
+//     if (record.status === "BREAK" && record.break_start_time) {
+//       const breakDiff = await client.query(
+//         `
+//         SELECT EXTRACT(EPOCH FROM (NOW() - break_start_time))/60 AS break_minutes
+//         FROM timekeeping_daily
+//         WHERE id = $1
+//         `,
+//         [id],
+//       );
 
-    const minutesResult = await client.query(
-      `
-      SELECT
-        EXTRACT(EPOCH FROM (check_out_time - check_in_time))/60 AS total_minutes
-      FROM timekeeping_daily
-      WHERE id = $1
-      `,
-      [id],
-    );
+//       extraBreakMinutes = Math.round(
+//         Number(breakDiff.rows[0]?.break_minutes || 0),
+//       );
+//     }
 
-    const totalMinutes = Math.round(
-      Number(minutesResult.rows[0]?.total_minutes || 0),
-    );
+//     const updated = await client.query(
+//       `
+//       UPDATE timekeeping_daily
+//       SET
+//         break_end_time = CASE
+//           WHEN status = 'BREAK' AND break_start_time IS NOT NULL
+//           THEN NOW()
+//           ELSE break_end_time
+//         END,
+//         check_out_time = NOW(),
+//         status = 'COMPLETED'
+//       WHERE id = $1
+//       RETURNING *
+//       `,
+//       [id],
+//     );
 
-    const totalBreakMinutes =
-      extraBreakMinutes + Number(record.break_minutes || 0);
+//     const minutesResult = await client.query(
+//       `
+//       SELECT
+//         EXTRACT(EPOCH FROM (check_out_time - check_in_time))/60 AS total_minutes
+//       FROM timekeeping_daily
+//       WHERE id = $1
+//       `,
+//       [id],
+//     );
 
-    const workMinutes = Math.max(totalMinutes - totalBreakMinutes, 0);
+//     const totalMinutes = Math.round(
+//       Number(minutesResult.rows[0]?.total_minutes || 0),
+//     );
 
-    await client.query(
-      `
-      INSERT INTO timekeeping_details (
-        timekeeping_id,
-        work_minutes,
-        break_minutes,
-        check_out_lat,
-        check_out_lng,
-        is_full_work
-      )
-      VALUES ($1, $2, $3, $4, $5, $6)
-      ON CONFLICT (timekeeping_id)
-      DO UPDATE SET
-        work_minutes = $2,
-        break_minutes = $3,
-        check_out_lat = $4,
-        check_out_lng = $5,
-        is_full_work = $6
-      `,
-      [
-        id,
-        workMinutes,
-        totalBreakMinutes,
-        lat ?? null,
-        lng ?? null,
-        workMinutes >= 480,
-      ],
-    );
+//     const totalBreakMinutes =
+//       extraBreakMinutes + Number(record.break_minutes || 0);
 
-    await client.query("COMMIT");
+//     const workMinutes = Math.max(totalMinutes - totalBreakMinutes, 0);
 
-    return updated.rows[0];
-  } catch (err) {
-    await client.query("ROLLBACK");
-    throw err;
-  } finally {
-    client.release();
-  }
-};
+//     await client.query(
+//       `
+//       INSERT INTO timekeeping_details (
+//         timekeeping_id,
+//         work_minutes,
+//         break_minutes,
+//         check_out_lat,
+//         check_out_lng,
+//         is_full_work
+//       )
+//       VALUES ($1, $2, $3, $4, $5, $6)
+//       ON CONFLICT (timekeeping_id)
+//       DO UPDATE SET
+//         work_minutes = $2,
+//         break_minutes = $3,
+//         check_out_lat = $4,
+//         check_out_lng = $5,
+//         is_full_work = $6
+//       `,
+//       [
+//         id,
+//         workMinutes,
+//         totalBreakMinutes,
+//         lat ?? null,
+//         lng ?? null,
+//         workMinutes >= 480,
+//       ],
+//     );
+
+//     await client.query("COMMIT");
+
+//     return updated.rows[0];
+//   } catch (err) {
+//     await client.query("ROLLBACK");
+//     throw err;
+//   } finally {
+//     client.release();
+//   }
+// };
+

@@ -23,6 +23,7 @@ import {
 import ShiftModal from "../modal/ShiftModal";
 import ScheduleModal from "../modal/ScheduleModal";
 import Toast from "../components/Toast";
+import PayrollTable from "./payroll/PayrollTable";
 
 export default function TimeKeepingManage() {
   const [tab, setTab] = useState("shift");
@@ -230,7 +231,7 @@ export default function TimeKeepingManage() {
       <div className="flex gap-2">
         {[
           { key: "shift", label: "Ca làm" },
-          { key: "timekeeping", label: "Chấm công" },
+          { key: "schedule", label: "Lịch làm" },
           { key: "payroll", label: "Bảng lương" },
         ].map((item) => (
           <button
@@ -297,14 +298,14 @@ export default function TimeKeepingManage() {
           </div>
         )}
 
-        {/* Quản lý chấm công */}
-        {tab === "timekeeping" && (
+        {/* Quản lý lịch làm */}
+        {tab === "schedule" && (
           <div>
             {/* Header */}
 
             <div className="flex justify-between items-center mb-4">
               <div className="flex justify-between">
-                <h1 className="text-xl font-semibold ">Bảng chấm công</h1>
+                <h1 className="text-xl font-semibold ">Thông tin lịch làm</h1>
 
                 {period && (
                   <div className="flex px-2 py-1">
@@ -577,11 +578,9 @@ export default function TimeKeepingManage() {
         )}
 
         {/* PAYROLL TAB */}
-        {tab === "payroll" && (
-          <div className="text-center text-gray-500 py-20">
-            Chưa có dữ liệu bảng lương
-          </div>
-        )}
+          {tab === "payroll" && (
+            <PayrollTable embedded />
+          )}
       </div>
       <ShiftModal
         open={openModal}

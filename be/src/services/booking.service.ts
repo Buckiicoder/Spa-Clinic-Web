@@ -77,49 +77,155 @@ export const upsertCustomer = async (user_id: number, data: any) => {
 
 export const getBookings = async () => {
   const result = await db.query(`
-    SELECT b.*, u.name, u.phone, u.email, s.name as service_name
+    SELECT
+      b.*,
+
+      u.name,
+      u.phone,
+      u.email,
+
+      s.name AS service_name,
+
+      COALESCE(
+        payment_summary.unpaid_profiles,
+        0
+      ) AS unpaid_profiles,
+
+      COALESCE(
+        payment_summary.has_unpaid_payment,
+        false
+      ) AS has_unpaid_payment
+
     FROM bookings b
-    JOIN users u ON b.customer_id = u.id
-    JOIN services s ON b.service_id = s.id
+
+    INNER JOIN users u
+      ON u.id = b.customer_id
+
+    INNER JOIN services s
+      ON s.id = b.service_id
+
+    LEFT JOIN (
+      SELECT
+        booking_profiles.booking_id,
+
+        COUNT(*) FILTER (
+          WHERE
+            booking_profiles.is_unpaid = true
+        )::INTEGER AS unpaid_profiles,
+
+        BOOL_OR(
+          booking_profiles.is_unpaid = true
+        ) AS has_unpaid_payment
+
+      FROM (
+        SELECT DISTINCT
+          csp.id AS profile_id,
+
+          csp.booking_id,
+
+          CASE
+            -- chưa có payment
+            WHEN p.id IS NULL THEN true
+
+            -- còn nợ
+            WHEN p.remaining_amount > 0 THEN true
+
+            ELSE false
+          END AS is_unpaid
+
+        FROM customer_service_profiles csp
+
+        LEFT JOIN payment_items pi
+          ON pi.profile_id = csp.id
+
+        LEFT JOIN payments p
+          ON p.id = pi.payment_id
+      ) booking_profiles
+
+      GROUP BY booking_profiles.booking_id
+    ) payment_summary
+      ON payment_summary.booking_id = b.id
+
     ORDER BY b.created_at DESC
   `);
 
   return result.rows;
 };
 
-export const getBookingById = async (id: string) => {
+export const getBookingById = async (
+  id: string
+) => {
   const result = await db.query(
     `
-    SELECT 
+    SELECT
       b.*,
 
-      -- user
       u.name,
       u.phone,
       u.email,
 
-      -- service
-      s.name as service_name,
+      s.name AS service_name,
 
-      -- customer (internal)
       c.source,
-      c.note as customer_note,
-      c.status as customer_status,
+      c.note AS customer_note,
+      c.status AS customer_status,
       c.referrer_id,
 
-      -- optional hiển thị thêm
       c.total_visits,
       c.last_visit_at,
-      c.first_visit_at
+      c.first_visit_at,
+
+      COALESCE(
+        payment_summary.unpaid_profiles,
+        0
+      ) AS unpaid_profiles,
+
+      COALESCE(
+        payment_summary.has_unpaid_payment,
+        false
+      ) AS has_unpaid_payment
 
     FROM bookings b
-    JOIN users u ON b.customer_id = u.id
-    JOIN services s ON b.service_id = s.id
-    LEFT JOIN customers c ON c.user_id = u.id
+
+    INNER JOIN users u
+      ON u.id = b.customer_id
+
+    INNER JOIN services s
+      ON s.id = b.service_id
+
+    LEFT JOIN customers c
+      ON c.user_id = u.id
+
+    LEFT JOIN (
+      SELECT
+        csp.booking_id,
+
+        COUNT(*) FILTER (
+          WHERE
+            p.id IS NULL
+            OR p.remaining_amount > 0
+        )::INTEGER AS unpaid_profiles,
+
+        BOOL_OR(
+          p.id IS NULL
+          OR p.remaining_amount > 0
+        ) AS has_unpaid_payment
+
+      FROM customer_service_profiles csp
+
+      LEFT JOIN payment_items pi
+        ON pi.profile_id = csp.id
+
+      LEFT JOIN payments p
+        ON p.id = pi.payment_id
+
+      GROUP BY csp.booking_id
+    ) payment_summary
+      ON payment_summary.booking_id = b.id
 
     WHERE b.id = $1
-  `,
-    [id],
+    `,
+    [id]
   );
 
   return result.rows[0];
@@ -134,6 +240,8 @@ export const createBooking = async (data: any) => {
     quantity,
     created_by,
     note,
+    created_source,
+    conversation_id,
   } = data;
 
   const result = await db.query(
@@ -146,11 +254,13 @@ export const createBooking = async (data: any) => {
       booking_time,
       quantity,
       created_by,
-      note
+      note,
+      created_source, 
+      conversation_id
     )
     VALUES (
       CONCAT('BK', EXTRACT(EPOCH FROM NOW())::BIGINT, FLOOR(RANDOM() * 1000)),
-      $1,$2,$3,$4,$5,$6,$7
+      $1,$2,$3,$4,$5,$6,$7,$8,$9
     )
     RETURNING *
   `,
@@ -162,6 +272,8 @@ export const createBooking = async (data: any) => {
       quantity,
       created_by ?? null,
       note ?? null,
+      created_source ?? "USER",
+      conversation_id ?? null,
     ],
   );
 

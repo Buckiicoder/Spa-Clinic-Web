@@ -54,8 +54,8 @@ export const createService = async (req: Request, res: Response) => {
     const parsed = createServiceSchema.parse(req.body);
 
     const isLeaf =
-      parsed.parent_id !== null &&
-      parsed.area !== undefined &&
+      parsed.parent_id != null &&
+      parsed.area != null &&
       parsed.area.trim() !== "";
 
     // chỉ check có package hay không
@@ -90,7 +90,9 @@ export const updateService = async (req: Request, res: Response) => {
     const parsed = updateServiceSchema.parse(req.body);
 
     const isLeaf =
-      parsed.parent_id !== null && parsed.area && parsed.area.trim().length > 0;
+      parsed.parent_id != null &&
+      parsed.area != null &&
+      parsed.area.trim() !== "";
 
     if (isLeaf && (!parsed.packages || parsed.packages.length === 0)) {
       return res.status(400).json({

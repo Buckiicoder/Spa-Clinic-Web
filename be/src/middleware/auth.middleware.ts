@@ -27,6 +27,7 @@ export const authCustomerMiddleware = (
     }
 
     req.user = decoded;
+
     next();
   } catch {
     return res.status(401).json({ message: "Invalid token" });
@@ -47,7 +48,7 @@ export const authStaffMiddleware = (
 
     const decoded = verifyToken(token);
 
-    if (decoded.role !== "STAFF" && decoded.role !== "ADMIN") {
+    if (decoded.role !== "STAFF" && decoded.role !== "MANAGER") {
       return res.status(403).json({ message: "Forbidden" });
     }
 
@@ -58,18 +59,29 @@ export const authStaffMiddleware = (
   }
 };
 
-export const optionalAuthCustomer = (req: Request, res: Response, next: NextFunction) => {
+export const optionalAuthCustomer = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
+    const token = req.cookies?.customerAccessToken;
 
-    if (!token) return next();
+    // không có token vẫn cho đi tiếp
+    if (!token) {
+      return next();
+    }
 
-    // verify token (giống authCustomerMiddleware)
-    const decoded = verifyToken(token); // dùng hàm của bạn
+    const decoded = verifyToken(token);
 
-    req.user = decoded;
+    // chỉ attach nếu đúng CUSTOMER
+    if (decoded.role === "CUSTOMER") {
+      req.user = decoded;
+    }
+
     next();
-  } catch (err) {
-    next(); // không chặn
+  } catch {
+    // token lỗi cũng không chặn
+    next();
   }
 };

@@ -1,0 +1,30 @@
+import { Router } from "express";
+
+import {
+  getCustomerUnpaidProfiles,
+  getPaymentProfileDetail,
+  getAvailableDiscounts,
+  calculateDiscountAmount,
+  createPayment,
+  getPaymentSummaryByProfile,
+} from "../controllers/payment.controller.js";
+
+const router = Router();
+
+router.get("/customer/:customer_id/unpaid-profiles", getCustomerUnpaidProfiles);
+
+// GET PAYMENT PROFILE DETAIL
+router.get("/profile/:profile_id", getPaymentProfileDetail);
+
+router.get("/summary/:profile_id", getPaymentSummaryByProfile);
+
+// GET AVAILABLE DISCOUNTS
+router.get("/available-discounts", getAvailableDiscounts);
+
+// CALCULATE DISCOUNT
+router.post("/calculate-discount", calculateDiscountAmount);
+
+// CREATE PAYMENT
+router.post("/", createPayment);
+
+export default router;

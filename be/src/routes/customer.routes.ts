@@ -1,25 +1,26 @@
 import { Router } from "express";
+
 import {
   getCustomers,
   getCustomerDetail,
-  createCustomerProfile,
-  getProfilesByCustomer,
-  createSession,
-  getSessionsByProfile,
+  createCustomer,
+  updateCustomer,
 } from "../controllers/customer.controller.js";
 
 const router = Router();
 
 // ================= CUSTOMER =================
+
+// GET ALL
 router.get("/", getCustomers);
+
+// GET DETAIL
 router.get("/:id", getCustomerDetail);
 
-// ================= PROFILE =================
-router.post("/profile", createCustomerProfile);
-router.get("/profile/:customerId", getProfilesByCustomer);
+// CREATE
+router.post("/", createCustomer);
 
-// ================= SESSION =================
-router.post("/session", createSession);
-router.get("/session/:profileId", getSessionsByProfile);
+// UPDATE
+router.put("/:id", updateCustomer);
 
 export default router;

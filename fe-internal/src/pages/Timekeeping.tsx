@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
+import { useAppSelector, useAppDispatch } from "../app/hook";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   fetchSchedule,
@@ -18,9 +19,20 @@ import {
 } from "../features/timekeeping/timekeepingSlice";
 import { fetchBranches, selectBranches } from "../features/branch/branchSlice";
 import { getDistanceInMeters } from "../features/branch/branchFunction";
+import Toast from "../components/Toast";
+
+import OvertimeRequestModal from "../modal/OvertimeRequestModal";
+import { formatDateOnly, parseShiftTime } from "../utils/generalFunction";
+
+import {
+  createOvertimeRequest,
+  selectOvertimeLoading,
+} from "../features/overtime/overtimeSlice";
 
 export default function TimeKeeping() {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
+
+  const [toast, setToast] = useState<any>(null);
 
   const days = useSelector(selectScheduleDays);
   const period = useSelector(selectSchedulePeriod);
@@ -31,6 +43,11 @@ export default function TimeKeeping() {
   const [checkingLocation, setCheckingLocation] = useState(false);
   const [locationError, setLocationError] = useState("");
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
+
+  // mở modal Overtime để đăng ký
+  const overtimeLoading = useAppSelector(selectOvertimeLoading);
+
+  const [openOTModal, setOpenOTModal] = useState(false);
 
   const employeeBranch = useMemo(() => {
     return branches.find((b: any) => Number(b.id) === Number(user?.branch_id));
@@ -164,17 +181,6 @@ export default function TimeKeeping() {
   const todaySchedule = scheduleMap[todayStr]?.[0] || null;
 
   const nowTime = new Date();
-
-  const parseShiftTime = (dateStr: string, time?: string) => {
-    if (!time) return null;
-
-    const [h, m] = time.slice(0, 5).split(":").map(Number);
-
-    const d = new Date(dateStr);
-    d.setHours(h, m, 0, 0);
-
-    return d;
-  };
 
   const shiftStart = parseShiftTime(
     todayStr,
@@ -550,6 +556,40 @@ export default function TimeKeeping() {
     }
   };
 
+  const handleSubmitOT = async (data: any) => {
+    if (!todayRecord) {
+      setToast({
+        type: "error",
+        message: "Không tìm thấy ca làm hôm nay",
+      });
+
+      return;
+    }
+
+    try {
+      await dispatch(
+      createOvertimeRequest({
+        ...data,
+        user_id: Number(user.id),
+        timekeeping_id: todayRecord.id,
+        work_date: todayRecord.work_date?.slice(0,10),
+      }),
+    ).unwrap();
+
+      setToast({
+        type: "success",
+        message: "Gửi yêu cầu OT thành công",
+      });
+
+      setOpenOTModal(false);
+    } catch (err: any) {
+      setToast({
+        type: "error",
+        message: err?.message || "Gửi yêu cầu OT thất bại",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-amber-50">
       <div className="max-w-[1800px] mx-auto px-2 sm:px-3 md:px-6 py-4 md:py-6">
@@ -665,11 +705,11 @@ export default function TimeKeeping() {
                 month === today.getMonth() + 1 &&
                 year === today.getFullYear();
 
-                  const hasFinalStatus =
-  pendingDay ||
-  approvedWorkingDay ||
-  approvedOffDay ||
-  rejectedDay;
+              const hasFinalStatus =
+                pendingDay ||
+                approvedWorkingDay ||
+                approvedOffDay ||
+                rejectedDay;
 
               return (
                 <div
@@ -707,13 +747,13 @@ export default function TimeKeeping() {
 
   ${isToday ? "ring-2 ring-amber-400" : ""}
  ${
-  // isRegisterLocked && !hasFinalStatus
-  //   ? "opacity-55 cursor-not-allowed"
-  //   : isRegisterLocked
-  //     ? "cursor-default"
-  //     : 
-  ""
-}
+   // isRegisterLocked && !hasFinalStatus
+   //   ? "opacity-55 cursor-not-allowed"
+   //   : isRegisterLocked
+   //     ? "cursor-default"
+   //     :
+   ""
+ }
 `}
                 >
                   {day}
@@ -831,9 +871,15 @@ ${
 }
 ${
   isRegisterLocked &&
-  !["PENDING", "OFF", "REJECT", "SCHEDULED", "WORKING", "BREAK", "COMPLETED"].includes(
-    s.status,
-  )
+  ![
+    "PENDING",
+    "OFF",
+    "REJECT",
+    "SCHEDULED",
+    "WORKING",
+    "BREAK",
+    "COMPLETED",
+  ].includes(s.status)
     ? "opacity-60"
     : ""
 }
@@ -1155,8 +1201,14 @@ ${
                         : "--:--"}
                     </span>
                   </div>
+
+                  
                 </div>
               )}
+
+              <div className="text-xs text-gray-500 font-medium">
+  Thời gian OT thực tế: <span className="text-sm text-amber-700">{todayRecord?.ot_minutes || 0} phút</span>
+</div>
 
               {/* Tổng công */}
               <div className="border-t border-gray-200 pt-3">
@@ -1259,10 +1311,17 @@ ${
               {canCheckOut && (
                 <button
                   onClick={handleCheckOut}
-                  disabled={checkingLocation}
+                  disabled={checkingLocation ||
+  !!todayRecord?.check_out_time}
                   className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
                 >
-                  Chấm công ra ca
+                  {
+  todayRecord?.check_out_time
+    ? "Đã checkout"
+    : checkingLocation
+      ? "Đang xác minh..."
+      : "Chấm công ra ca"
+}
                 </button>
               )}
 
@@ -1288,7 +1347,10 @@ ${
                 </button>
               )}
               {canRequestOT && (
-                <button className="bg-violet-500 hover:bg-violet-600 text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition">
+                <button
+                  onClick={() => setOpenOTModal(true)}
+                  className="bg-violet-500 hover:bg-violet-600 text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
+                >
                   Gửi yêu cầu OT
                 </button>
               )}
@@ -1334,6 +1396,24 @@ ${
           Chưa có dữ liệu chấm công trong tháng này.
         </div>
       </div>
+
+      <OvertimeRequestModal
+        open={openOTModal}
+        onClose={() => setOpenOTModal(false)}
+        onSubmit={handleSubmitOT}
+        loading={overtimeLoading}
+        timekeepingId={todayRecord?.id}
+        workDate={formatDateOnly(todayRecord?.work_date)}
+        defaultStartTime={todayRecord?.end_time?.slice(0, 5) || ""}
+      />
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

@@ -3,13 +3,10 @@ import { z } from "zod";
 /* ================= PACKAGE ================= */
 const servicePackageSchema = z.object({
   id: z.number().optional(),
-
   name: z.string().min(1),
   price: z.number(),
-
   total_sessions: z.number().min(1),
   unit: z.string().min(1).default("buổi"),
-
   duration_per_unit: z.number().nullable().optional(),
   is_active: z.boolean().optional(),
 });
@@ -17,15 +14,11 @@ const servicePackageSchema = z.object({
 /* ================= SERVICE ================= */
 export const createServiceSchema = z.object({
   name: z.string().min(1),
-
-  area: z.string().optional(),
+  area: z.string().trim().nullable().optional(),
   parent_id: z.number().nullable().optional(),
-
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
   duration: z.number().nullable().optional(),
-
   is_active: z.boolean().default(true),
-
   packages: z.array(servicePackageSchema).optional(),
 });
 

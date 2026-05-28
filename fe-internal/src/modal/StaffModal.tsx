@@ -6,6 +6,7 @@ import {
   fetchPositions,
   selectPositions,
 } from "../features/position/positionSlice";
+import StaffSalaryForm from "./StaffSalaryForm";
 
 interface Props {
   open: boolean;
@@ -136,7 +137,7 @@ export default function StaffModal({
       delete payload.password;
       delete payload.confirm_password;
     }
-    
+
     onSubmit(payload);
   };
 
@@ -146,9 +147,12 @@ export default function StaffModal({
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       {/* modal */}
-      <div className="relative bg-white w-[900px] rounded-2xl p-6 z-50">
+      <div
+        className="relative bg-white w-[900px] max-h-[92vh] rounded-2xl flex flex-col
+    overflow-hidden"
+      >
         {/* header */}
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center px-6 pt-6 mb-4">
           <h3 className="text-lg font-semibold">
             {initialData ? "Chi tiết nhân viên" : "Thêm nhân viên"}
           </h3>
@@ -157,7 +161,7 @@ export default function StaffModal({
         </div>
 
         {/* tabs */}
-        <div className="flex gap-4 border-b mb-4">
+        <div className="flex gap-4 border-b mb-4 px-6">
           {[
             { key: "info", label: "Thông tin" },
             { key: "salary", label: "Thiết lập lương" },
@@ -176,333 +180,290 @@ export default function StaffModal({
           ))}
         </div>
 
-        {/* ================= INFO TAB ================= */}
-        {tab === "info" && (
-          <div className="grid grid-cols-12 gap-6">
-            {/* ================= CỘT 1: AVATAR ================= */}
-            <div className="col-span-2 flex flex-col items-center gap-4 border-r pr-4">
-              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden mt-2">
-                <span className="text-gray-400 text-xs">Ảnh</span>
+        <div className="flex-1 overflow-y-auto px-6 pb-4">
+          {/* ================= INFO TAB ================= */}
+          {tab === "info" && (
+            <div className="grid grid-cols-12 gap-6">
+              {/* ================= CỘT 1: AVATAR ================= */}
+              <div className="col-span-2 flex flex-col items-center gap-4 border-r pr-4">
+                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden mt-2">
+                  <span className="text-gray-400 text-xs">Ảnh</span>
+                </div>
+
+                <button className="px-3 py-1 text-sm bg-gray-100 rounded">
+                  Chọn ảnh
+                </button>
               </div>
 
-              <button className="px-3 py-1 text-sm bg-gray-100 rounded">
-                Chọn ảnh
-              </button>
-            </div>
-
-            {/* ================= CỘT 2 (TRÁI) ================= */}
-            <div className="col-span-5 flex flex-col gap-3">
-              <div className="grid grid-cols-3 items-center pt-1">
-                <label className="text-sm font-semibold">Mã NV</label>
-                <input
-                  className="col-span-2 border px-3 py-1 rounded"
-                  disabled
-                  value={form.id}
-                  onChange={(e) => setForm({ ...form, id: e.target.value })}
-                />
-              </div>
-
-              {/* Tên nhân viên */}
-              <div className="grid grid-cols-3 items-center pt-1">
-                <label className="text-sm font-medium">Tên nhân viên</label>
-
-                <div className="col-span-2">
+              {/* ================= CỘT 2 (TRÁI) ================= */}
+              <div className="col-span-5 flex flex-col gap-3">
+                <div className="grid grid-cols-3 items-center pt-1">
+                  <label className="text-sm font-semibold">Mã NV</label>
                   <input
-                    className="w-full border px-3 py-1 rounded"
-                    value={form.name}
-                    onChange={(e) => {
-                      const value = e.target.value;
-
-                      setForm({ ...form, name: value });
-
-                      setErrors((prev: any) => ({
-                        ...prev,
-                        name: value ? "" : "Vui lòng nhập tên nhân viên",
-                      }));
-                    }}
+                    className="col-span-2 border px-3 py-1 rounded"
+                    disabled
+                    value={form.id}
+                    onChange={(e) => setForm({ ...form, id: e.target.value })}
                   />
-
-                  {errors.name && (
-                    <p className="text-red-500 text-xs mt-1">{errors.name}</p>
-                  )}
                 </div>
-              </div>
 
-              <div className="grid grid-cols-3 items-center pt-1">
-                <label className="text-sm font-medium">Ngày sinh</label>
-                <input
-                  type="date"
-                  className="col-span-2 border px-3 py-1 rounded"
-                  value={form.dob}
-                  onChange={(e) => setForm({ ...form, dob: e.target.value })}
-                />
-              </div>
+                {/* Tên nhân viên */}
+                <div className="grid grid-cols-3 items-center pt-1">
+                  <label className="text-sm font-medium">Tên nhân viên</label>
 
-              <div className="grid grid-cols-3 items-center pt-1">
-                <label className="text-sm font-medium">Giới tính</label>
-                <div className="col-span-2 flex gap-4">
-                  <label>
+                  <div className="col-span-2">
                     <input
-                      type="radio"
-                      checked={form.gender === "male"}
-                      onChange={() => setForm({ ...form, gender: "male" })}
-                    />{" "}
-                    Nam
-                  </label>
+                      className="w-full border px-3 py-1 rounded"
+                      value={form.name}
+                      onChange={(e) => {
+                        const value = e.target.value;
 
-                  <label>
-                    <input
-                      type="radio"
-                      checked={form.gender === "female"}
-                      onChange={() => setForm({ ...form, gender: "female" })}
-                    />{" "}
-                    Nữ
-                  </label>
+                        setForm({ ...form, name: value });
+
+                        setErrors((prev: any) => ({
+                          ...prev,
+                          name: value ? "" : "Vui lòng nhập tên nhân viên",
+                        }));
+                      }}
+                    />
+
+                    {errors.name && (
+                      <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* 👉 THÊM */}
-              <div className="grid grid-cols-3 items-center pt-1">
-                <label className="text-sm font-medium">Chức vụ</label>
+                <div className="grid grid-cols-3 items-center pt-1">
+                  <label className="text-sm font-medium">Ngày sinh</label>
+                  <input
+                    type="date"
+                    className="col-span-2 border px-3 py-1 rounded"
+                    value={form.dob}
+                    onChange={(e) => setForm({ ...form, dob: e.target.value })}
+                  />
+                </div>
 
-                <div className="col-span-2">
+                <div className="grid grid-cols-3 items-center pt-1">
+                  <label className="text-sm font-medium">Giới tính</label>
+                  <div className="col-span-2 flex gap-4">
+                    <label>
+                      <input
+                        type="radio"
+                        checked={form.gender === "male"}
+                        onChange={() => setForm({ ...form, gender: "male" })}
+                      />{" "}
+                      Nam
+                    </label>
+
+                    <label>
+                      <input
+                        type="radio"
+                        checked={form.gender === "female"}
+                        onChange={() => setForm({ ...form, gender: "female" })}
+                      />{" "}
+                      Nữ
+                    </label>
+                  </div>
+                </div>
+
+                {/* 👉 THÊM */}
+                <div className="grid grid-cols-3 items-center pt-1">
+                  <label className="text-sm font-medium">Chức vụ</label>
+
+                  <div className="col-span-2">
+                    <select
+                      className="w-full border px-3 py-1 rounded"
+                      value={form.position}
+                      onChange={(e) => {
+                        const value = e.target.value;
+
+                        setForm({ ...form, position: value });
+
+                        setErrors((prev: any) => ({
+                          ...prev,
+                          position: value ? "" : "Vui lòng chọn chức danh",
+                        }));
+                      }}
+                    >
+                      <option value="">Chọn</option>
+                      {positions.map((p: any) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    {errors.position && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.position}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 items-center pt-1">
+                  <label className="text-sm font-medium">Loại NV</label>
                   <select
-                    className="w-full border px-3 py-1 rounded"
-                    value={form.position}
-                    onChange={(e) => {
-                      const value = e.target.value;
-
-                      setForm({ ...form, position: value });
-
-                      setErrors((prev: any) => ({
-                        ...prev,
-                        position: value ? "" : "Vui lòng chọn chức danh",
-                      }));
-                    }}
+                    className="col-span-2 border px-3 py-1 rounded"
+                    value={form.employee_type}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        employee_type: e.target.value,
+                      })
+                    }
                   >
-                    <option value="">Chọn</option>
-                    {positions.map((p: any) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
+                    <option value="Fulltime">Fulltime</option>
+                    <option value="Parttime">Parttime</option>
                   </select>
-
-                  {errors.position && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.position}
-                    </p>
-                  )}
                 </div>
-              </div>
 
-              <div className="grid grid-cols-3 items-center pt-1">
-                <label className="text-sm font-medium">Loại NV</label>
-                <select
-                  className="col-span-2 border px-3 py-1 rounded"
-                  value={form.employee_type}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      employee_type: e.target.value,
-                    })
-                  }
-                >
-                  <option value="Fulltime">Fulltime</option>
-                  <option value="Parttime">Parttime</option>
-                </select>
-              </div>
-
-              {/* 👉 KINH NGHIỆM */}
-              <div className="grid grid-cols-3 items-center pt-1">
-                <label className="text-sm font-medium">Kinh nghiệm (năm)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  className="col-span-2 border px-3 py-1 rounded"
-                  value={form.experience_years}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      experience_years: e.target.value,
-                    })
-                  }
-                />
-              </div>
-            </div>
-
-            {/* ================= CỘT 3 (PHẢI) ================= */}
-            <div className="col-span-5 flex flex-col gap-3 pt-1">
-              {/* 👉 MOVE sang phải */}
-              <div className="grid grid-cols-3 items-center pt-1">
-                <label className="text-sm font-medium">SĐT</label>
-
-                <div className="col-span-2">
+                {/* 👉 KINH NGHIỆM */}
+                <div className="grid grid-cols-3 items-center pt-1">
+                  <label className="text-sm font-medium">
+                    Kinh nghiệm (năm)
+                  </label>
                   <input
-                    className="w-full border px-3 py-1 rounded"
-                    value={form.phone}
-                    onChange={(e) => {
-                      const value = e.target.value;
-
-                      setForm({ ...form, phone: value });
-
-                      setErrors((prev: any) => ({
-                        ...prev,
-                        phone: value ? "" : "Vui lòng nhập số điện thoại",
-                      }));
-                    }}
+                    type="number"
+                    step="0.1"
+                    className="col-span-2 border px-3 py-1 rounded"
+                    value={form.experience_years}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        experience_years: e.target.value,
+                      })
+                    }
                   />
-
-                  {errors.phone && (
-                    <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
-                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 items-center pt-1">
-                <label className="text-sm font-medium">Email</label>
-                <input
-                  className="col-span-2 border px-3 py-1 rounded"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-              </div>
+              {/* ================= CỘT 3 (PHẢI) ================= */}
+              <div className="col-span-5 flex flex-col gap-3 pt-1">
+                {/* 👉 MOVE sang phải */}
+                <div className="grid grid-cols-3 items-center pt-1">
+                  <label className="text-sm font-medium">SĐT</label>
 
-              {/* 👉 PASSWORD */}
-              {!initialData && (
-                <>
-                  <div className="grid grid-cols-3 items-center pt-1">
-                    <label className="text-sm font-medium">Mật khẩu</label>
+                  <div className="col-span-2">
                     <input
-                      type="password"
-                      className="col-span-2 border px-3 py-1 rounded"
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          password: e.target.value,
-                        })
-                      }
+                      className="w-full border px-3 py-1 rounded"
+                      value={form.phone}
+                      onChange={(e) => {
+                        const value = e.target.value;
+
+                        setForm({ ...form, phone: value });
+
+                        setErrors((prev: any) => ({
+                          ...prev,
+                          phone: value ? "" : "Vui lòng nhập số điện thoại",
+                        }));
+                      }}
                     />
+
+                    {errors.phone && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.phone}
+                      </p>
+                    )}
                   </div>
+                </div>
 
-                  <div className="grid grid-cols-3 items-center pt-1">
-                    <label className="text-sm font-medium">Xác nhận MK</label>
-                    <input
-                      type="password"
-                      className="col-span-2 border px-3 py-1 rounded"
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          confirm_password: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                </>
-              )}
+                <div className="grid grid-cols-3 items-center pt-1">
+                  <label className="text-sm font-medium">Email</label>
+                  <input
+                    className="col-span-2 border px-3 py-1 rounded"
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm({ ...form, email: e.target.value })
+                    }
+                  />
+                </div>
 
-              <div className="grid grid-cols-3 items-center pt-1">
-                <label className="text-sm font-medium">Thành phố</label>
-                <input
-                  className="col-span-2 border px-3 py-1 rounded"
-                  value={form.city}
-                  onChange={(e) => setForm({ ...form, city: e.target.value })}
-                />
-              </div>
+                {/* 👉 PASSWORD */}
+                {!initialData && (
+                  <>
+                    <div className="grid grid-cols-3 items-center pt-1">
+                      <label className="text-sm font-medium">Mật khẩu</label>
+                      <input
+                        type="password"
+                        className="col-span-2 border px-3 py-1 rounded"
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            password: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
 
-              <div className="grid grid-cols-3 items-center pt-1">
-                <label className="text-sm font-medium">Phường</label>
-                <input
-                  className="col-span-2 border px-3 py-1 rounded"
-                  value={form.ward}
-                  onChange={(e) => setForm({ ...form, ward: e.target.value })}
-                />
-              </div>
+                    <div className="grid grid-cols-3 items-center pt-1">
+                      <label className="text-sm font-medium">Xác nhận MK</label>
+                      <input
+                        type="password"
+                        className="col-span-2 border px-3 py-1 rounded"
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            confirm_password: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                  </>
+                )}
 
-              <div className="grid grid-cols-3 items-center pt-1">
-                <label className="text-sm font-medium">Địa chỉ</label>
-                <input
-                  className="col-span-2 border px-3 py-1 rounded"
-                  value={form.address_detail}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      address_detail: e.target.value,
-                    })
-                  }
-                />
-              </div>
+                <div className="grid grid-cols-3 items-center pt-1">
+                  <label className="text-sm font-medium">Thành phố</label>
+                  <input
+                    className="col-span-2 border px-3 py-1 rounded"
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  />
+                </div>
 
-              <div className="grid grid-cols-3 items-start pt-1">
-                <label className="text-sm mt-2 font-medium">Ghi chú</label>
-                <textarea
-                  className="col-span-2 border px-3 py-1 rounded"
-                  value={form.note}
-                  onChange={(e) => setForm({ ...form, note: e.target.value })}
-                />
+                <div className="grid grid-cols-3 items-center pt-1">
+                  <label className="text-sm font-medium">Phường</label>
+                  <input
+                    className="col-span-2 border px-3 py-1 rounded"
+                    value={form.ward}
+                    onChange={(e) => setForm({ ...form, ward: e.target.value })}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 items-center pt-1">
+                  <label className="text-sm font-medium">Địa chỉ</label>
+                  <input
+                    className="col-span-2 border px-3 py-1 rounded"
+                    value={form.address_detail}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        address_detail: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 items-start pt-1">
+                  <label className="text-sm mt-2 font-medium">Ghi chú</label>
+                  <textarea
+                    className="col-span-2 border px-3 py-1 rounded"
+                    value={form.note}
+                    onChange={(e) => setForm({ ...form, note: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ================= SALARY TAB ================= */}
-        {tab === "salary" && (
-          <div className="flex flex-col gap-4">
-            <select
-              value={form.salary_type}
-              onChange={(e) =>
-                setForm({ ...form, salary_type: e.target.value })
-              }
-              className="border px-3 py-2 rounded"
-            >
-              <option value="FIXED">Lương cố định (Fulltime)</option>
-              <option value="HOURLY">Lương theo giờ (Parttime)</option>
-            </select>
-
-            <input
-              type="number"
-              placeholder="Nhập mức lương"
-              value={form.salary_amount}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  salary_amount: e.target.value,
-                })
-              }
-              className="border px-3 py-2 rounded"
-            />
-
-            <div className="text-sm text-gray-500">
-              {form.salary_type === "FIXED"
-                ? "Đơn vị: triệu / tháng"
-                : "Đơn vị: nghìn / giờ"}
-            </div>
-
-            <div className="flex gap-2">
-              <button className="bg-blue-500 text-white px-3 py-2 rounded">
-                + Tạo biểu mẫu
-              </button>
-
-              <select
-                value={form.salary_template}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    salary_template: e.target.value,
-                  })
-                }
-                className="border px-3 py-2 rounded"
-              >
-                <option value="">Chọn biểu mẫu lương</option>
-                <option value="template1">Mẫu 1</option>
-                <option value="template2">Mẫu 2</option>
-              </select>
-            </div>
-          </div>
-        )}
+          {/* ================= SALARY TAB ================= */}
+          {tab === "salary" && (
+            <StaffSalaryForm initialData={initialData} onClose={onClose} />
+          )}
+        </div>
 
         {/* ACTION */}
-        <div className="flex justify-end gap-2 mt-6">
+        <div className="flex justify-end gap-2 px-6 py-4 border-t bg-white">
           <button onClick={onClose} className="px-4 py-2 border rounded">
             Hủy
           </button>

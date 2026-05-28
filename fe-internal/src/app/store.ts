@@ -16,6 +16,16 @@ import treatmentReducer from "../features/treatment/treatmentSlice";
 import doctorReducer from "../features/doctor/doctorSlice";
 import technicianReducer from "../features/technician/technicianSlice";
 import trackingReducer from "../features/tracking/trackingSlice";
+import salaryTemplateReducer from "../features/salary/salary-template/salary-templateSlice";
+import salaryAllowanceReducer from "../features/salary/salary-allowance/salary-allowanceSlice";
+import salaryDeductionReducer from "../features/salary/salary-deduction/salary-deductionSlice";
+import staffSalaryReducer from "../features/salary/staff-salary/staff-salarySlice";
+import payrollReducer from "../features/payroll/payrollSlice";
+import overtimeReducer from "../features/overtime/overtimeSlice";
+import discountReducer from "../features/discount/discountSlice";
+import paymentReducer from "../features/payment/paymentSlice";
+import dashboardReducer from "../features/dashboard/dashboardSlice";
+
 
 export const store = configureStore({
   reducer: {
@@ -36,6 +46,15 @@ export const store = configureStore({
     doctor: doctorReducer,
     technician: technicianReducer,
     tracking: trackingReducer,
+    salaryTemplates: salaryTemplateReducer,
+    salaryAllowance: salaryAllowanceReducer,
+    salaryDeduction: salaryDeductionReducer,
+    staffSalary: staffSalaryReducer,
+    payroll: payrollReducer,
+    overtime: overtimeReducer,
+    discount: discountReducer,
+    payment: paymentReducer,
+    dashboard: dashboardReducer,
   },
 });
 

@@ -21,6 +21,11 @@ import Treatment from "./pages/Treatment";
 import BookingForm from "./pages/BookingForm";
 import ManagerAssign from "./pages/ManagerAssign";
 import Technician from "./pages/Technician";
+import Payroll from "./pages/payroll/PayrollTable";
+import TimekeepingDaily from "./pages/TimekeepingDaily";
+import Discount from "./pages/Discount";
+import Payment from "./pages/Payment";
+import Customer from "./pages/Customer";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -45,6 +50,9 @@ export default function App() {
         {/* Public */}
         <Route path="/" element={<Login />} />
         <Route element={<MainLayout />} />
+
+        
+        <Route element={<MainLayout />}>
         <Route
           path="/trangchu"
           element={
@@ -53,7 +61,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route element={<MainLayout />}>
           <Route
             path="/chamcong"
             element={
@@ -119,6 +126,14 @@ export default function App() {
             }
           />
           <Route
+            path="/customer"
+            element={
+              <ProtectedRoute>
+                <Customer />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/service"
             element={
               <ProtectedRoute>
@@ -163,6 +178,38 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Technician />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/payroll"
+            element={
+              <ProtectedRoute>
+                <Payroll />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/timekeepingdaily"
+            element={
+              <ProtectedRoute>
+                <TimekeepingDaily />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/discount"
+            element={
+              <ProtectedRoute>
+                <Discount />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/payment/customer/:customerId"
+            element={
+              <ProtectedRoute>
+                <Payment />
               </ProtectedRoute>
             }
           />

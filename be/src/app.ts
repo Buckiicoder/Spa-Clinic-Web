@@ -18,10 +18,18 @@ import treatmentRoutes from "./routes/treatment.routes.js"
 import doctorRoutes from "./routes/doctor.routes.js"
 import technicianRoutes from "./routes/technician.routes.js"
 import trackingRoutes from "./routes/tracking.routes.js"
+import salaryTemplateRoutes from "./routes/salary/salary-template.routes.js"
+import salaryAllowanceRoutes from "./routes/salary/salary-allowance.routes.js"
+import salaryDeductionRoutes from "./routes/salary/salary-deduction.routes.js"
+import staffSalaryRoutes from "./routes/salary/staff-salary.routes.js"
+import payrollRoutes from "./routes/payroll.routes.js"
+import overtimeRoutes from "./routes/overtime.routes.js"
+import discountRoutes from "./routes/discount.routes.js"
+import paymentRoutes from "./routes/payment.routes.js"
+import dashboardRoutes from "./routes/dashboard.routes.js"
 import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
-import { timekeepingStatusEnum } from "./validators/timekeeping.schema.js";
 
 const app = express();
 
@@ -63,6 +71,15 @@ app.use("/api/treatment", treatmentRoutes);
 app.use("/api/doctor", doctorRoutes);
 app.use("/api/technician", technicianRoutes);
 app.use("/api/tracking", trackingRoutes);
+app.use("/api/salary/template", salaryTemplateRoutes);
+app.use("/api/salary/allowance", salaryAllowanceRoutes);
+app.use("/api/salary/deduction", salaryDeductionRoutes);
+app.use("/api/salary/staff", staffSalaryRoutes);
+app.use("/api/payroll", payrollRoutes);
+app.use("/api/overtime", overtimeRoutes);
+app.use("/api/discount", discountRoutes);
+app.use("/api/payment", paymentRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

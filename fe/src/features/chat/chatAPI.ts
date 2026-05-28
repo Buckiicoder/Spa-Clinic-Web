@@ -1,7 +1,6 @@
 import { api } from "../../services/api";
 
-export const sendMessageAPI = (data: {
+export const sendChatMessageAPI = (data: {
   message: string;
-  conversationId?: string | null;
-}) =>
-  api.post("/chat", data);
+  conversationId?: string;
+}) => api.post("/chat", data);
