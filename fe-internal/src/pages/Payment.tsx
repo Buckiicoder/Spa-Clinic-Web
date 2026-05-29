@@ -67,7 +67,7 @@ export default function Payment() {
 
   const [note, setNote] = useState("");
 
-  // const [page, setPage] = useState(1);
+  const [page, setPage] = useState(1);
 
   const [limit, setLimit] = useState(10);
 
@@ -95,6 +95,10 @@ export default function Payment() {
   useEffect(() => {
     setSelectedDiscount(null);
   }, [selectedProfile?.profile_id]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [profileList.length]);
 
   useEffect(() => {
     if (!selectedProfile) return;
@@ -183,14 +187,13 @@ export default function Payment() {
     }
   }, [paymentSummary.remaining]);
 
-const totalPages = Math.max(
-  1,
-  Math.ceil(profileList.length / limit),
-);
+  useEffect(() => {
+    setPage(1);
+  }, [limit]);
 
-const paginatedProfiles = useMemo(() => {
-  return profileList.slice(0, limit);
-}, [profileList, limit]);
+  const totalPages = Math.ceil(profileList.length / limit);
+
+  const paginatedProfiles = profileList.slice((page - 1) * limit, page * limit);
 
   const handleCreatePayment = async () => {
     if (!selectedProfile) return;
@@ -431,7 +434,9 @@ const paginatedProfiles = useMemo(() => {
 
             <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <p className="text-sm text-gray-500">
-                {profileList.length || 0} bản ghi
+                {profileList.length === 0 ? 0 : (page - 1) * limit + 1}–
+                {Math.min(page * limit, profileList.length)} trên{" "}
+                {profileList.length} bản ghi
               </p>
 
               <div className="flex flex-col items-start gap-4 lg:flex-row lg:items-center">
@@ -440,7 +445,10 @@ const paginatedProfiles = useMemo(() => {
 
                   <select
                     value={limit}
-                    onChange={(e) => setLimit(Number(e.target.value))}
+                    onChange={(e) => {
+                      setLimit(Number(e.target.value));
+                      setPage(1);
+                    }}
                     className="h-10 rounded-xl border border-gray-200 bg-white px-4 outline-none"
                   >
                     <option value={10}>10</option>
@@ -453,23 +461,39 @@ const paginatedProfiles = useMemo(() => {
 
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-medium text-gray-700">
-                    Hiển thị {paginatedProfiles.length} / {profileList.length}
+                    Trang {page} trên {totalPages || 1}
                   </span>
 
                   <div className="flex items-center gap-2">
-                    <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-400">
+                    <button
+                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-400 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={page === 1}
+                      onClick={() => setPage(1)}
+                    >
                       <ChevronsLeft size={18} />
                     </button>
 
-                    <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-400">
+                    <button
+                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-400 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={page === 1}
+                      onClick={() => setPage((prev) => prev - 1)}
+                    >
                       <ChevronLeft size={18} />
                     </button>
 
-                    <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-400">
+                    <button
+                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-400 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={page === totalPages || totalPages === 0}
+                      onClick={() => setPage((prev) => prev + 1)}
+                    >
                       <ChevronRight size={18} />
                     </button>
 
-                    <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-400">
+                    <button
+                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-400 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={page === totalPages || totalPages === 0}
+                      onClick={() => setPage(totalPages)}
+                    >
                       <ChevronsRight size={18} />
                     </button>
                   </div>

@@ -24,9 +24,9 @@ export const createOvertimeRequestAPI = (data: {
 
   work_date: string;
 
-  request_start_time: string | null;
+  requested_start_time: string | null;
 
-  request_end_time: string | null;
+  requested_end_time: string | null;
 
   requested_minutes?: number;
 
