@@ -5,30 +5,28 @@ let io: Server;
 
 export const initSocket = (server: http.Server) => {
   const allowedOrigins = [
-  process.env.CLIENT_URL,
-  process.env.CLIENT_URL_PREVIEW,
-  "http://localhost:5173",
-  "http://localhost:5174",
-].filter(Boolean);
+    process.env.CLIENT_URL,
+    process.env.CLIENT_URL_PREVIEW,
+    "http://localhost:5173",
+    "http://localhost:5174",
+  ].filter(Boolean);
 
-io = new Server(server, {
-  cors: {
-    origin: (origin, callback) => {
-      if (!origin) {
-        return callback(null, true);
-      }
+  io = new Server(server, {
+    cors: {
+      origin: (origin, callback) => {
+        if (!origin) {
+          return callback(null, true);
+        }
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
 
-      return callback(
-        new Error(`Socket CORS blocked: ${origin}`),
-      );
+        return callback(new Error(`Socket CORS blocked: ${origin}`));
+      },
+      credentials: true,
     },
-    credentials: true,
-  },
-});
+  });
 
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
@@ -43,8 +41,8 @@ io = new Server(server, {
     });
 
     socket.on("join-manager", () => {
-  socket.join("manager");
-});
+      socket.join("manager");
+    });
   });
 
   return io;
