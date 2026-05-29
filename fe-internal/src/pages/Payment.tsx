@@ -67,7 +67,7 @@ export default function Payment() {
 
   const [note, setNote] = useState("");
 
-  const [page, setPage] = useState(1);
+  // const [page, setPage] = useState(1);
 
   const [limit, setLimit] = useState(10);
 
@@ -183,7 +183,14 @@ export default function Payment() {
     }
   }, [paymentSummary.remaining]);
 
-  const totalPages = 1;
+const totalPages = Math.max(
+  1,
+  Math.ceil(profileList.length / limit),
+);
+
+const paginatedProfiles = useMemo(() => {
+  return profileList.slice(0, limit);
+}, [profileList, limit]);
 
   const handleCreatePayment = async () => {
     if (!selectedProfile) return;
@@ -352,7 +359,7 @@ export default function Payment() {
 
                   <tbody>
                     {!loading &&
-                      profileList.map((item: CustomerUnpaidProfile) => {
+                      paginatedProfiles.map((item: CustomerUnpaidProfile) => {
                         const active =
                           selectedProfile?.profile_id === item.profile_id;
 
@@ -446,7 +453,7 @@ export default function Payment() {
 
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-medium text-gray-700">
-                    Trang {page} trên {totalPages}
+                    Hiển thị {paginatedProfiles.length} / {profileList.length}
                   </span>
 
                   <div className="flex items-center gap-2">

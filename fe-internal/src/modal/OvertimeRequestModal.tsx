@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
-import { formatTimeForInput } from "../utils/generalFunction";
+// import { formatTimeForInput } from "../utils/generalFunction";
 
 interface Props {
   open: boolean;
@@ -67,44 +67,43 @@ export default function OvertimeRequestModal({
     }
 
     if (overtimeRequest) {
-  setRequestedStartTime(
-    formatTimeForInput(
-      overtimeRequest.requested_start_time,
-    ),
-  );
+      const extractTime = (value?: string | null) => {
+        if (!value) return "";
 
-  setRequestedEndTime(
-    formatTimeForInput(
-      overtimeRequest.requested_end_time,
-    ),
-  );
+        // yyyy-mm-ddTHH:mm:ss
+        if (value.includes("T")) {
+          return value.slice(11, 16);
+        }
 
-  setReason(overtimeRequest.reason || "");
-}
+        // fallback cho trường hợp chỉ có HH:mm:ss
+        return value.slice(0, 5);
+      };
+
+      setRequestedStartTime(extractTime(overtimeRequest.requested_start_time));
+
+      setRequestedEndTime(extractTime(overtimeRequest.requested_end_time));
+
+      setReason(overtimeRequest.reason || "");
+    }
   }, [open, mode, overtimeRequest, defaultStartTime]);
 
   const requestedMinutes = useMemo(() => {
-    // =========================
-    // MANAGER MODE
-    // =========================
-
     if (mode === "manager") {
       return Number(overtimeRequest?.requested_minutes || 0);
     }
-
-    // =========================
-    // EMPLOYEE MODE
-    // =========================
 
     if (!requestedStartTime || !requestedEndTime) {
       return 0;
     }
 
-    const start = new Date(`2000-01-01T${requestedStartTime}`);
+    const [startHour, startMinute] = requestedStartTime.split(":").map(Number);
 
-    const end = new Date(`2000-01-01T${requestedEndTime}`);
+    const [endHour, endMinute] = requestedEndTime.split(":").map(Number);
 
-    const diff = Math.floor((end.getTime() - start.getTime()) / 1000 / 60);
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+
+    const diff = endMinutes - startMinutes;
 
     return diff > 0 ? diff : 0;
   }, [requestedStartTime, requestedEndTime, overtimeRequest, mode]);
