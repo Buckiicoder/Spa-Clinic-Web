@@ -6,7 +6,7 @@ import {
   ChevronsRight,
   PackagePlus,
   Search,
-  X,
+  // X,
   Trash2,
   Plus,
 } from "lucide-react";
@@ -16,6 +16,7 @@ import {
   selectInventoryTransactionLoading,
   selectInventoryTransactions,
   createInventoryTransaction,
+  
 } from "../features/inventoryTransaction/inventoryTransactionSlice";
 import { formatPrice } from "../features/product/productFunction";
 import InventoryModal from "../modal/InventoryModal";
@@ -336,13 +337,13 @@ export default function Inventory() {
         onSubmit={async (data) => {
           try {
             if (selectedTransaction) {
-              await dispatch(
-                updateInventoryTransaction({
-                  id: selectedTransaction.id,
-                  data,
-                }),
-              ).unwrap();
-            } else {
+            //   await dispatch(
+            //     updateInventoryTransaction({
+            //       id: selectedTransaction.id,
+            //       data,
+            //     }),
+            //   ).unwrap();
+            // } else {
               await dispatch(createInventoryTransaction(data)).unwrap();
             }
 

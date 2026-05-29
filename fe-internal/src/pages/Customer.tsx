@@ -10,7 +10,7 @@ import {
   Phone,
   Mail,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../app/hook";
 import { getImageUrl } from "../features/product/productFunction";
 
@@ -26,7 +26,7 @@ import CreateCustomer from "../modal/CreateCustomer";
 
 export default function Customer() {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const customers = useAppSelector(selectCustomers);
   const loading = useAppSelector(selectCustomerLoading);

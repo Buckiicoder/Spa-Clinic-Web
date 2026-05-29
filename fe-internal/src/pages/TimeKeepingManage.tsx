@@ -73,10 +73,10 @@ export default function TimeKeepingManage() {
     "ALL" | "FULLTIME" | "PARTTIME"
   >("ALL");
 
-  const hasSchedule = (day: number) => {
-    const date = formatDate(day);
-    return days?.some((d: any) => d.work_date === date);
-  };
+  // const hasSchedule = (day: number) => {
+  //   const date = formatDate(day);
+  //   return days?.some((d: any) => d.work_date === date);
+  // };
 
   const safeToISO = (value?: string) => {
     if (!value) return undefined;
@@ -398,189 +398,195 @@ export default function TimeKeepingManage() {
               ))}
             </div>
 
-            {/* Weekdays */}
-            <div
-              className="grid grid-cols-7 text-center text-xs font-semibold py-1
+            {loading ? (
+              <div className="py-20 text-center text-gray-400">
+                Đang tải lịch làm...
+              </div>
+            ) : (
+              <>
+                {/* Weekdays */}
+                <div
+                  className="grid grid-cols-7 text-center text-xs font-semibold py-1
             mb-1 bg-amber-600 border rounded-xl text-white"
-            >
-              {weekdays.map((d) => (
-                <div key={d}>{d}</div>
-              ))}
-            </div>
+                >
+                  {weekdays.map((d) => (
+                    <div key={d}>{d}</div>
+                  ))}
+                </div>
 
-            {/* Calendar compact */}
-            <div className="grid grid-cols-7 gap-1">
-              {calendar.map((day, index) => {
-                const date = formatDate(day.day);
+                {/* Calendar compact */}
+                <div className="grid grid-cols-7 gap-1">
+                  {calendar.map((day, index) => {
+                    const date = formatDate(day.day);
 
-                const schedules = day.isCurrentMonth
-                  ? groupedByDate[date] || []
-                  : [];
+                    const schedules = day.isCurrentMonth
+                      ? groupedByDate[date] || []
+                      : [];
 
-                return (
-                  <div
-                    key={index}
-                    className={`min-h-[150px] rounded-2xl border p-2 flex flex-col gap-2 transition
+                    return (
+                      <div
+                        key={index}
+                        className={`min-h-[150px] rounded-2xl border p-2 flex flex-col gap-2 transition
           ${
             day.isCurrentMonth
               ? "bg-white hover:border-amber-400 hover:shadow"
               : "bg-gray-100 text-gray-400"
           }
         `}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-[15px] px-1">
-                        {day.day}
-                      </span>
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-[15px] px-1">
+                            {day.day}
+                          </span>
 
-                      {schedules.length > 0 && (
-                        <span className="text-[12px] px-3 py-1 rounded-full bg-amber-100 text-amber-700">
-                          {schedules.length} ca
-                        </span>
-                      )}
-                    </div>
+                          {schedules.length > 0 && (
+                            <span className="text-[12px] px-3 py-1 rounded-full bg-amber-100 text-amber-700">
+                              {schedules.length} ca
+                            </span>
+                          )}
+                        </div>
 
-                    <div className="flex flex-col gap-2 overflow-y-auto max-h-full pr-1">
-                      {schedules.map((schedule: any, idx: number) => {
-                        const shift = shifts.find(
-                          (s: any) =>
-                            Number(s.id) === Number(schedule.shift_id),
-                        );
+                        <div className="flex flex-col gap-2 overflow-y-auto max-h-full pr-1">
+                          {schedules.map((schedule: any, idx: number) => {
+                            const shift = shifts.find(
+                              (s: any) =>
+                                Number(s.id) === Number(schedule.shift_id),
+                            );
 
-                        return (
-                          <button
-                            key={`${date}-${schedule.employee_type}-${schedule.shift_id}-${idx}`}
-                            onClick={() =>
-                              navigate(
-                                `/timekeeping/detail?date=${date}&shift=${schedule.shift_id}&type=${schedule.employee_type}`,
-                              )
-                            }
-                            className={`w-full text-left rounded-xl border p-2 transition hover:shadow-sm
+                            return (
+                              <button
+                                key={`${date}-${schedule.employee_type}-${schedule.shift_id}-${idx}`}
+                                onClick={() =>
+                                  navigate(
+                                    `/timekeeping/detail?date=${date}&shift=${schedule.shift_id}&type=${schedule.employee_type}`,
+                                  )
+                                }
+                                className={`w-full text-left rounded-xl border p-2 transition hover:shadow-sm
                   ${
                     schedule.employee_type === "FULLTIME"
                       ? "bg-blue-50 border-blue-200 hover:border-blue-300"
                       : "bg-green-50 border-green-200 hover:border-green-300"
                   }
                 `}
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm font-semibold truncate">
-                                  {shift?.name || "Ca làm"}
-                                </div>
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-sm font-semibold truncate">
+                                      {shift?.name || "Ca làm"}
+                                    </div>
 
-                                <div className="text-xs text-gray-600 mt-0.5">
-                                  {shift?.start_time?.slice(0, 5)} -{" "}
-                                  {shift?.end_time?.slice(0, 5)}
-                                </div>
-                              </div>
+                                    <div className="text-xs text-gray-600 mt-0.5">
+                                      {shift?.start_time?.slice(0, 5)} -{" "}
+                                      {shift?.end_time?.slice(0, 5)}
+                                    </div>
+                                  </div>
 
-                              <div
-                                className={`text-[9px] px-2 py-1 rounded-full font-medium whitespace-nowrap
+                                  <div
+                                    className={`text-[9px] px-2 py-1 rounded-full font-medium whitespace-nowrap
                       ${
                         schedule.employee_type === "FULLTIME"
                           ? "bg-blue-100 text-blue-700"
                           : "bg-green-100 text-green-700"
                       }
                     `}
-                              >
-                                {schedule.employee_type === "FULLTIME"
-                                  ? "FT"
-                                  : "PT"}
-                              </div>
+                                  >
+                                    {schedule.employee_type === "FULLTIME"
+                                      ? "FT"
+                                      : "PT"}
+                                  </div>
+                                </div>
+
+                                {schedule.employee_type === "FULLTIME" ? (
+                                  <div className="mt-2 flex flex-col gap-2">
+                                    <div className="flex items-center justify-between rounded-lg bg-red-50 border border-red-200 px-2 py-1.5">
+                                      <span className="text-[11px] font-medium text-red-700">
+                                        Chờ duyệt nghỉ
+                                      </span>
+
+                                      <span className="min-w-[24px] text-center text-xs font-bold text-red-700 bg-white border border-red-200 rounded-full px-2 py-0.5">
+                                        {
+                                          schedule.leaveEmployees?.filter(
+                                            (employee: any) =>
+                                              employee.status === "PENDING",
+                                          ).length
+                                        }
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-center justify-between rounded-lg bg-gray-50 border border-gray-200 px-2 py-1.5">
+                                      <span className="text-[11px] font-medium text-gray-700">
+                                        Đã duyệt nghỉ
+                                      </span>
+
+                                      <span className="min-w-[24px] text-center text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-full px-2 py-0.5">
+                                        {
+                                          schedule.leaveEmployees?.filter(
+                                            (employee: any) =>
+                                              employee.status === "OFF",
+                                          ).length
+                                        }
+                                      </span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="mt-2 flex flex-col gap-2">
+                                    <div className="flex items-center justify-between rounded-lg bg-yellow-50 border border-yellow-200 px-2 py-1.5">
+                                      <span className="text-[11px] font-medium text-yellow-700">
+                                        Chờ duyệt đi làm
+                                      </span>
+
+                                      <span className="min-w-[24px] text-center text-xs font-bold text-yellow-700 bg-white border border-yellow-200 rounded-full px-2 py-0.5">
+                                        {
+                                          schedule.workEmployees?.filter(
+                                            (employee: any) =>
+                                              employee.status === "PENDING",
+                                          ).length
+                                        }
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-center justify-between rounded-lg bg-green-50 border border-green-200 px-2 py-1.5">
+                                      <span className="text-[11px] font-medium text-green-700">
+                                        Đã duyệt đi làm
+                                      </span>
+
+                                      <span className="min-w-[24px] text-center text-xs font-bold text-green-700 bg-white border border-green-200 rounded-full px-2 py-0.5">
+                                        {
+                                          schedule.workEmployees?.filter(
+                                            (employee: any) =>
+                                              employee.status === "SCHEDULED",
+                                          ).length
+                                        }
+                                      </span>
+                                    </div>
+
+                                    <div className="text-[11px] text-right text-red-500 font-bold">
+                                      Tổng: {schedule.workCount}/
+                                      {schedule.max_employee}
+                                    </div>
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+
+                          {day.isCurrentMonth && schedules.length === 0 && (
+                            <div className="text-[10px] text-gray-400 italic mt-1">
+                              Không có ca
                             </div>
-
-                            {schedule.employee_type === "FULLTIME" ? (
-                              <div className="mt-2 flex flex-col gap-2">
-                                <div className="flex items-center justify-between rounded-lg bg-red-50 border border-red-200 px-2 py-1.5">
-                                  <span className="text-[11px] font-medium text-red-700">
-                                    Chờ duyệt nghỉ
-                                  </span>
-
-                                  <span className="min-w-[24px] text-center text-xs font-bold text-red-700 bg-white border border-red-200 rounded-full px-2 py-0.5">
-                                    {
-                                      schedule.leaveEmployees?.filter(
-                                        (employee: any) =>
-                                          employee.status === "PENDING",
-                                      ).length
-                                    }
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center justify-between rounded-lg bg-gray-50 border border-gray-200 px-2 py-1.5">
-                                  <span className="text-[11px] font-medium text-gray-700">
-                                    Đã duyệt nghỉ
-                                  </span>
-
-                                  <span className="min-w-[24px] text-center text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-full px-2 py-0.5">
-                                    {
-                                      schedule.leaveEmployees?.filter(
-                                        (employee: any) =>
-                                          employee.status === "OFF",
-                                      ).length
-                                    }
-                                  </span>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="mt-2 flex flex-col gap-2">
-                                <div className="flex items-center justify-between rounded-lg bg-yellow-50 border border-yellow-200 px-2 py-1.5">
-                                  <span className="text-[11px] font-medium text-yellow-700">
-                                    Chờ duyệt đi làm
-                                  </span>
-
-                                  <span className="min-w-[24px] text-center text-xs font-bold text-yellow-700 bg-white border border-yellow-200 rounded-full px-2 py-0.5">
-                                    {
-                                      schedule.workEmployees?.filter(
-                                        (employee: any) =>
-                                          employee.status === "PENDING",
-                                      ).length
-                                    }
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center justify-between rounded-lg bg-green-50 border border-green-200 px-2 py-1.5">
-                                  <span className="text-[11px] font-medium text-green-700">
-                                    Đã duyệt đi làm
-                                  </span>
-
-                                  <span className="min-w-[24px] text-center text-xs font-bold text-green-700 bg-white border border-green-200 rounded-full px-2 py-0.5">
-                                    {
-                                      schedule.workEmployees?.filter(
-                                        (employee: any) =>
-                                          employee.status === "SCHEDULED",
-                                      ).length
-                                    }
-                                  </span>
-                                </div>
-
-                                <div className="text-[11px] text-right text-red-500 font-bold">
-                                  Tổng: {schedule.workCount}/
-                                  {schedule.max_employee}
-                                </div>
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-
-                      {day.isCurrentMonth && schedules.length === 0 && (
-                        <div className="text-[10px] text-gray-400 italic mt-1">
-                          Không có ca
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         )}
 
         {/* PAYROLL TAB */}
-          {tab === "payroll" && (
-            <PayrollTable embedded />
-          )}
+        {tab === "payroll" && <PayrollTable embedded />}
       </div>
       <ShiftModal
         open={openModal}

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ChevronDown,
+  // ChevronDown,
   ChevronsLeft,
   ChevronsRight,
   ChevronLeft,
   ChevronRight,
   Image as ImageIcon,
-  MoreHorizontal,
-  Pencil,
+  // MoreHorizontal,
+  // Pencil,
   Plus,
   Search,
 } from "lucide-react";
@@ -42,7 +42,7 @@ export default function Product() {
   }, [dispatch]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter((item) => {
+    return products.filter((item: any) => {
       const keyword = search.toLowerCase();
 
       const matchSearch =

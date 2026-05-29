@@ -61,7 +61,7 @@ export default function TimekeepingDaily() {
 
     socket.emit("join-manager");
 
-    socket.on("overtime:created", (data) => {
+    socket.on("overtime:created", (data: any) => {
       console.log("OT REALTIME:", data);
 
       setRealtimeOtMap((prev) => ({
@@ -335,10 +335,36 @@ export default function TimekeepingDaily() {
         </div>
 
         {/* FOOTER */}
-        <div className="mt-5 flex items-center justify-between">
-          <p className="text-sm text-gray-500">
-            Tổng: {filtered.length} bản ghi
-          </p>
+        <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-4">
+  <p className="text-sm text-gray-500">
+    Tổng: {filtered.length} bản ghi
+  </p>
+
+  <div className="flex items-center gap-2">
+    <span className="text-sm text-gray-500">
+      Hiển thị
+    </span>
+
+    <select
+      value={limit}
+      onChange={(e) => {
+        setLimit(Number(e.target.value));
+        setPage(1);
+      }}
+      className="rounded-lg border px-2 py-1 text-sm"
+    >
+      <option value={5}>5</option>
+      <option value={10}>10</option>
+      <option value={20}>20</option>
+      <option value={50}>50</option>
+    </select>
+
+    <span className="text-sm text-gray-500">
+      dòng
+    </span>
+  </div>
+</div>
 
           <div className="flex items-center gap-2">
             <button

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import {
   createSalaryTemplate,
   fetchSalaryTemplates,
-  fetchSalaryTemplateDetail,
+  // fetchSalaryTemplateDetail,
 } from "../features/salary/salary-template/salary-templateSlice";
 
 import {
@@ -588,7 +588,7 @@ useEffect(() => {
                     </thead>
 
                     <tbody>
-                      {form.allowances.map((item: any, index) => (
+                      {form.allowances.map((item: any, index: number) => (
                         <tr key={index}>
                           <td className="border px-2 py-2 text-sm">
                             {item.name}
@@ -676,7 +676,7 @@ useEffect(() => {
                                   ...form,
 
                                   allowances: form.allowances.filter(
-                                    (_: any, i) => i !== index,
+                                    (_: any, i: number) => i !== index,
                                   ),
                                 });
                               }}
@@ -809,7 +809,7 @@ useEffect(() => {
                     </thead>
 
                     <tbody>
-                      {form.deductions.map((item: any, index) => (
+                      {form.deductions.map((item: any, index: number) => (
                         <tr key={index}>
                           <td className="border px-2 py-2 text-sm">
                             {item.name}
@@ -923,7 +923,7 @@ useEffect(() => {
                                   ...form,
 
                                   deductions: form.deductions.filter(
-                                    (_: any, i) => i !== index,
+                                    (_: any, i: number) => i !== index,
                                   ),
                                 });
                               }}

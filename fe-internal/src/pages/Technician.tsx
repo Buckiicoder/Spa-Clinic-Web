@@ -39,7 +39,7 @@ export default function Technician() {
   const [activeStepIndex, setActiveStepIndex] = useState(0);
 
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [stepStartedAt, setStepStartedAt] = useState<number | null>(null);
+  // const [stepStartedAt, setStepStartedAt] = useState<number | null>(null);
   const processingStepRef = useRef(false);
 
   const intervalRef = useRef<any>(null);
@@ -197,7 +197,7 @@ export default function Technician() {
   useEffect(() => {
     setActiveStepIndex(0);
     setElapsedSeconds(0);
-    setStepStartedAt(null);
+    // setStepStartedAt(null);
   }, [selectedSession?.id]);
 
   const steps = useMemo(() => {
@@ -235,7 +235,7 @@ export default function Technician() {
 
     const startedTime = new Date(currentStep.started_at).getTime();
 
-    setStepStartedAt(startedTime);
+    // setStepStartedAt(startedTime);
 
     clearInterval(intervalRef.current);
 
@@ -354,7 +354,7 @@ export default function Technician() {
     await dispatch(startTrackingSession(selectedSession.id));
     await dispatch(fetchMySessions());
     await dispatch(fetchSessionDetail(selectedSession.id));
-    setStepStartedAt(Date.now());
+    // setStepStartedAt(Date.now());
   };
 
   return (

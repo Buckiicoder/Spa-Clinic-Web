@@ -387,7 +387,7 @@ export default function DoctorExamination() {
                           setSelectedPackages((prev) => {
                             if (prev.find((x) => x.id === p.id)) return prev;
 
-                            const sessions = Array.from(
+                            Array.from(
                               { length: p.total_sessions },
                               (_, i) => ({
                                 session_no: i + 1,

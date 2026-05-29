@@ -2,7 +2,6 @@ import { useMemo, useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useAppSelector } from "../app/hook";
 import {
-  saveTreatmentPlan,
   selectCurrentPlan,
 } from "../features/treatment/treatmentSlice";
 import { useAppDispatch } from "../app/hook";
@@ -214,14 +213,7 @@ useEffect(() => {
       return;
     }
 
-    await dispatch(
-      saveTreatmentPlan({
-        packageId: currentPlan.id,
-        data: buildPayload(),
-      }),
-    );
-
-    onClose();
+    await onSubmit(buildPayload());
   };
 
   // ================= UI =================

@@ -116,13 +116,13 @@ export const createOvertimeRequest = createAsyncThunk(
 
     work_date: string;
 
-    request_start_time?: string | null;
+    requested_start_time: string | null;
 
-    request_end_time?: string | null;
+    requested_end_time: string | null;
 
-    requested_minutes?: number;
+    requested_minutes: number;
 
-    reason?: string | null;
+    reason: string | null;
   }) => {
     const res = await createOvertimeRequestAPI(data);
 

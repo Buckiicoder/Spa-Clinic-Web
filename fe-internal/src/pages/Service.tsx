@@ -4,7 +4,7 @@ import {
   ChevronsRight,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
+  // ChevronDown,
   Plus,
   Search,
 } from "lucide-react";
@@ -213,14 +213,13 @@ export default function Service() {
               Chỉ hoạt động
             </label>
 
-<div className="min-w-52">
-<ServiceCategorySelect
-              services={services}
-              value={filterCategory}
-              onChange={setFilterCategory}
-            />
-</div>
-            
+            <div className="min-w-52">
+              <ServiceCategorySelect
+                services={services}
+                value={filterCategory}
+                onChange={setFilterCategory}
+              />
+            </div>
           </div>
         </div>
 
@@ -319,27 +318,61 @@ export default function Service() {
         </div>
 
         {/* FOOTER */}
-        <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:justify-between">
-          <span className="text-sm text-gray-500">
-            Tổng: {filteredServices.length}
-          </span>
+        <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          {/* LEFT */}
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-500">
+              Tổng: {filteredServices.length}
+            </span>
 
+            {/* LIMIT */}
+            <div className="flex items-center gap-2 text-sm">
+              <span>Hiển thị</span>
+
+              <select
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="rounded-lg border px-2 py-1"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+
+              <span>dòng</span>
+            </div>
+          </div>
+
+          {/* RIGHT */}
           <div className="flex items-center gap-3">
             <span>
               Trang {page}/{totalPage}
             </span>
 
-            <button disabled={page === 1} onClick={() => setPage(1)}>
+            <button
+              disabled={page === 1}
+              onClick={() => setPage(1)}
+              className="disabled:opacity-40"
+            >
               <ChevronsLeft size={18} />
             </button>
 
-            <button disabled={page === 1} onClick={() => setPage(page - 1)}>
+            <button
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              className="disabled:opacity-40"
+            >
               <ChevronLeft size={18} />
             </button>
 
             <button
               disabled={page === totalPage}
               onClick={() => setPage(page + 1)}
+              className="disabled:opacity-40"
             >
               <ChevronRight size={18} />
             </button>
@@ -347,6 +380,7 @@ export default function Service() {
             <button
               disabled={page === totalPage}
               onClick={() => setPage(totalPage)}
+              className="disabled:opacity-40"
             >
               <ChevronsRight size={18} />
             </button>

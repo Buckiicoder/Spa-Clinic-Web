@@ -204,7 +204,7 @@ export default function TimeKeeping() {
 
   const isWorking = todayRecord?.status === "WORKING";
   const isBreak = todayRecord?.status === "BREAK";
-  const isCompleted = todayRecord?.status === "COMPLETED";
+  // const isCompleted = todayRecord?.status === "COMPLETED";
 
   const isFulltime = employeeType === "FULLTIME";
   const isParttime = employeeType === "PARTTIME";
@@ -267,24 +267,24 @@ export default function TimeKeeping() {
 
   const canEndBreak = isFulltime && todayRecord?.status === "BREAK";
 
-  const todayStatusText = (() => {
-    if (!todayRecord) return "Chưa có lịch";
+  // const todayStatusText = (() => {
+  //   if (!todayRecord) return "Chưa có lịch";
 
-    if (todayRecord.status === "PENDING") {
-      return employeeType === "FULLTIME"
-        ? "Chờ duyệt nghỉ"
-        : "Chờ duyệt đi làm";
-    }
+  //   if (todayRecord.status === "PENDING") {
+  //     return employeeType === "FULLTIME"
+  //       ? "Chờ duyệt nghỉ"
+  //       : "Chờ duyệt đi làm";
+  //   }
 
-    if (todayRecord.status === "OFF") {
-      return employeeType === "FULLTIME" ? "Được nghỉ" : "Từ chối";
-    }
+  //   if (todayRecord.status === "OFF") {
+  //     return employeeType === "FULLTIME" ? "Được nghỉ" : "Từ chối";
+  //   }
 
-    if (todayRecord.check_out) return "Đã hoàn thành";
-    if (todayRecord.check_in) return "Đang làm";
+  //   if (todayRecord.check_out) return "Đã hoàn thành";
+  //   if (todayRecord.check_in) return "Đang làm";
 
-    return "Chưa chấm công";
-  })();
+  //   return "Chưa chấm công";
+  // })();
 
   // Phần hiển thị ngày đúng với thứ
   const firstDay = new Date(year, month - 1, 1).getDay();
@@ -705,11 +705,11 @@ export default function TimeKeeping() {
                 month === today.getMonth() + 1 &&
                 year === today.getFullYear();
 
-              const hasFinalStatus =
-                pendingDay ||
-                approvedWorkingDay ||
-                approvedOffDay ||
-                rejectedDay;
+              // const hasFinalStatus =
+              //   pendingDay ||
+              //   approvedWorkingDay ||
+              //   approvedOffDay ||
+              //   rejectedDay;
 
               return (
                 <div

@@ -3,7 +3,7 @@ import Navbar from "../components/Navbar";
 import { selectUser } from "../features/auth/authSlice";
 import { useSelector } from "react-redux";
 import { useAppDispatch } from "../app/hook";
-import { createBooking } from "../features/internalBooking/bookingSlice";
+import { createBookingStaff } from "../features/internalBooking/bookingSlice";
 import {
   fetchServices,
   selectServices,
@@ -113,7 +113,7 @@ export default function Booking() {
 
     try {
       await dispatch(
-        createBooking({
+        createBookingStaff({
           name: form.name,
           phone: form.phone,
           email: form.email,

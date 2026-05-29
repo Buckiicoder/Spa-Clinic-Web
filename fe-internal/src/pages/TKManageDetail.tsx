@@ -228,31 +228,31 @@ export default function TKManageDetail() {
     setCurrentYear(next.getFullYear());
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "OFF":
-        return "bg-green-100 text-green-700";
+  // const getStatusBadge = (status: string) => {
+  //   switch (status) {
+  //     case "OFF":
+  //       return "bg-green-100 text-green-700";
 
-      case "SCHEDULED":
-        return "bg-red-100 text-red-700";
+  //     case "SCHEDULED":
+  //       return "bg-red-100 text-red-700";
 
-      default:
-        return "bg-yellow-100 text-yellow-700";
-    }
-  };
+  //     default:
+  //       return "bg-yellow-100 text-yellow-700";
+  //   }
+  // };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "OFF":
-        return "Đã cho nghỉ";
+  // const getStatusText = (status: string) => {
+  //   switch (status) {
+  //     case "OFF":
+  //       return "Đã cho nghỉ";
 
-      case "SCHEDULED":
-        return "Không cho nghỉ";
+  //     case "SCHEDULED":
+  //       return "Không cho nghỉ";
 
-      default:
-        return "Chờ xác nhận nghỉ";
-    }
-  };
+  //     default:
+  //       return "Chờ xác nhận nghỉ";
+  //   }
+  // };
 
   const handleApproveOff = async (recordId: number) => {
     try {

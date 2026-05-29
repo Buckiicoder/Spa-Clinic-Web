@@ -5,7 +5,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Percent,
+  // Percent,
   Plus,
   Search,
 } from "lucide-react";

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { X, Image as ImageIcon, Save } from "lucide-react";
 
@@ -431,7 +431,7 @@ export default function CustomerDetailModal({
 
                   <button
                     onClick={handleSubmit}
-                    disabled={loading}
+                    disabled={submitting}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-5 py-3 font-semibold text-white transition hover:bg-amber-600"
                   >
                     <Save size={18} />

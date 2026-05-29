@@ -142,7 +142,6 @@ export default function BookingForm() {
   // search customer
   const searchCustomer = async (phone: string) => {
     if (phone.length < 3) {
-      setCustomers([]);
       return;
     }
 
@@ -355,7 +354,7 @@ export default function BookingForm() {
 
               {showDropdown && customers.length > 0 && (
                 <div className="absolute z-10 bg-white border rounded-xl shadow w-full mt-1 max-h-48 overflow-y-auto">
-                  {customers.map((c) => (
+                  {customers.map((c: any) => (
                     <div
                       key={c.id}
                       onClick={() => handleSelectCustomer(c)}
