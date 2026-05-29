@@ -41,11 +41,39 @@ const app = express();
 
 //reality
 const allowedOrigins = [
+  "https://www.spaclinic.online",
+  "https://spaclinic.online",
+  "https://api.spaclinic.online",
+
   process.env.CLIENT_URL,
   process.env.CLIENT_URL_PREVIEW,
+
   "http://localhost:5173",
   "http://localhost:5174",
 ].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Postman / server-server
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.log("❌ Blocked CORS Origin:", origin);
+
+      return callback(
+        new Error(`CORS blocked for origin: ${origin}`),
+      );
+    },
+
+    credentials: true,
+  }),
+);
 
 app.use(
   cors({
