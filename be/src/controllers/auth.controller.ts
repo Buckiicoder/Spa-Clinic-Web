@@ -1,10 +1,11 @@
-import { Request, Response } from 'express'
-import { loginSchema, registerSchema } from '../validators/auth.schema.js'
-import * as authService from '../services/auth.service.js'
-import { updateAvatarService } from '../services/auth.service.js' 
+import { Request, Response } from "express";
+import { loginSchema, registerSchema } from "../validators/auth.schema.js";
+import * as authService from "../services/auth.service.js";
+import { updateAvatarService } from "../services/auth.service.js";
 import { sendOTPEmail } from "../utils/mailer.js";
-import { UserRole } from '../types/user.js';
+import { UserRole } from "../types/user.js";
 import { signToken } from "../utils/jwt.js";
+import { customerCookieOptions, staffCookieOptions } from "../utils/cookie.js";
 
 export const customerRegister = async (req: Request, res: Response) => {
   try {
@@ -57,11 +58,15 @@ export const verifyOTP = async (req: Request, res: Response) => {
 
     const token = await authService.verifyOTPService(contact, otp);
 
-    res.cookie("customerAccessToken", token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-    });
+    //demo local
+    // res.cookie("customerAccessToken", token, {
+    //   httpOnly: true,
+    //   secure: false,
+    //   sameSite: "lax",
+    // });
+
+    //production
+    res.cookie("customerAccessToken", token, customerCookieOptions);
 
     return res.json({
       message: "Xác thực thành công",
@@ -75,10 +80,7 @@ export const customerLogin = async (req: Request, res: Response) => {
   try {
     const data = loginSchema.parse(req.body);
 
-    const user = await authService.loginService(
-      data.email,
-      data.password
-    );
+    const user = await authService.loginService(data.email, data.password);
 
     if (user.role !== "CUSTOMER") {
       return res.status(403).json({ message: "Forbidden" });
@@ -89,12 +91,16 @@ export const customerLogin = async (req: Request, res: Response) => {
       role: user.role,
     });
 
-    res.cookie("customerAccessToken", token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 24,
-    });
+    // demo local
+    // res.cookie("customerAccessToken", token, {
+    //   httpOnly: true,
+    //   secure: false,
+    //   sameSite: "lax",
+    //   maxAge: 1000 * 60 * 60 * 24,
+    // });
+
+    //production
+    res.cookie("customerAccessToken", token, customerCookieOptions);
 
     return res.json({ message: "Login success" });
   } catch (err: any) {
@@ -102,24 +108,22 @@ export const customerLogin = async (req: Request, res: Response) => {
   }
 };
 
-
-
 export const customerLogout = async (_req: Request, res: Response) => {
-  res.clearCookie('customerAccessToken')
+  //demo
+  // res.clearCookie('customerAccessToken')
 
+  //production
+  res.clearCookie("customerAccessToken", customerCookieOptions);
   return res.json({
-    message: 'Logout success'
-  })
-}
+    message: "Logout success",
+  });
+};
 
 export const staffLogin = async (req: Request, res: Response) => {
   try {
     const data = loginSchema.parse(req.body);
 
-    const user = await authService.loginService(
-      data.email,
-      data.password
-    );
+    const user = await authService.loginService(data.email, data.password);
 
     // 🔥 phân quyền tại controller
     if (user.role !== "STAFF" && user.role !== "MANAGER") {
@@ -131,12 +135,15 @@ export const staffLogin = async (req: Request, res: Response) => {
       role: user.role,
     });
 
-    res.cookie("staffAccessToken", token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 24,
-    });
+    //demo local
+    // res.cookie("staffAccessToken", token, {
+    //   httpOnly: true,
+    //   secure: false,
+    //   sameSite: "lax",
+    //   maxAge: 1000 * 60 * 60 * 24,
+    // });
+
+    res.cookie("staffAccessToken", token, staffCookieOptions);
 
     return res.json({ message: "Login success" });
   } catch (err: any) {
@@ -144,24 +151,26 @@ export const staffLogin = async (req: Request, res: Response) => {
   }
 };
 
-
 export const staffLogout = async (_req: Request, res: Response) => {
-  res.clearCookie('staffAccessToken')
+  // demo local
+  // res.clearCookie("staffAccessToken");
 
+  //production
+  res.clearCookie("staffAccessToken", staffCookieOptions);
   return res.json({
-    message: 'Logout success'
-  })
-}
+    message: "Logout success",
+  });
+};
 
 export const meCustomer = async (req: Request, res: Response) => {
-  if(!req.user) {
-    return res.status(401).json({message: 'Unauthorized'})
+  if (!req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
-  const user = await authService.getCustomerById(req.user.id)
+  const user = await authService.getCustomerById(req.user.id);
 
-  return res.json(user)
-}
+  return res.json(user);
+};
 
 export const meStaff = async (req: Request, res: Response) => {
   try {
@@ -181,13 +190,12 @@ export const meStaff = async (req: Request, res: Response) => {
   }
 };
 
-
 export const uploadAvatar = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
 
-    if(!req.file) {
-      return res.status(400).json({ message: "Chưa ảnh nào được chọn"});
+    if (!req.file) {
+      return res.status(400).json({ message: "Chưa ảnh nào được chọn" });
     }
 
     const avatarPath = `/uploads/${req.file.filename}`;
@@ -218,7 +226,7 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 //       data.email,
 //       data.password
 //     )
-    
+
 //     /*Set Cookie*/
 //     res.cookie('staffAccessToken', token, {
 //       httpOnly: true,

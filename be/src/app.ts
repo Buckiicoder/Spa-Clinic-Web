@@ -43,59 +43,36 @@ const app = express();
 const allowedOrigins = [
   "https://www.spaclinic.online",
   "https://spaclinic.online",
-  "https://api.spaclinic.online",
-
-  process.env.CLIENT_URL,
-  process.env.CLIENT_URL_PREVIEW,
+  "https://staff.spaclinic.online",
 
   "http://localhost:5173",
   "http://localhost:5174",
 ].filter(Boolean);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Postman / server-server
-      if (!origin) {
-        return callback(null, true);
-      }
+const corsOptions = {
+  origin: (origin: any, callback: any) => {
+    // Postman / server-to-server
+    if (!origin) {
+      return callback(null, true);
+    }
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
-      console.log("❌ Blocked CORS Origin:", origin);
+    console.log("❌ Blocked CORS Origin:", origin);
 
-      return callback(
-        new Error(`CORS blocked for origin: ${origin}`),
-      );
-    },
+    return callback(
+      new Error(`CORS blocked for origin: ${origin}`),
+    );
+  },
 
-    credentials: true,
-  }),
-);
+  credentials: true,
+};
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // cho phép request server-to-server hoặc postman
-      if (!origin) {
-        return callback(null, true);
-      }
+app.use(cors(corsOptions));
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(
-        new Error(`CORS blocked for origin: ${origin}`),
-      );
-    },
-    credentials: true,
-  }),
-);
-
-app.options("*", cors());
+app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 app.use("/api/auth", authRoutes);
