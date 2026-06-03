@@ -12,9 +12,26 @@ export interface InventoryTransaction {
   id: number;
   code: string;
   type: "IMPORT" | "EXPORT" | "ADJUST";
+  status: "DRAFT" | "CONFIRMED" | "CANCELLED";
   note?: string;
   total_extra_cost: number;
   transaction_date: string;
   created_at: string;
   items: InventoryTransactionItem[];
+}
+
+export interface InventoryTransactionPayload {
+  code: string;
+  type: "IMPORT" | "EXPORT" | "ADJUST";
+
+  note?: string;
+  total_extra_cost?: number;
+  transaction_date?: string;
+
+  items: {
+    product_id: number;
+    quantity: number;
+    unit_price: number;
+    note?: string;
+  }[];
 }

@@ -38,10 +38,10 @@ export const getCustomers = async ({
     COALESCE(profile_count.total_profiles, 0)
       AS total_profiles
 
-  FROM users u
+  FROM customers c
 
-  LEFT JOIN customers c
-    ON c.user_id = u.id
+  INNER JOIN users u
+    ON u.id = c.user_id
 
   LEFT JOIN (
     SELECT
@@ -88,14 +88,12 @@ export const getCustomers = async ({
     `
     SELECT COUNT(*)::int AS total
 
-    FROM users u
+    FROM customers c
 
-    LEFT JOIN customers c
-      ON c.user_id = u.id
+INNER JOIN users u
+  ON u.id = c.user_id
 
-    WHERE u.role = 'CUSTOMER'
-
-      AND (
+      WHERE (
         $1 = ''
         OR u.name ILIKE '%' || $1 || '%'
         OR u.phone ILIKE '%' || $1 || '%'
@@ -119,7 +117,9 @@ export const getCustomers = async ({
     `,
     [search, rank, status, is_active],
   );
-
+// console.log("limit:", limit);
+// console.log("rows:", result.rows.length);
+// console.log("total:", totalResult.rows[0].total);
   return {
     data: result.rows,
     pagination: {

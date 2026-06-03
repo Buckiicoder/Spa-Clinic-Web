@@ -7,16 +7,19 @@ import {
   PackagePlus,
   Search,
   // X,
-  Trash2,
-  Plus,
+  // Trash2,
+  // Plus,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../app/hook";
 import {
   fetchInventoryTransactions,
+  fetchInventoryTransactionById,
+  createInventoryTransaction,
+  updateInventoryTransaction,
+  confirmInventoryTransaction,
+  cancelInventoryTransaction,
   selectInventoryTransactionLoading,
   selectInventoryTransactions,
-  createInventoryTransaction,
-  
 } from "../features/inventoryTransaction/inventoryTransactionSlice";
 import { formatPrice } from "../features/product/productFunction";
 import InventoryModal from "../modal/InventoryModal";
@@ -31,6 +34,10 @@ export default function Inventory() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [typeFilter, setTypeFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  const [monthFilter, setMonthFilter] = useState("ALL");
+  const [yearFilter, setYearFilter] = useState("ALL");
 
   const [openModal, setOpenModal] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
@@ -39,19 +46,40 @@ export default function Inventory() {
     dispatch(fetchInventoryTransactions());
   }, [dispatch]);
 
+  const years = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+
+    return Array.from({ length: 6 }, (_, index) => String(currentYear - index));
+  }, []);
+
   const filteredData = useMemo(() => {
     return transactions.filter((item: any) => {
       const keyword = search.toLowerCase();
 
       const matchSearch =
-        item.code.toLowerCase().includes(keyword) ||
+        item.code?.toLowerCase().includes(keyword) ||
         (item.note || "").toLowerCase().includes(keyword);
 
       const matchType = typeFilter === "ALL" ? true : item.type === typeFilter;
 
-      return matchSearch && matchType;
+      const matchStatus =
+        statusFilter === "ALL" ? true : item.status === statusFilter;
+
+      const createdDate = new Date(item.created_at);
+
+      const createdMonth = createdDate.getMonth() + 1;
+
+      const createdYear = createdDate.getFullYear();
+
+      const matchMonth =
+        monthFilter === "ALL" ? true : createdMonth === Number(monthFilter);
+
+      const matchYear =
+        yearFilter === "ALL" ? true : createdYear === Number(yearFilter);
+
+      return matchSearch && matchType && matchStatus && matchMonth && matchYear;
     });
-  }, [transactions, search, typeFilter]);
+  }, [transactions, search, typeFilter, statusFilter, monthFilter, yearFilter]);
 
   const totalPage = Math.max(1, Math.ceil(filteredData.length / limit));
 
@@ -72,7 +100,10 @@ export default function Inventory() {
           </div>
 
           <button
-            onClick={() => setOpenModal(true)}
+            onClick={() => {
+              setSelectedTransaction(null);
+              setOpenModal(true);
+            }}
             className="flex items-center gap-2 rounded-xl bg-amber-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
           >
             <PackagePlus size={18} />
@@ -100,45 +131,79 @@ export default function Inventory() {
               />
             </div>
 
-            <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white p-1">
-              <button
-                onClick={() => setTypeFilter("ALL")}
-                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                  typeFilter === "ALL"
-                    ? "bg-black text-white"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                Tất cả
-              </button>
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
 
-              <button
-                className="flex items-center gap-2 rounded-xl bg-amber-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
-                onClick={() => {
-                  setSelectedTransaction(null);
-                  setOpenModal(true);
-                }}
-              >
-                <Plus size={18} />
-                Nhập kho
-              </button>
+                setPage(1);
+              }}
+              className="h-12 rounded-2xl border border-gray-200 px-4"
+            >
+              <option value="ALL">Tất cả trạng thái</option>
 
-              <button
-                onClick={() => setTypeFilter("EXPORT")}
-                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                  typeFilter === "EXPORT"
-                    ? "bg-red-600 text-white"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                Xuất kho
-              </button>
-            </div>
+              <option value="DRAFT">Nháp</option>
+
+              <option value="CONFIRMED">Đã xác nhận</option>
+
+              <option value="CANCELLED">Đã hủy</option>
+            </select>
+
+            <select
+              value={monthFilter}
+              onChange={(e) => {
+                setMonthFilter(e.target.value);
+
+                setPage(1);
+              }}
+              className="h-12 rounded-2xl border border-gray-200 px-4"
+            >
+              <option value="ALL">Tất cả tháng</option>
+
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                <option key={month} value={month}>
+                  Tháng {month}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={yearFilter}
+              onChange={(e) => {
+                setYearFilter(e.target.value);
+
+                setPage(1);
+              }}
+              className="h-12 rounded-2xl border border-gray-200 px-4"
+            >
+              <option value="ALL">Tất cả năm</option>
+
+              {years.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={() => {
+                setSearch("");
+                setTypeFilter("ALL");
+                setStatusFilter("ALL");
+                setMonthFilter("ALL");
+                setYearFilter("ALL");
+
+                setPage(1);
+              }}
+              className="h-12 rounded-2xl border border-gray-200 px-5 text-sm font-medium hover:bg-gray-50"
+            >
+              Reset
+            </button>
           </div>
         </div>
 
         {/* Summary */}
-        <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-3">
+        {/* <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-500">Tổng phiếu</p>
             <h2 className="mt-2 text-3xl font-bold text-black">
@@ -159,7 +224,7 @@ export default function Inventory() {
               {transactions.filter((x: any) => x.type === "EXPORT").length}
             </h2>
           </div>
-        </div>
+        </div> */}
 
         {/* Table */}
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
@@ -170,6 +235,7 @@ export default function Inventory() {
                   <th className="p-4 text-left">ID</th>
                   <th className="p-4 text-left">Mã phiếu</th>
                   <th className="p-4 text-left">Loại</th>
+                  <th className="p-4 text-left">Trạng thái</th>
                   <th className="p-4 text-left">Ngày tạo</th>
                   <th className="p-4 text-left">Ngày giao dịch</th>
                   <th className="p-4 text-left">Chi phí phát sinh</th>
@@ -183,7 +249,19 @@ export default function Inventory() {
                   paginatedData.map((item: any) => (
                     <tr
                       key={item.id}
-                      className="border-t transition hover:bg-amber-50"
+                      className="cursor-pointer border-t transition hover:bg-amber-50"
+                      onClick={async () => {
+                        try {
+                          const result = await dispatch(
+                            fetchInventoryTransactionById(item.id),
+                          ).unwrap();
+
+                          setSelectedTransaction(result);
+                          setOpenModal(true);
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
                     >
                       <td className="p-4 font-medium">#{item.id}</td>
 
@@ -202,6 +280,24 @@ export default function Inventory() {
                           }`}
                         >
                           {item.type === "IMPORT" ? "Nhập kho" : "Xuất kho"}
+                        </span>
+                      </td>
+
+                      <td className="p-4">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            item.status === "CONFIRMED"
+                              ? "bg-green-100 text-green-700"
+                              : item.status === "CANCELLED"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-yellow-100 text-yellow-700"
+                          }`}
+                        >
+                          {item.status === "CONFIRMED"
+                            ? "Đã xác nhận"
+                            : item.status === "CANCELLED"
+                              ? "Đã hủy"
+                              : "Nháp"}
                         </span>
                       </td>
 
@@ -227,12 +323,42 @@ export default function Inventory() {
 
                       <td className="p-4">
                         <div className="flex gap-2">
-                          <button className="rounded-lg bg-amber-500 px-3 py-1 text-xs text-white transition hover:bg-amber-600">
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+
+                              const result = await dispatch(
+                                fetchInventoryTransactionById(item.id),
+                              ).unwrap();
+
+                              setSelectedTransaction(result);
+                              setOpenModal(true);
+                            }}
+                            className="rounded-lg bg-amber-500 px-3 py-1 text-xs text-white"
+                          >
                             Chi tiết
                           </button>
 
-                          <button className="rounded-lg border border-red-200 px-3 py-1 text-xs text-red-600 transition hover:bg-red-50">
-                            <Trash2 size={14} />
+                          <button
+                            disabled={item.status !== "DRAFT"}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+
+                              if (
+                                !window.confirm(
+                                  "Bạn có chắc muốn hủy phiếu này?",
+                                )
+                              ) {
+                                return;
+                              }
+
+                              await dispatch(
+                                cancelInventoryTransaction(item.id),
+                              );
+                            }}
+                            className="rounded-lg border border-red-200 px-3 py-1 text-xs text-red-600 disabled:opacity-40"
+                          >
+                            Hủy
                           </button>
                         </div>
                       </td>
@@ -335,24 +461,38 @@ export default function Inventory() {
           setSelectedTransaction(null);
         }}
         onSubmit={async (data) => {
-          try {
-            if (selectedTransaction) {
-            //   await dispatch(
-            //     updateInventoryTransaction({
-            //       id: selectedTransaction.id,
-            //       data,
-            //     }),
-            //   ).unwrap();
-            // } else {
-              await dispatch(createInventoryTransaction(data)).unwrap();
-            }
-
-            setOpenModal(false);
-            setSelectedTransaction(null);
-          } catch (error) {
-            console.error(error);
-            alert("Lưu phiếu nhập thất bại");
+          if (selectedTransaction) {
+            await dispatch(
+              updateInventoryTransaction({
+                id: selectedTransaction.id,
+                data,
+              }),
+            ).unwrap();
+          } else {
+            await dispatch(createInventoryTransaction(data)).unwrap();
           }
+
+          await dispatch(fetchInventoryTransactions());
+        }}
+        onConfirm={async (data, transactionId) => {
+          let transaction;
+
+          if (transactionId) {
+            transaction = await dispatch(
+              updateInventoryTransaction({
+                id: transactionId,
+                data,
+              }),
+            ).unwrap();
+          } else {
+            transaction = await dispatch(
+              createInventoryTransaction(data),
+            ).unwrap();
+          }
+
+          await dispatch(confirmInventoryTransaction(transaction.id)).unwrap();
+
+          await dispatch(fetchInventoryTransactions());
         }}
       />
     </div>

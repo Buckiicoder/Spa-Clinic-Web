@@ -11,7 +11,9 @@ import { selectUser } from "../features/auth/authSlice";
 import {
   createTimekeeping,
   fetchTimekeeping,
+  fetchTimekeepingByDate,
   selectTimekeepingRecords,
+  selectSelectedDateRecords,
   checkIn,
   checkOut,
   startBreak,
@@ -38,11 +40,19 @@ export default function TimeKeeping() {
   const period = useSelector(selectSchedulePeriod);
   const user = useSelector(selectUser);
   const registeredRecords = useSelector(selectTimekeepingRecords);
+  const selectedDateRecords = useSelector(selectSelectedDateRecords);
   const branches = useSelector(selectBranches);
 
   const [checkingLocation, setCheckingLocation] = useState(false);
   const [locationError, setLocationError] = useState("");
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const today = new Date();
+  const todayStr = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+  const [selectedDate, setSelectedDate] = useState(todayStr);
 
   // mở modal Overtime để đăng ký
   const overtimeLoading = useAppSelector(selectOvertimeLoading);
@@ -53,14 +63,38 @@ export default function TimeKeeping() {
     return branches.find((b: any) => Number(b.id) === Number(user?.branch_id));
   }, [branches, user?.branch_id]);
 
+  //check record ngày
+  // useEffect(() => {
+  //   console.log("REGISTERED RECORDS");
+  //   console.table(
+  //     registeredRecords.map((x: any) => ({
+  //       work_date: x.work_date,
+  //       status: x.status,
+  //       check_in_time: x.check_in_time,
+  //       check_out_time: x.check_out_time,
+  //       shift_id: x.shift_id,
+  //     })),
+  //   );
+  // }, [registeredRecords]);
+
   useEffect(() => {
     dispatch(fetchBranches());
   }, [dispatch]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+
+    dispatch(
+      fetchTimekeepingByDate({
+        user_id: Number(user.id),
+        work_date: todayStr,
+      }) as any,
+    );
+  }, [dispatch, user?.id]);
+
   // console.log(user);
   const employeeType = user?.employee_type;
 
-  const today = new Date();
   const [currentDate, setCurrentDate] = useState(today);
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [selectedShifts, setSelectedShifts] = useState<
@@ -83,13 +117,44 @@ export default function TimeKeeping() {
   const isBeforeOpen = openFrom ? now < openFrom : false;
   const isAfterClose = openTo ? now > openTo : false;
 
-  const formatDate = (date: string) => {
-    const d = new Date(date);
+  // const STATUS_CONFIG = {
+  //   PENDING: {
+  //     cell: "...",
+  //     badge: "...",
+  //   },
 
-    d.setHours(d.getHours() + 7);
+  //   OFF: {
+  //     cell: "...",
+  //     badge: "...",
+  //   },
 
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  };
+  //   ABSENT: {
+  //     cell: "bg-gray-200 border-gray-500 text-gray-700",
+  //     badge: "bg-gray-600 text-white",
+  //   },
+
+  //   SCHEDULED: {
+  //     cell: "...",
+  //     badge: "...",
+  //   },
+
+  //   WORKING: {
+  //     cell: "...",
+  //     badge: "...",
+  //   },
+
+  //   BREAK: {
+  //     cell: "...",
+  //     badge: "...",
+  //   },
+
+  //   COMPLETED: {
+  //     cell: "...",
+  //     badge: "...",
+  //   },
+  // };
+
+  const formatDate = (date: string) => date;
 
   const formatDateTime = (value?: string | null) => {
     if (!value) return "--";
@@ -120,17 +185,22 @@ export default function TimeKeeping() {
 
   useEffect(() => {
     dispatch(fetchSchedule({ month, year }) as any);
+    if (!user?.id) return;
+    dispatch(
+      fetchTimekeeping({
+        month,
+        year,
+        user_id: Number(user.id),
+      }) as any,
+    );
 
-    if (user?.id) {
-      dispatch(
-        fetchTimekeeping({
-          month,
-          year,
-          user_id: Number(user.id),
-        }) as any,
-      );
-    }
-  }, [month, year, user?.id]);
+    dispatch(
+      fetchTimekeepingByDate({
+        user_id: Number(user.id),
+        work_date: selectedDate,
+      }) as any,
+    );
+  }, [dispatch, month, year, user?.id, selectedDate]);
 
   // dùng để check dữ liệu lấy về từ db cho lịch tháng
   // useEffect(() => {
@@ -172,11 +242,26 @@ export default function TimeKeeping() {
 
   const hasRegistered = registeredRecords.length > 0;
 
-  const todayStr = `${year}-${String(month).padStart(2, "0")}-${String(
-    today.getDate(),
-  ).padStart(2, "0")}`;
+  const todayRecords = registeredMap[todayStr] || [];
 
-  const todayRecord = registeredMap[todayStr]?.[0] || null;
+  const todayRecord =
+    todayRecords.find((x) => x.status === "WORKING" || x.status === "BREAK") ||
+    todayRecords.find((x) => x.status === "SCHEDULED") ||
+    todayRecords[0] ||
+    null;
+
+  const selectedRecord =
+    selectedDateRecords.find(
+      (x: any) => x.status === "WORKING" || x.status === "BREAK",
+    ) ||
+    selectedDateRecords[0] ||
+    null;
+
+  useEffect(() => {
+    console.log("selectedDate", selectedDate);
+    console.log("selectedDateRecords", selectedDateRecords);
+    console.log("selectedRecord", selectedRecord);
+  }, [selectedDate, selectedDateRecords, selectedRecord]);
 
   const todaySchedule = scheduleMap[todayStr]?.[0] || null;
 
@@ -209,6 +294,68 @@ export default function TimeKeeping() {
   const isFulltime = employeeType === "FULLTIME";
   const isParttime = employeeType === "PARTTIME";
 
+  const getRegistrationState = (record: any) => {
+    if (!record) return null;
+
+    if (isFulltime) {
+      switch (record.status) {
+        case "PENDING":
+          return "PENDING_OFF";
+
+        case "OFF":
+          return "OFF";
+
+        case "SCHEDULED":
+          return "SCHEDULED";
+
+        case "WORKING":
+          return "WORKING";
+
+        case "BREAK":
+          return "BREAK";
+
+        case "COMPLETED":
+          return "COMPLETED";
+
+        case "ABSENT":
+          return "ABSENT";
+
+        default:
+          return null;
+      }
+    }
+
+    if (isParttime) {
+      switch (record.status) {
+        case "PENDING":
+          return "PENDING_WORK";
+
+        case "OFF":
+          return "OFF";
+
+        case "SCHEDULED":
+          return "SCHEDULED";
+
+        case "WORKING":
+          return "WORKING";
+
+        case "BREAK":
+          return "BREAK";
+
+        case "COMPLETED":
+          return "COMPLETED";
+
+        case "ABSENT":
+          return "ABSENT";
+
+        default:
+          return null;
+      }
+    }
+
+    return null;
+  };
+
   const canCheckIn = (() => {
     if (!todayRecord || !shiftStart || !shiftEnd) return false;
 
@@ -220,17 +367,14 @@ export default function TimeKeeping() {
 
     // parttime: chỉ được checkin 1 lần
     if (isParttime) {
-      return (
-        ["SCHEDULED", "PENDING"].includes(todayRecord.status) &&
-        !todayRecord.check_in
-      );
+      return ["SCHEDULED"].includes(todayRecord.status);
     }
 
     // fulltime
     if (isFulltime) {
       // lần đầu vào ca
       if (!todayRecord.check_in) {
-        return ["SCHEDULED", "PENDING"].includes(todayRecord.status);
+        return todayRecord.status === "SCHEDULED";
       }
 
       // đã nghỉ trưa và đang ở trạng thái BREAK -> cho vào lại
@@ -266,25 +410,6 @@ export default function TimeKeeping() {
     !todayRecord?.break_start_time;
 
   const canEndBreak = isFulltime && todayRecord?.status === "BREAK";
-
-  // const todayStatusText = (() => {
-  //   if (!todayRecord) return "Chưa có lịch";
-
-  //   if (todayRecord.status === "PENDING") {
-  //     return employeeType === "FULLTIME"
-  //       ? "Chờ duyệt nghỉ"
-  //       : "Chờ duyệt đi làm";
-  //   }
-
-  //   if (todayRecord.status === "OFF") {
-  //     return employeeType === "FULLTIME" ? "Được nghỉ" : "Từ chối";
-  //   }
-
-  //   if (todayRecord.check_out) return "Đã hoàn thành";
-  //   if (todayRecord.check_in) return "Đang làm";
-
-  //   return "Chưa chấm công";
-  // })();
 
   // Phần hiển thị ngày đúng với thứ
   const firstDay = new Date(year, month - 1, 1).getDay();
@@ -568,13 +693,13 @@ export default function TimeKeeping() {
 
     try {
       await dispatch(
-      createOvertimeRequest({
-        ...data,
-        user_id: Number(user.id),
-        timekeeping_id: todayRecord.id,
-        work_date: todayRecord.work_date?.slice(0,10),
-      }),
-    ).unwrap();
+        createOvertimeRequest({
+          ...data,
+          user_id: Number(user.id),
+          timekeeping_id: todayRecord.id,
+          work_date: todayRecord.work_date?.slice(0, 10),
+        }),
+      ).unwrap();
 
       setToast({
         type: "success",
@@ -587,6 +712,68 @@ export default function TimeKeeping() {
         type: "error",
         message: err?.message || "Gửi yêu cầu OT thất bại",
       });
+    }
+  };
+
+  const getStatusConfig = (status: string, employeeType: string) => {
+    switch (status) {
+      case "PENDING":
+        return employeeType === "FULLTIME"
+          ? {
+              cell: "bg-red-100 border-red-500 text-red-800",
+              badge: "bg-red-600 text-white",
+              shift: "bg-red-100 border-red-500 text-red-800",
+            }
+          : {
+              cell: "bg-amber-100 border-amber-500 text-amber-800",
+              badge: "bg-amber-600 text-white",
+              shift: "bg-amber-100 border-amber-500 text-amber-800",
+            };
+
+      case "OFF":
+        return {
+          cell: "bg-red-100 border-red-500 text-red-800",
+          badge: "bg-red-600 text-white",
+          shift: "bg-red-100 border-red-500 text-red-800",
+        };
+
+      case "SCHEDULED":
+        return {
+          cell: "bg-blue-100 border-blue-500 text-blue-800",
+          badge: "bg-blue-600 text-white",
+          shift: "bg-blue-100 border-blue-500 text-blue-800",
+        };
+
+      case "WORKING":
+        return {
+          cell: "bg-green-100 border-green-500 text-green-800",
+          badge: "bg-green-600 text-white",
+          shift: "bg-green-100 border-green-500 text-green-800",
+        };
+
+      case "BREAK":
+        return {
+          cell: "bg-yellow-100 border-yellow-500 text-yellow-800",
+          badge: "bg-yellow-600 text-white",
+          shift: "bg-yellow-100 border-yellow-500 text-yellow-800",
+        };
+
+      case "COMPLETED":
+        return {
+          cell: "bg-emerald-100 border-emerald-500 text-emerald-800",
+          badge: "bg-emerald-600 text-white",
+          shift: "bg-emerald-100 border-emerald-500 text-emerald-800",
+        };
+
+      case "ABSENT":
+        return {
+          cell: "bg-gray-100 border-gray-500 text-gray-800",
+          badge: "bg-gray-600 text-white",
+          shift: "bg-gray-100 border-gray-500 text-gray-800",
+        };
+
+      default:
+        return null;
     }
   };
 
@@ -668,26 +855,19 @@ export default function TimeKeeping() {
               const hasSchedule = scheduleMap[dateStr] || [];
               const registeredDay = registeredMap[dateStr] || [];
 
+              const registrationState = registeredDay.length
+                ? getRegistrationState(registeredDay[0])
+                : null;
+
+              const dayStatus =
+                registeredDay.length > 0 ? registeredDay[0].status : null;
+
+              const statusConfig = dayStatus
+                ? getStatusConfig(dayStatus, employeeType)
+                : null;
+
               const isAvailable = hasSchedule.length > 0;
               const hasRegisteredDay = registeredDay.length > 0;
-
-              const pendingDay = registeredDay.some(
-                (x: any) => x.status === "PENDING",
-              );
-
-              const approvedWorkingDay = registeredDay.some((x: any) =>
-                ["SCHEDULED", "WORKING", "BREAK", "COMPLETED"].includes(
-                  x.status,
-                ),
-              );
-
-              const approvedOffDay = registeredDay.some(
-                (x: any) => x.status === "OFF",
-              );
-
-              const rejectedDay = registeredDay.some(
-                (x: any) => x.status === "REJECT",
-              );
 
               const isSelected =
                 employeeType === "FULLTIME"
@@ -705,19 +885,29 @@ export default function TimeKeeping() {
                 month === today.getMonth() + 1 &&
                 year === today.getFullYear();
 
-              // const hasFinalStatus =
-              //   pendingDay ||
-              //   approvedWorkingDay ||
-              //   approvedOffDay ||
-              //   rejectedDay;
-
+              const isViewingDate = selectedDate === dateStr;
+              const viewingClass =
+                isViewingDate && !statusConfig
+                  ? "bg-amber-50 border-amber-400 border-2"
+                  : "";
               return (
                 <div
                   key={index}
                   role="button"
                   tabIndex={0}
                   onClick={() => {
+                    setSelectedDate(dateStr);
+                    if (user?.id) {
+                      dispatch(
+                        fetchTimekeepingByDate({
+                          user_id: Number(user.id),
+                          work_date: dateStr,
+                        }) as any,
+                      );
+                    }
+
                     if (hasRegistered || isBeforeOpen || isAfterClose) return;
+
                     handleSelectDay(dateStr, isAvailable);
                   }}
                   className={`
@@ -726,26 +916,26 @@ export default function TimeKeeping() {
   ${
     !isAvailable && !hasRegisteredDay
       ? "bg-stone-50 border-stone-200 text-stone-300 cursor-default"
-      : pendingDay
-        ? employeeType === "FULLTIME"
-          ? "bg-red-100 border-2 border-red-700 text-red-800"
-          : "bg-amber-100 border-2 border-amber-700 text-amber-800"
-        : approvedOffDay
-          ? "bg-red-100 border-2 border-red-700 text-red-800"
-          : approvedWorkingDay
-            ? "bg-amber-100 border-2 border-amber-500 text-amber-800"
-            : rejectedDay
-              ? "bg-red-50 border-2 border-red-500 text-red-700"
-              : isSelected
-                ? employeeType === "FULLTIME"
-                  ? "bg-red-100 border-red-700 text-red-800 ring-2 ring-red-300"
-                  : "bg-amber-100 border-amber-500 text-amber-800 ring-2 ring-amber-300"
-                : employeeType === "PARTTIME"
-                  ? "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
-                  : "bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-100"
+      : statusConfig
+        ? statusConfig.cell
+        : isSelected
+          ? employeeType === "FULLTIME"
+            ? "bg-red-100 border-red-700 text-red-800 ring-2 ring-red-300"
+            : "bg-amber-100 border-amber-500 text-amber-800 ring-2 ring-amber-300"
+          : employeeType === "PARTTIME"
+            ? "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+            : "bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-100"
   }
-
-  ${isToday ? "ring-2 ring-amber-400" : ""}
+${viewingClass}
+${
+  isToday && isViewingDate
+    ? "ring-4 ring-violet-500"
+    : isToday
+      ? "ring-2 ring-amber-400"
+      : isViewingDate
+        ? "ring-4 ring-amber-400"
+        : ""
+}
  ${
    // isRegisterLocked && !hasFinalStatus
    //   ? "opacity-55 cursor-not-allowed"
@@ -759,51 +949,53 @@ export default function TimeKeeping() {
                   {day}
 
                   <div className="mt-1 flex justify-center">
-                    {pendingDay ? (
-                      employeeType === "FULLTIME" ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-700 text-white font-semibold">
-                          Nghỉ / Chờ duyệt
-                        </span>
-                      ) : (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-600 text-white font-semibold">
-                          Đăng ký / Chờ duyệt
-                        </span>
-                      )
-                    ) : approvedOffDay ? (
+                    {registrationState === "PENDING_OFF" && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-700 text-white font-semibold">
-                        {employeeType === "FULLTIME"
-                          ? "Đã duyệt nghỉ"
-                          : "Từ chối"}
+                        Chờ duyệt nghỉ
                       </span>
-                    ) : approvedWorkingDay ? (
+                    )}
+
+                    {registrationState === "PENDING_WORK" && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-600 text-white font-semibold">
+                        Chờ duyệt làm
+                      </span>
+                    )}
+
+                    {registrationState === "OFF" && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-700 text-white font-semibold">
+                        {employeeType === "FULLTIME" ? "Đã duyệt nghỉ" : "Nghỉ"}
+                      </span>
+                    )}
+
+                    {registrationState === "SCHEDULED" && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-600 text-white font-semibold">
                         Đi làm
                       </span>
-                    ) : rejectedDay ? (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-600 text-white font-semibold">
-                        Từ chối
+                    )}
+
+                    {registrationState === "WORKING" && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-600 text-white font-semibold">
+                        Đang làm
                       </span>
-                    ) : employeeType === "FULLTIME" ? (
-                      isSelected ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-700 text-white font-semibold">
-                          Nghỉ / Chờ duyệt
-                        </span>
-                      ) : isAvailable ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-600 text-white font-semibold">
-                          Đi làm
-                        </span>
-                      ) : null
-                    ) : employeeType === "PARTTIME" ? (
-                      selectedShifts.some((s) => s.work_date === dateStr) ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-600 text-white font-semibold">
-                          Đăng ký / Chờ duyệt
-                        </span>
-                      ) : isAvailable ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-semibold">
-                          Chưa đăng ký
-                        </span>
-                      ) : null
-                    ) : null}
+                    )}
+
+                    {registrationState === "BREAK" && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500 text-white font-semibold">
+                        Nghỉ trưa
+                      </span>
+                    )}
+
+                    {registrationState === "COMPLETED" && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-700 text-white font-semibold">
+                        Hoàn thành
+                      </span>
+                    )}
+
+                    {registrationState === "ABSENT" && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-700 text-white font-semibold">
+                        Vắng mặt
+                      </span>
+                    )}
                   </div>
 
                   {/* shift */}
@@ -852,15 +1044,21 @@ ${
           s.status === "OFF"
           ? "bg-red-100 border-red-700 text-red-800"
           : // Đi làm / đã duyệt
-            ["SCHEDULED", "WORKING", "BREAK", "COMPLETED"].includes(s.status)
-            ? "bg-amber-100 border-amber-500 text-amber-800"
-            : // Bị từ chối
-              s.status === "REJECT"
-              ? "bg-red-50 border-red-400 text-red-700"
-              : // Chưa chọn
-                employeeType === "FULLTIME"
-                ? "bg-amber-100 border-amber-300 text-amber-800"
-                : "border-t-2 bg-amber-50 border-amber-200 text-amber-700"
+            s.status === "SCHEDULED"
+            ? "bg-blue-100 border-blue-500 text-blue-800"
+            : s.status === "WORKING"
+              ? "bg-green-100 border-green-500 text-green-800"
+              : s.status === "BREAK"
+                ? "bg-yellow-100 border-yellow-500 text-yellow-800"
+                : s.status === "COMPLETED"
+                  ? "bg-emerald-100 border-emerald-500 text-emerald-800"
+                  : // Vắng mặt
+                    s.status === "ABSENT"
+                    ? "bg-red-50 border-red-400 text-red-700"
+                    : // Chưa chọn
+                      employeeType === "FULLTIME"
+                      ? "bg-amber-100 border-amber-300 text-amber-800"
+                      : "border-t-2 bg-amber-50 border-amber-200 text-amber-700"
 }
 ${
   employeeType === "PARTTIME" && !isRegisterLocked
@@ -874,11 +1072,11 @@ ${
   ![
     "PENDING",
     "OFF",
-    "REJECT",
     "SCHEDULED",
     "WORKING",
     "BREAK",
     "COMPLETED",
+    "ABSENT",
   ].includes(s.status)
     ? "opacity-60"
     : ""
@@ -1065,16 +1263,22 @@ ${
               {/* Ngày chấm công */}
               <div className="mb-4">
                 <p className="text-sm font-semibold text-amber-700">
-                  Ngày chấm công
+                  Chi tiết ngày công
                 </p>
                 <p className="mt-1 text-base md:text-lg font-bold text-gray-800">
-                  {new Date(todayStr).toLocaleDateString("vi-VN", {
+                  {new Date(selectedDate).toLocaleDateString("vi-VN", {
                     weekday: "long",
                     day: "2-digit",
                     month: "2-digit",
                     year: "numeric",
                   })}
                 </p>
+
+                {selectedDate === todayStr && (
+                  <span className="inline-block mt-2 px-2 py-1 text-xs rounded bg-amber-100 text-amber-700">
+                    Hôm nay
+                  </span>
+                )}
               </div>
 
               {/* Thông tin ca làm + thời gian đã làm */}
@@ -1083,17 +1287,9 @@ ${
                   <div>
                     <span className="text-gray-500">Ca:</span>{" "}
                     <span className="font-semibold text-gray-800">
-                      {(
-                        todayRecord?.start_time ||
-                        todaySchedule?.start_time ||
-                        "--"
-                      )?.slice(0, 5)}
+                      {(selectedRecord?.start_time || "--")?.slice(0, 5)}
                       {" - "}
-                      {(
-                        todayRecord?.end_time ||
-                        todaySchedule?.end_time ||
-                        "--"
-                      )?.slice(0, 5)}
+                      {(selectedRecord?.end_time || "--")?.slice(0, 5)}
                     </span>
                   </div>
 
@@ -1101,26 +1297,26 @@ ${
                     <span className="text-gray-500">Đã làm:</span>{" "}
                     <span className="font-semibold text-amber-600">
                       {(() => {
-                        if (!todayRecord?.check_in_time) return "--";
+                        if (!selectedRecord?.check_in_time) return "--";
 
                         const start = new Date(
-                          todayRecord.check_in_time,
+                          selectedRecord.check_in_time,
                         ).getTime();
 
-                        const end = todayRecord?.check_out_time
-                          ? new Date(todayRecord.check_out_time).getTime()
+                        const end = selectedRecord?.check_out_time
+                          ? new Date(selectedRecord.check_out_time).getTime()
                           : Date.now();
 
                         let worked = Math.floor((end - start) / 60000);
 
                         // Trừ thời gian nghỉ trưa nếu có
-                        if (todayRecord?.break_start_time) {
+                        if (selectedRecord?.break_start_time) {
                           const breakStart = new Date(
-                            todayRecord.break_start_time,
+                            selectedRecord.break_start_time,
                           ).getTime();
 
-                          const breakEnd = todayRecord?.break_end_time
-                            ? new Date(todayRecord.break_end_time).getTime()
+                          const breakEnd = selectedRecord?.break_end_time
+                            ? new Date(selectedRecord.break_end_time).getTime()
                             : Date.now();
 
                           worked -= Math.floor((breakEnd - breakStart) / 60000);
@@ -1143,14 +1339,13 @@ ${
                 <div>
                   <span className="text-gray-500">Vào:</span>{" "}
                   <span className="font-semibold text-gray-800">
-                    {todayRecord?.check_in_time
-                      ? new Date(todayRecord.check_in_time).toLocaleTimeString(
-                          "vi-VN",
-                          {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          },
-                        )
+                    {selectedRecord?.check_in_time
+                      ? new Date(
+                          selectedRecord.check_in_time,
+                        ).toLocaleTimeString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
                       : "--:--"}
                   </span>
                 </div>
@@ -1158,14 +1353,13 @@ ${
                 <div>
                   <span className="text-gray-500">Ra:</span>{" "}
                   <span className="font-semibold text-gray-800">
-                    {todayRecord?.check_out_time
-                      ? new Date(todayRecord.check_out_time).toLocaleTimeString(
-                          "vi-VN",
-                          {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          },
-                        )
+                    {selectedRecord?.check_out_time
+                      ? new Date(
+                          selectedRecord.check_out_time,
+                        ).toLocaleTimeString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
                       : "--:--"}
                   </span>
                 </div>
@@ -1177,9 +1371,9 @@ ${
                   <div>
                     <span className="text-gray-500">Nghỉ:</span>{" "}
                     <span className="font-semibold text-gray-800">
-                      {todayRecord?.break_start_time
+                      {selectedRecord?.break_start_time
                         ? new Date(
-                            todayRecord.break_start_time,
+                            selectedRecord.break_start_time,
                           ).toLocaleTimeString("vi-VN", {
                             hour: "2-digit",
                             minute: "2-digit",
@@ -1191,9 +1385,9 @@ ${
                   <div>
                     <span className="text-gray-500">Tiếp tục:</span>{" "}
                     <span className="font-semibold text-gray-800">
-                      {todayRecord?.break_end_time
+                      {selectedRecord?.break_end_time
                         ? new Date(
-                            todayRecord.break_end_time,
+                            selectedRecord.break_end_time,
                           ).toLocaleTimeString("vi-VN", {
                             hour: "2-digit",
                             minute: "2-digit",
@@ -1201,14 +1395,15 @@ ${
                         : "--:--"}
                     </span>
                   </div>
-
-                  
                 </div>
               )}
 
               <div className="text-xs text-gray-500 font-medium">
-  Thời gian OT thực tế: <span className="text-sm text-amber-700">{todayRecord?.ot_minutes || 0} phút</span>
-</div>
+                Thời gian OT thực tế:{" "}
+                <span className="text-sm text-amber-700">
+                  {selectedRecord?.ot_minutes || 0} phút
+                </span>
+              </div>
 
               {/* Tổng công */}
               <div className="border-t border-gray-200 pt-3">
@@ -1311,17 +1506,14 @@ ${
               {canCheckOut && (
                 <button
                   onClick={handleCheckOut}
-                  disabled={checkingLocation ||
-  !!todayRecord?.check_out_time}
+                  disabled={checkingLocation || !!todayRecord?.check_out_time}
                   className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
                 >
-                  {
-  todayRecord?.check_out_time
-    ? "Đã checkout"
-    : checkingLocation
-      ? "Đang xác minh..."
-      : "Chấm công ra ca"
-}
+                  {todayRecord?.check_out_time
+                    ? "Đã checkout"
+                    : checkingLocation
+                      ? "Đang xác minh..."
+                      : "Chấm công ra ca"}
                 </button>
               )}
 
@@ -1363,11 +1555,13 @@ ${
                   <div className="text-sm text-gray-500 italic py-2">
                     {todayRecord?.status === "OFF"
                       ? "Hôm nay bạn được nghỉ"
-                      : isBeforeShift
-                        ? "Chưa đến thời gian chấm công"
-                        : isAfterShift
-                          ? "Ca làm hôm nay đã kết thúc"
-                          : "Hiện chưa có thao tác nào khả dụng"}
+                      : todayRecord?.status === "ABSENT"
+                        ? "Bạn đã vắng mặt"
+                        : isBeforeShift
+                          ? "Chưa đến thời gian chấm công"
+                          : isAfterShift
+                            ? "Ca làm hôm nay đã kết thúc"
+                            : "Hiện chưa có thao tác nào khả dụng"}
                   </div>
                 )}
             </div>

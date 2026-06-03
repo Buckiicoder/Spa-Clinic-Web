@@ -397,6 +397,11 @@ export const selectTimekeepingDailyLoading = (state: any) =>
 
 export const selectOvertimeLoading = (state: any) => state.overtime.loading;
 
+export const selectPendingOvertimeRequests = (state: any) =>
+  (state.overtime.overtimeRequests || []).filter(
+    (x: any) => x.status === "PENDING",
+  );
+
 export const selectOvertimeRequests = (state: any) =>
   state.overtime.overtimeRequests;
 

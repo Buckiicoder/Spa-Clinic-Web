@@ -1,8 +1,40 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useAppDispatch, useAppSelector } from "../app/hook";
 import Navbar from "../components/Navbar";
 import { Link } from "react-router-dom";
+import {
+  selectUser,
+  selectPendingRatings,
+  selectAuth,
+  fetchPendingRatings,
+} from "../features/auth/authSlice";
+import PendingRatingsModal from "../modal/PendingRatingModal";
+import RatingReminderModal from "../modal/RatingReminderModal";
 
 export default function Home() {
+  const dispatch = useAppDispatch();
+  const user = useAppSelector(selectUser);
+
+  const pendingRatings = useAppSelector(selectPendingRatings);
+
+  const isAuthenticated = useAppSelector(selectAuth);
+
+  const [openReminderModal, setOpenReminderModal] = useState(false);
+
+  const [openRatingModal, setOpenRatingModal] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    dispatch(fetchPendingRatings());
+  }, [dispatch, isAuthenticated]);
+
+  useEffect(() => {
+    if (pendingRatings.length > 0 && isAuthenticated) {
+      setOpenReminderModal(true);
+    }
+  }, [pendingRatings, isAuthenticated]);
+
   // Smooth scroll
   useEffect(() => {
     const links = document.querySelectorAll('a[href^="#"]');
@@ -17,9 +49,22 @@ export default function Home() {
     });
   }, []);
 
+  const reminderKey = `rating_reminder_${user?.id}`;
+
+  useEffect(() => {
+    if (
+      pendingRatings.length > 0 &&
+      isAuthenticated &&
+      !sessionStorage.getItem(reminderKey)
+    ) {
+      setOpenReminderModal(true);
+
+      sessionStorage.setItem(reminderKey, "shown");
+    }
+  }, [pendingRatings, isAuthenticated, reminderKey]);
+
   return (
     <div className="font-sans text-brown-900">
-
       <Navbar />
 
       {/* ========= */}
@@ -61,7 +106,10 @@ export default function Home() {
       </section>
 
       {/* ================= ABOUT ================= */}
-      <section id="about" className="py-24 bg-gradient-to-br from-amber-50 via-stone-100 to-amber-10">
+      <section
+        id="about"
+        className="py-24 bg-gradient-to-br from-amber-50 via-stone-100 to-amber-10"
+      >
         <div className="max-w-6xl mx-auto px-6 text-center">
           <h3 className="text-3xl font-bold text-amber-600 mb-6">
             Về chúng tôi
@@ -109,7 +157,7 @@ export default function Home() {
             Liên hệ & Đặt lịch
           </h3>
           <p className="text-gray-500 mb-8 font-medium ">
-            Hotline: 0909 999 999  –  Địa chỉ: Thành phố Hà Nội
+            Hotline: 0909 999 999 – Địa chỉ: Thành phố Hà Nội
           </p>
 
           <button className="bg-amber-500 hover:bg-amber-600 px-10 py-3 rounded-full font-semibold transition">
@@ -117,6 +165,20 @@ export default function Home() {
           </button>
         </div>
       </section>
+      <RatingReminderModal
+        open={openReminderModal}
+        total={pendingRatings.length}
+        onClose={() => setOpenReminderModal(false)}
+        onConfirm={() => {
+          setOpenReminderModal(false);
+          setOpenRatingModal(true);
+        }}
+      />
+
+      <PendingRatingsModal
+        open={openRatingModal}
+        onClose={() => setOpenRatingModal(false)}
+      />
     </div>
   );
 }

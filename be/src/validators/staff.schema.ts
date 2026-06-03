@@ -25,9 +25,9 @@ export const createStaffSchema = z
 
     gender: z.enum(["male", "female", "other"]),
 
-    city: z.string().optional(),
-    ward: z.string().optional(),
-    address_detail: z.string().optional(),
+    city: z.string().nullable().optional(),
+    ward: z.string().nullable().optional(),
+    address_detail: z.string().nullable().optional(),
 
     // STAFF
     position_id: z.number({
@@ -61,9 +61,9 @@ export const updateStaffSchema = z.object({
   dob: z.string().optional(),
   gender: z.enum(["male", "female", "other"]).optional(),
 
-  city: z.string().optional(),
-  ward: z.string().optional(),
-  address_detail: z.string().optional(),
+  city: z.string().nullable().optional(),
+  ward: z.string().nullable().optional(),
+  address_detail: z.string().nullable().optional(),
 
   // STAFF
   position_id: z.number().optional(),

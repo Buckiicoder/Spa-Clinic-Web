@@ -130,15 +130,19 @@ export const buildPayrollCommission = async (
   // ======================================================
   // TECHNICIAN HOURS
   // ======================================================
-  else if (revenueType === "TECHNICIAN_WORK_HOUR") {
-    const workSummary = await getTechnicianWorkSummary(staff_id, month, year);
+  else if (revenueType === "WORK_HOUR") {
+  const workSummary = await getTechnicianWorkSummary(
+    staff_id,
+    month,
+    year,
+  );
 
-    totalWorkHours = workSummary.total_work_hours;
+  totalWorkHours = Number(workSummary.total_work_hours || 0);
 
-    totalWorkMinutes = workSummary.total_work_minutes;
+  totalWorkMinutes = Number(workSummary.total_work_minutes || 0);
 
-    totalSessions = workSummary.total_sessions;
-  }
+  totalSessions = Number(workSummary.total_sessions || 0);
+}
 
   const payrollCommission = calculateCommission({
     salaryConfig,
@@ -261,10 +265,31 @@ const calculateCommission = ({
     });
   }
 
-  // TECHNICIAN_WORK_HOUR
-  if (commissionRevenueType === "TECHNICIAN_WORK_HOUR") {
-    if (commissionUnit === "FIXED_AMOUNT") {
-      commissionAmount = total_work_hours * commissionValue;
+  // ======================================================
+  // CASE 3:
+  // WORK_HOUR
+  // ======================================================
+
+  /**
+   * ví dụ:
+   *
+   * 8 giờ thực tế
+   * 12k / giờ
+   *
+   * => 96k
+   */
+  else if (commissionCalculationType === "WORK_HOUR") {
+    if (commissionRevenueType === "WORK_HOUR") {
+      // 12k * số giờ thực tế
+      if (commissionUnit === "WORK_HOUR") {
+        commissionAmount = total_work_hours * commissionValue;
+      }
+
+      // ví dụ:
+      // 5% trên mỗi giờ
+      else if (commissionUnit === "PERCENT") {
+        commissionAmount = (total_work_hours * commissionValue) / 100;
+      }
     }
   }
 
@@ -300,16 +325,19 @@ const calculateCommission = ({
     total_work_sessions: total_sessions,
 
     calculation_base_amount:
-      commissionRevenueType === "TECHNICIAN_WORK_HOUR"
+      commissionCalculationType === "WORK_HOUR"
         ? total_work_hours
         : actual_revenue,
 
-    exceeded_revenue_amount: Math.max(actual_revenue - minimumRevenueTarget, 0),
+    exceeded_revenue_amount:
+      commissionCalculationType === "REVENUE_OVER_TARGET"
+        ? Math.max(actual_revenue - minimumRevenueTarget, 0)
+        : 0,
 
     commission_source_type:
-      commissionRevenueType === "TECHNICIAN_WORK_HOUR"
-        ? "SESSION_TRACKING"
-        : "PAYMENT",
+  commissionRevenueType === "WORK_HOUR"
+    ? "SESSION_TRACKING"
+    : "PAYMENT",
 
     metadata: {
       generated_at: new Date(),
@@ -389,15 +417,23 @@ const buildCommissionNote = ({
 
   commissionCalculationType,
 }: BuildCommissionNoteParams) => {
-  const revenueText =
-    commissionRevenueType === "PERSONAL_REVENUE"
-      ? "Doanh thu cá nhân"
-      : "Doanh thu chi nhánh";
+  let revenueText = "";
+  if (commissionRevenueType === "PERSONAL_REVENUE") {
+    revenueText = "Doanh thu cá nhân";
+  } else if (commissionRevenueType === "BRANCH_REVENUE") {
+    revenueText = "Doanh thu chi nhánh";
+  } else if (commissionRevenueType === "WORK_HOUR") {
+  revenueText = "Giờ làm thực tế";
+}
 
-  const calcText =
-    commissionCalculationType === "TOTAL_REVENUE"
-      ? "Tính trên tổng doanh thu"
-      : "Tính trên phần vượt target";
+  let calcText = "";
+  if (commissionCalculationType === "TOTAL_REVENUE") {
+    calcText = "Tính trên tổng doanh thu";
+  } else if (commissionCalculationType === "REVENUE_OVER_TARGET") {
+    calcText = "Tính trên phần vượt target";
+  } else if (commissionCalculationType === "WORK_HOUR") {
+    calcText = "Tính theo giờ làm thực tế";
+  }
 
   return `${revenueText} - ${calcText}`;
 };

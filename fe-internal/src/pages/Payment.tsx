@@ -714,7 +714,10 @@ export default function Payment() {
                 <div className="rounded-2xl border border-dashed border-amber-300 bg-amber-50 p-5">
                   <div className="flex flex-col items-center gap-4">
                     <div className="flex h-52 w-52 items-center justify-center rounded-2xl border border-gray-200 bg-white">
-                      <QrCode size={120} className="text-gray-700" />
+                      <img
+                        src="../public/z7890128759983_fed34790b398a5823c444e4bf5f8ed7e.jpg"
+                        alt=""
+                      />
                     </div>
 
                     <div className="text-center">

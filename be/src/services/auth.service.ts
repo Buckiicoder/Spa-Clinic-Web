@@ -38,9 +38,7 @@ export const registerService = async (data: RegisterInput) => {
 
   const userId = userResult.rows[0].id;
 
-  await db.query(`INSERT INTO customers(user_id) VALUES ($1)`, [
-    userId,
-  ]);
+  await db.query(`INSERT INTO customers(user_id) VALUES ($1)`, [userId]);
 
   return userResult.rows[0];
 };
@@ -96,23 +94,6 @@ export const verifyOTPService = async (contact: string, otp: string) => {
 
   return token;
 };
-
-// export const customerLoginService = async (email: string,  password: string) => {
-//   const result = await db.query("SELECT * FROM users WHERE email=$1 OR phone=$1", [email]);
-
-//   if (!result.rowCount) throw new Error("Invalid credentials");
-
-//   const user = result.rows[0];
-
-//   const match = await comparePassword(password, user.password_hash);
-
-//   if (!match) throw new Error("Invalid credentials");
-
-//   return signToken({
-//     id: user.id,
-//     role: user.role,
-//   });
-// };
 
 export const loginService = async (email: string, password: string) => {
   const result = await db.query(
@@ -179,7 +160,7 @@ export const getStaffById = async (id: number) => {
      LEFT JOIN staffs s ON s.user_id = u.id
      LEFT JOIN positions p ON p.id = s.position_id
      WHERE u.id = $1`,
-    [id]
+    [id],
   );
 
   if (!result.rowCount) throw new Error("User not found");
@@ -193,7 +174,6 @@ export const getStaffById = async (id: number) => {
 
   return user;
 };
-
 
 export const updateAvatarService = async (userId: number, avatar: string) => {
   await db.query("UPDATE users SET avatar = $1 WHERE id = $2", [
@@ -234,19 +214,186 @@ export const updateAvatarLogs = async (userId: number) => {
   await db.query("INSERT INTO avatar_logs (user_id) VALUES ($1)", [userId]);
 };
 
-// export const staffLoginService = async (email: string,  password: string) => {
-//   const result = await db.query("SELECT * FROM users WHERE email=$1 OR phone=$1", [email]);
+// phần lấy các thông tin dịch vụ chưa đánh giá hiển thị
+export const getPendingRatings = async (customerId: number) => {
+  const result = await db.query(
+    `
+    SELECT
+      css.id,
+      css.session_no,
+      css.service_date,
+      css.rating,
+      css.customer_feedback,
 
-//   if (!result.rowCount) throw new Error("Invalid credentials");
+      s.name AS service_name,
+      sp.name AS package_name
 
-//   const user = result.rows[0];
+    FROM customer_service_sessions css
 
-//   const match = await comparePassword(password, user.password_hash);
+    JOIN customer_service_profiles csp
+      ON csp.id = css.profile_id
 
-//   if (!match) throw new Error("Invalid credentials");
+    JOIN services s
+      ON s.id = csp.service_id
 
-//   return signToken({
-//     id: user.id,
-//     role: user.role,
-//   });
-// };
+    JOIN service_packages sp
+      ON sp.id = csp.package_id
+
+    WHERE
+      csp.customer_id = $1
+      AND css.status = 'done'
+      AND css.rated_at IS NULL
+
+    ORDER BY
+      css.service_date DESC,
+      css.session_no DESC
+    `,
+    [customerId],
+  );
+
+  return result.rows;
+};
+
+export const getCustomerRatings = async (customerId: number) => {
+  const result = await db.query(
+    `
+    SELECT
+      css.id,
+      css.session_no,
+      css.service_date,
+      css.rating,
+      css.customer_feedback,
+
+      s.name AS service_name
+
+    FROM customer_service_sessions css
+
+    JOIN customer_service_profiles csp
+      ON csp.id = css.profile_id
+
+    JOIN services s
+      ON s.id = csp.service_id
+
+    WHERE csp.customer_id = $1
+
+    ORDER BY css.service_date DESC
+    `,
+    [customerId],
+  );
+
+  return result.rows;
+};
+
+export const rateSession = async ({
+  sessionId,
+  customerId,
+  rating,
+  feedback,
+}: {
+  sessionId: number;
+  customerId: number;
+  rating: number;
+  feedback?: string;
+}) => {
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const session = await db.query(
+      `
+  SELECT
+  css.id,
+  css.rated_at,
+  css.status,
+  sp.price,
+  csp.total_sessions
+FROM customer_service_sessions css
+
+JOIN customer_service_profiles csp
+  ON csp.id = css.profile_id
+
+JOIN service_packages sp
+  ON sp.id = csp.package_id
+
+WHERE
+  css.id = $1
+  AND csp.customer_id = $2
+  `,
+      [sessionId, customerId],
+    );
+
+    if (!session.rowCount) {
+      throw new Error("Session not found");
+    }
+
+    const row = session.rows[0];
+
+    if (row.status !== "done") {
+      throw new Error("Buổi dịch vụ chưa hoàn thành");
+    }
+
+    if (row.rated_at) {
+      throw new Error("Buổi dịch vụ đã được đánh giá");
+    }
+
+    const updated = await db.query(
+      `
+  UPDATE customer_service_sessions
+  SET
+    rating = $1,
+    customer_feedback = $2,
+    rated_at = NOW()
+  WHERE
+    id = $3
+    AND rated_at IS NULL
+    AND status = 'done'
+  RETURNING id
+  `,
+      [rating, feedback || null, sessionId],
+    );
+
+    if (!updated.rowCount) {
+      throw new Error("Buổi dịch vụ đã được đánh giá hoặc không hợp lệ");
+    }
+
+    // ==========================
+    // TÍNH ĐIỂM THƯỞNG
+    // ==========================
+
+    const packagePrice = Number(row.price) || 0;
+
+    const totalSessions = Number(row.total_sessions) || 1;
+
+    const valuePerSession = packagePrice / totalSessions;
+
+    let rewardPoints = Math.floor(valuePerSession / 100000);
+
+    rewardPoints = Math.max(10, rewardPoints);
+
+    rewardPoints = Math.min(100, rewardPoints);
+
+    await client.query(
+      `
+      UPDATE customers
+      SET loyalty_points =
+          COALESCE(loyalty_points, 0)
+          + $1
+      WHERE user_id = $2
+      `,
+      [rewardPoints, customerId],
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      success: true,
+      rewardPoints,
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};

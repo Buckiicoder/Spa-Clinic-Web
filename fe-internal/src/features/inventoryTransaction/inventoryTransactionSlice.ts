@@ -1,8 +1,13 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { InventoryTransaction } from "../../types/inventoryTransaction";
+import {
+  InventoryTransaction,
+  InventoryTransactionPayload,
+} from "../../types/inventoryTransaction";
 import {
   createInventoryTransactionAPI,
-  deleteInventoryTransactionAPI,
+  updateInventoryTransactionAPI,
+  confirmInventoryTransactionAPI,
+  cancelInventoryTransactionAPI,
   getInventoryTransactionByIdAPI,
   getInventoryTransactionsAPI,
 } from "./inventoryTransactionAPI";
@@ -58,12 +63,30 @@ export const createInventoryTransaction = createAsyncThunk(
   },
 );
 
-// 🔹 DELETE
-export const deleteInventoryTransaction = createAsyncThunk(
-  "inventoryTransaction/delete",
+export const updateInventoryTransaction = createAsyncThunk(
+  "inventoryTransaction/update",
+  async ({ id, data }: { id: number; data: InventoryTransactionPayload }) => {
+    const res = await updateInventoryTransactionAPI(id, data);
+
+    return res.data.transaction;
+  },
+);
+
+export const confirmInventoryTransaction = createAsyncThunk(
+  "inventoryTransaction/confirm",
   async (id: number) => {
-    await deleteInventoryTransactionAPI(id);
-    return id;
+    const res = await confirmInventoryTransactionAPI(id);
+
+    return res.data.transaction;
+  },
+);
+
+export const cancelInventoryTransaction = createAsyncThunk(
+  "inventoryTransaction/cancel",
+  async (id: number) => {
+    const res = await cancelInventoryTransactionAPI(id);
+
+    return res.data;
   },
 );
 
@@ -112,14 +135,45 @@ const inventoryTransactionSlice = createSlice({
       state.transactions.unshift(action.payload);
     });
 
-    // DELETE
-    builder.addCase(deleteInventoryTransaction.fulfilled, (state, action) => {
-      state.transactions = state.transactions.filter(
-        (item) => item.id !== action.payload,
+    builder.addCase(updateInventoryTransaction.fulfilled, (state, action) => {
+      const index = state.transactions.findIndex(
+        (x) => x.id === action.payload.id,
       );
 
-      if (state.selectedTransaction?.id === action.payload) {
-        state.selectedTransaction = null;
+      if (index >= 0) {
+        state.transactions[index] = action.payload;
+      }
+
+      if (state.selectedTransaction?.id === action.payload.id) {
+        state.selectedTransaction = action.payload;
+      }
+    });
+
+    builder.addCase(confirmInventoryTransaction.fulfilled, (state, action) => {
+      const updated = action.payload;
+
+      const index = state.transactions.findIndex((x) => x.id === updated.id);
+
+      if (index >= 0) {
+        state.transactions[index] = updated;
+      }
+
+      if (state.selectedTransaction?.id === updated.id) {
+        state.selectedTransaction = updated;
+      }
+    });
+
+    builder.addCase(cancelInventoryTransaction.fulfilled, (state, action) => {
+      const updated = action.payload;
+
+      const index = state.transactions.findIndex((x) => x.id === updated.id);
+
+      if (index >= 0) {
+        state.transactions[index] = updated;
+      }
+
+      if (state.selectedTransaction?.id === updated.id) {
+        state.selectedTransaction = updated;
       }
     });
   },

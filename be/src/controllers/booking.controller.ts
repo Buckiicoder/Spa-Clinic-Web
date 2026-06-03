@@ -100,34 +100,56 @@ export const getBookingById = async (req: Request, res: Response) => {
   }
 };
 
-export const updateBookingAndCustomer = async (req: Request, res: Response) => {
+export const updateBookingAndCustomer = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const id = req.params.id;
+
     const data = req.body;
 
-    // 🔹 clean data
-    const cleanData = {
-      ...data,
-      referrer_id: data.referrer_id === "" ? null : Number(data.referrer_id),
-    };
+    const bookingExist =
+      await bookingService.getBookingById(id);
 
-    // 🔹 1. update booking
-    const bookingRaw = await bookingService.updateBooking(id, cleanData);
-
-    if (!bookingRaw) {
-      return res.status(404).json({ message: "Booking not found" });
+    if (!bookingExist) {
+      return res
+        .status(404)
+        .json({ message: "Booking not found" });
     }
 
-    await bookingService.upsertCustomer(bookingRaw.customer_id, cleanData);
+    const cleanData = {
+  ...data,
 
-    // 🔹 3. get full booking
-    const booking = await bookingService.getBookingById(id);
+  referrer_id: data.referrer_id
+    ? Number(data.referrer_id)
+    : null,
+};
 
-    getIO().to("reception").emit("booking:updated", booking);
+    // customer
+    await bookingService.upsertCustomer(
+      bookingExist.customer_id,
+      cleanData,
+    );
 
-    res.json(booking);
+    // booking
+    await bookingService.updateBooking(
+      id,
+      cleanData,
+    );
+
+    const booking =
+      await bookingService.getBookingById(id);
+
+    getIO()
+      .to("reception")
+      .emit("booking:updated", booking);
+
+    return res.json(booking);
   } catch (err: any) {
-    res.status(400).json({ message: err.message });
+    return res
+      .status(400)
+      .json({ message: err.message });
   }
 };
 

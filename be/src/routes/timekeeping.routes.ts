@@ -12,6 +12,13 @@ router.get(
   timekeepingController.getTimekeepingByMonth,
 );
 
+// Lấy chi tiết chấm công theo ngày
+router.get(
+  "/date",
+  authStaffMiddleware,
+  timekeepingController.getTimekeepingByDate,
+);
+
 // 🔹 CREATE (đăng ký ca làm)
 router.post("/", authStaffMiddleware, timekeepingController.createTimekeeping);
 

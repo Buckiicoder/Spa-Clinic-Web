@@ -29,6 +29,8 @@ export default function CustomerDetailModal({
 
   const [submitting, setSubmitting] = useState(false);
 
+  const [errors, setErrors] = useState<any>({});
+
   const defaultForm = {
     name: "",
     phone: "",
@@ -56,6 +58,12 @@ export default function CustomerDetailModal({
   const [form, setForm] = useState(defaultForm);
 
   const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setErrors({});
+    }
+  }, [open]);
 
   useEffect(() => {
     if (customer) {
@@ -99,7 +107,36 @@ export default function CustomerDetailModal({
     );
   }
 
+  const validate = () => {
+    const newErrors: any = {};
+
+    if (!form.name.trim()) {
+      newErrors.name = "Vui lòng nhập họ tên";
+    }
+
+    if (!form.phone.trim()) {
+      newErrors.phone = "Vui lòng nhập số điện thoại";
+    }
+
+    if (!form.gender) {
+      newErrors.gender = "Vui lòng chọn giới tính";
+    }
+
+    if (!form.dob) {
+      newErrors.dob = "Vui lòng chọn ngày sinh";
+    }
+
+    return newErrors;
+  };
+
   const handleSubmit = async () => {
+    const validateErrors = validate();
+
+    if (Object.keys(validateErrors).length > 0) {
+      setErrors(validateErrors);
+      return;
+    }
+
     try {
       setSubmitting(true);
 
@@ -257,14 +294,25 @@ export default function CustomerDetailModal({
 
                     <input
                       value={form.name}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setForm({
                           ...form,
                           name: e.target.value,
-                        })
-                      }
+                        });
+
+                        setErrors((prev: any) => ({
+                          ...prev,
+                          name: e.target.value.trim()
+                            ? ""
+                            : "Vui lòng nhập họ tên",
+                        }));
+                      }}
                       className="w-full rounded-xl border px-3 py-2"
                     />
+
+                    {errors.name && (
+                      <p className="mt-1 text-xs text-red-500">{errors.name}</p>
+                    )}
                   </div>
 
                   <div>
@@ -274,14 +322,27 @@ export default function CustomerDetailModal({
 
                     <input
                       value={form.phone}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setForm({
                           ...form,
                           phone: e.target.value,
-                        })
-                      }
+                        });
+
+                        setErrors((prev: any) => ({
+                          ...prev,
+                          phone: e.target.value.trim()
+                            ? ""
+                            : "Vui lòng nhập số điện thoại",
+                        }));
+                      }}
                       className="w-full rounded-xl border px-3 py-2"
                     />
+
+                    {errors.phone && (
+                      <p className="mt-1 text-xs text-red-500">
+                        {errors.phone}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -309,12 +370,19 @@ export default function CustomerDetailModal({
 
                       <select
                         value={form.gender}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           setForm({
                             ...form,
                             gender: e.target.value,
-                          })
-                        }
+                          });
+
+                          setErrors((prev: any) => ({
+                            ...prev,
+                            gender: e.target.value
+                              ? ""
+                              : "Vui lòng chọn giới tính",
+                          }));
+                        }}
                         className="w-full rounded-xl border px-3 py-2"
                       >
                         <option value="">Chọn</option>
@@ -323,6 +391,11 @@ export default function CustomerDetailModal({
 
                         <option value="female">Nữ</option>
                       </select>
+                      {errors.gender && (
+                        <p className="mt-1 text-xs text-red-500">
+                          {errors.gender}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -333,14 +406,26 @@ export default function CustomerDetailModal({
                       <input
                         type="date"
                         value={form.dob}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           setForm({
                             ...form,
                             dob: e.target.value,
-                          })
-                        }
+                          });
+
+                          setErrors((prev: any) => ({
+                            ...prev,
+                            dob: e.target.value
+                              ? ""
+                              : "Vui lòng chọn ngày sinh",
+                          }));
+                        }}
                         className="w-full rounded-xl border px-3 py-2"
                       />
+                      {errors.dob && (
+                        <p className="mt-1 text-xs text-red-500">
+                          {errors.dob}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -436,7 +521,7 @@ export default function CustomerDetailModal({
                   >
                     <Save size={18} />
 
-                    {loading ? "Đang cập nhật..." : "Cập nhật khách hàng"}
+                    {submitting ? "Đang cập nhật..." : "Cập nhật khách hàng"}
                   </button>
                 </div>
               </div>

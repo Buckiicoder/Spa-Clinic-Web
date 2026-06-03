@@ -90,17 +90,28 @@ const chatSlice = createSlice({
     });
 
     builder.addCase(sendMessage.fulfilled, (state, action: any) => {
-      state.loading = false;
+  state.loading = false;
 
-      if (action.payload?.conversationId) {
-        state.conversationId = action.payload.conversationId;
-      }
-
-      state.messages.push({
-        from: "assistant",
-        text: action.payload.reply,
-      });
+  if (!action.payload) {
+    state.messages.push({
+      from: "assistant",
+      text: "Không nhận được phản hồi từ hệ thống.",
     });
+    return;
+  }
+
+  if (action.payload.conversationId) {
+    state.conversationId =
+      action.payload.conversationId;
+  }
+
+  state.messages.push({
+    from: "assistant",
+    text:
+      action.payload.reply ||
+      "Không có phản hồi",
+  });
+});
 
     builder.addCase(sendMessage.rejected, (state, action: any) => {
       state.loading = false;

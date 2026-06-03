@@ -16,7 +16,12 @@ export const getWaitingConsultations = async () => {
     JOIN users u ON b.customer_id = u.id
     JOIN services s ON b.service_id = s.id
 
-    WHERE b.status = 'CHECKED_IN'
+    WHERE b.status IN (
+      'CHECKED_IN',
+      'IN_CONSULTATION',
+      'COMPLETED'
+    )
+    AND b.booking_date = CURRENT_DATE
     ORDER BY b.checked_in_at ASC
   `);
 

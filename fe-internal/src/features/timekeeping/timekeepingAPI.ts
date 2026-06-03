@@ -15,6 +15,12 @@ export const getTimekeepingAPI = (
   return api.get(query);
 };
 
+//
+// 🔹 GET theo tháng
+//
+export const getTimekeepingByDateAPI = (user_id: number, work_date: string) =>
+  api.get(`/timekeeping/date?user_id=${user_id}&work_date=${work_date}`);
+
 export const createTimekeepingAPI = (data: {
   records: {
     user_id: number;

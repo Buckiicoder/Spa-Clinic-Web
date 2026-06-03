@@ -40,7 +40,7 @@ export const getOvertimeRequests = async (filters?: {
 
     conditions.push(`
       (
-        u.full_name ILIKE $${values.length}
+        u.name ILIKE $${values.length}
         OR u.email ILIKE $${values.length}
       )
     `);
@@ -114,11 +114,11 @@ export const getOvertimeRequests = async (filters?: {
     SELECT
       otr.*,
 
-      u.full_name,
+      u.name,
       u.email,
       u.avatar,
 
-      approver.full_name AS approved_by_name,
+      approver.name AS approved_by_name,
 
       s.name AS shift_name,
 
@@ -209,7 +209,7 @@ export const getMyOvertimeRequests = async (userId: number) => {
     SELECT
       otr.*,
 
-      approver.full_name AS approved_by_name,
+      approver.name AS approved_by_name,
 
       s.name AS shift_name
 
@@ -235,7 +235,6 @@ export const getMyOvertimeRequests = async (userId: number) => {
   return result.rows;
 };
 
-
 export const createOvertimeRequest = async (data: {
   user_id: number;
 
@@ -252,16 +251,16 @@ export const createOvertimeRequest = async (data: {
   reason?: string | null;
 }) => {
   const {
-  user_id,
-  timekeeping_id,
-  work_date,
-  requested_minutes,
+    user_id,
+    timekeeping_id,
+    work_date,
+    requested_minutes,
 
-  requested_start_time,
-  requested_end_time,
+    requested_start_time,
+    requested_end_time,
 
-  reason,
-} = data;
+    reason,
+  } = data;
 
   // ====================================================
   // CHECK EXISTING REQUEST
@@ -286,22 +285,22 @@ export const createOvertimeRequest = async (data: {
   // ====================================================
   // CREATE
   // ====================================================
-const normalizeDate = (value: string) => {
-  return value.slice(0, 10);
-};
+  const normalizeDate = (value: string) => {
+    return value.slice(0, 10);
+  };
 
-const normalizedDate = normalizeDate(work_date);
+  const normalizedDate = normalizeDate(work_date);
 
-const startTimestamp = requested_start_time
-  ? `${normalizedDate} ${requested_start_time}:00`
-  : null;
+  const startTimestamp = requested_start_time
+    ? `${normalizedDate} ${requested_start_time}:00`
+    : null;
 
-const endTimestamp = requested_end_time
-  ? `${normalizedDate} ${requested_end_time}:00`
-  : null;
+  const endTimestamp = requested_end_time
+    ? `${normalizedDate} ${requested_end_time}:00`
+    : null;
 
-const result = await db.query(
-  `
+  const result = await db.query(
+    `
   INSERT INTO overtime_requests
   (
     user_id,
@@ -330,19 +329,19 @@ const result = await db.query(
   )
   RETURNING *
 `,
-  [
-    user_id,
-    timekeeping_id,
-    work_date,
+    [
+      user_id,
+      timekeeping_id,
+      work_date,
 
-    requested_minutes,
+      requested_minutes,
 
-    startTimestamp,
-    endTimestamp,
+      startTimestamp,
+      endTimestamp,
 
-    reason || null,
-  ],
-);
+      reason || null,
+    ],
+  );
 
   return result.rows[0];
 };
@@ -558,17 +557,21 @@ export const getTimekeepingDailyView = async (
       td.ot_minutes,
       td.work_minutes,
 
-      json_build_object(
-        'id', otr.id,
-        'work_date', otr.work_date,
-        'status', otr.status,
-        'requested_minutes', otr.requested_minutes,
-        'approved_minutes', otr.approved_minutes,
-        'requested_start_time', otr.requested_start_time,
-        'requested_end_time', otr.requested_end_time,
-        'reason', otr.reason,
-        'created_at', otr.created_at
-      ) as overtime_request
+      CASE
+  WHEN otr.id IS NOT NULL THEN
+    json_build_object(
+      'id', otr.id,
+      'work_date', otr.work_date,
+      'status', otr.status,
+      'requested_minutes', otr.requested_minutes,
+      'approved_minutes', otr.approved_minutes,
+      'requested_start_time', otr.requested_start_time,
+      'requested_end_time', otr.requested_end_time,
+      'reason', otr.reason,
+      'created_at', otr.created_at
+    )
+  ELSE NULL
+END as overtime_request
 
     FROM timekeeping_daily tk
     JOIN users u ON u.id = tk.user_id

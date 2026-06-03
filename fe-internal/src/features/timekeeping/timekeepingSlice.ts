@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
   getTimekeepingAPI,
+  getTimekeepingByDateAPI,
   createTimekeepingAPI,
   updateTimekeepingAPI,
   approveOffAPI,
@@ -14,11 +15,13 @@ import {
 
 interface TimekeepingState {
   records: any[];
+  selectedDateRecords: any[];
   loading: boolean;
 }
 
 const initialState: TimekeepingState = {
   records: [],
+  selectedDateRecords: [],
   loading: false,
 };
 
@@ -36,9 +39,21 @@ export const fetchTimekeeping = createAsyncThunk(
     year: number;
     user_id?: number;
   }) => {
-    const res = await getTimekeepingAPI( month, year, user_id);
+    const res = await getTimekeepingAPI(month, year, user_id);
     return res.data || [];
-  }
+  },
+);
+
+//
+// 🔹 GET chi tiết theo ngày
+//
+export const fetchTimekeepingByDate = createAsyncThunk(
+  "timekeeping/fetchByDate",
+  async ({ user_id, work_date }: { user_id: number; work_date: string }) => {
+    const res = await getTimekeepingByDateAPI(user_id, work_date);
+
+    return res.data.data || [];
+  },
 );
 
 export const createTimekeeping = createAsyncThunk(
@@ -56,10 +71,10 @@ export const createTimekeeping = createAsyncThunk(
       return res.data.data;
     } catch (err: any) {
       return thunkAPI.rejectWithValue(
-        err?.response?.data?.message || "Đăng ký lịch thất bại"
+        err?.response?.data?.message || "Đăng ký lịch thất bại",
       );
     }
-  }
+  },
 );
 
 export const updateTimekeeping = createAsyncThunk(
@@ -67,7 +82,7 @@ export const updateTimekeeping = createAsyncThunk(
   async ({ id, data }: { id: number; data: any }) => {
     const res = await updateTimekeepingAPI(id, data);
     return res.data.data;
-  }
+  },
 );
 
 //
@@ -81,10 +96,10 @@ export const approveOff = createAsyncThunk(
       return res.data.data;
     } catch (err: any) {
       return thunkAPI.rejectWithValue(
-        err?.response?.data?.message || "Không thể duyệt nghỉ"
+        err?.response?.data?.message || "Không thể duyệt nghỉ",
       );
     }
-  }
+  },
 );
 
 export const rejectOff = createAsyncThunk(
@@ -95,19 +110,18 @@ export const rejectOff = createAsyncThunk(
       return res.data.data;
     } catch (err: any) {
       return thunkAPI.rejectWithValue(
-        err?.response?.data?.message || "Không thể từ chối nghỉ"
+        err?.response?.data?.message || "Không thể từ chối nghỉ",
       );
     }
-  }
+  },
 );
-
 
 export const checkIn = createAsyncThunk(
   "timekeeping/checkIn",
   async ({ id, lat, lng }: { id: number; lat?: number; lng?: number }) => {
     const res = await checkInAPI(id, lat, lng);
     return res.data.data;
-  }
+  },
 );
 
 export const checkOut = createAsyncThunk(
@@ -115,7 +129,7 @@ export const checkOut = createAsyncThunk(
   async ({ id, lat, lng }: { id: number; lat?: number; lng?: number }) => {
     const res = await checkOutAPI(id, lat, lng);
     return res.data.data;
-  }
+  },
 );
 
 //
@@ -126,7 +140,7 @@ export const startBreak = createAsyncThunk(
   async (id: number) => {
     const res = await startBreakAPI(id);
     return res.data.data;
-  }
+  },
 );
 
 export const endBreak = createAsyncThunk(
@@ -134,7 +148,7 @@ export const endBreak = createAsyncThunk(
   async (id: number) => {
     const res = await endBreakAPI(id);
     return res.data.data;
-  }
+  },
 );
 
 //
@@ -145,7 +159,7 @@ export const deleteTimekeeping = createAsyncThunk(
   async (id: number) => {
     await deleteTimekeepingAPI(id);
     return id;
-  }
+  },
 );
 
 //
@@ -170,6 +184,22 @@ const timekeepingSlice = createSlice({
       state.loading = false;
     });
 
+    // FETCH BY DATE
+    // ================= FETCH BY DATE =================
+
+    builder.addCase(fetchTimekeepingByDate.pending, (state) => {
+      state.loading = true;
+    });
+
+    builder.addCase(fetchTimekeepingByDate.fulfilled, (state, action) => {
+      state.loading = false;
+      state.selectedDateRecords = action.payload;
+    });
+
+    builder.addCase(fetchTimekeepingByDate.rejected, (state) => {
+      state.loading = false;
+    });
+
     // ================= CREATE =================
     builder.addCase(createTimekeeping.fulfilled, (state, action) => {
       state.records.push(action.payload);
@@ -178,7 +208,7 @@ const timekeepingSlice = createSlice({
     // ================= UPDATE =================
     builder.addCase(updateTimekeeping.fulfilled, (state, action) => {
       const index = state.records.findIndex(
-        (r) => Number(r.id) === Number(action.payload.id)
+        (r) => Number(r.id) === Number(action.payload.id),
       );
 
       if (index !== -1) {
@@ -186,12 +216,12 @@ const timekeepingSlice = createSlice({
       }
     });
 
-     // ================= APPROVE OFF =================
+    // ================= APPROVE OFF =================
     builder.addCase(approveOff.fulfilled, (state, action) => {
       const updated = action.payload;
 
       const index = state.records.findIndex(
-        (r) => Number(r.id) === Number(updated.id)
+        (r) => Number(r.id) === Number(updated.id),
       );
 
       if (index !== -1) {
@@ -207,7 +237,7 @@ const timekeepingSlice = createSlice({
       const updated = action.payload;
 
       const index = state.records.findIndex(
-        (r) => Number(r.id) === Number(updated.id)
+        (r) => Number(r.id) === Number(updated.id),
       );
 
       if (index !== -1) {
@@ -221,7 +251,7 @@ const timekeepingSlice = createSlice({
     // ================= CHECK-IN =================
     builder.addCase(checkIn.fulfilled, (state, action) => {
       const index = state.records.findIndex(
-        (r) => Number(r.id) === Number(action.payload.id)
+        (r) => Number(r.id) === Number(action.payload.id),
       );
 
       if (index !== -1) {
@@ -232,7 +262,7 @@ const timekeepingSlice = createSlice({
     // ================= CHECK-OUT =================
     builder.addCase(checkOut.fulfilled, (state, action) => {
       const index = state.records.findIndex(
-        (r) => Number(r.id) === Number(action.payload.id)
+        (r) => Number(r.id) === Number(action.payload.id),
       );
 
       if (index !== -1) {
@@ -243,7 +273,7 @@ const timekeepingSlice = createSlice({
     // ================= BREAK =================
     builder.addCase(startBreak.fulfilled, (state, action) => {
       const index = state.records.findIndex(
-        (r) => Number(r.id) === Number(action.payload.id)
+        (r) => Number(r.id) === Number(action.payload.id),
       );
 
       if (index !== -1) {
@@ -253,7 +283,7 @@ const timekeepingSlice = createSlice({
 
     builder.addCase(endBreak.fulfilled, (state, action) => {
       const index = state.records.findIndex(
-        (r) => Number(r.id) === Number(action.payload.id)
+        (r) => Number(r.id) === Number(action.payload.id),
       );
 
       if (index !== -1) {
@@ -263,9 +293,7 @@ const timekeepingSlice = createSlice({
 
     // ================= DELETE =================
     builder.addCase(deleteTimekeeping.fulfilled, (state, action) => {
-      state.records = state.records.filter(
-        (r) => r.id !== action.payload
-      );
+      state.records = state.records.filter((r) => r.id !== action.payload);
     });
   },
 });
@@ -277,3 +305,6 @@ export const selectTimekeepingLoading = (state: any) =>
   state.timekeeping.loading;
 
 export default timekeepingSlice.reducer;
+
+export const selectSelectedDateRecords = (state: any) =>
+  state.timekeeping.selectedDateRecords;

@@ -6,17 +6,9 @@ import { api } from "../../services/api";
 
 export const getDashboardOverviewAPI = () => api.get("/dashboard/overview");
 
-// ======================================================
-// PRODUCTS
-// ======================================================
-
 // LOW STOCK PRODUCTS
 export const getLowStockProductsAPI = (limit = 10) =>
   api.get(`/dashboard/products/low-stock?limit=${limit}`);
-
-// ======================================================
-// STAFF
-// ======================================================
 
 // ATTENDANCE
 export const getTopAttendanceStaffsAPI = (limit = 10) =>
@@ -34,10 +26,6 @@ export const getTopDoctorRevenueAPI = (limit = 10) =>
 export const getTopTechnicianRevenueAPI = (limit = 10) =>
   api.get(`/dashboard/staffs/technician-revenue?limit=${limit}`);
 
-// ======================================================
-// CUSTOMERS
-// ======================================================
-
 // VIP CUSTOMERS
 export const getTopVipCustomersAPI = (limit = 10) =>
   api.get(`/dashboard/customers/vip?limit=${limit}`);
@@ -46,10 +34,7 @@ export const getTopVipCustomersAPI = (limit = 10) =>
 export const getTopLoyalCustomersAPI = (limit = 10) =>
   api.get(`/dashboard/customers/loyal?limit=${limit}`);
 
-// ======================================================
 // SERVICES
-// ======================================================
-
 // MOST BOOKED SERVICES
 export const getMostBookedServicesAPI = (limit = 10) =>
   api.get(`/dashboard/services/most-booked?limit=${limit}`);
@@ -66,9 +51,14 @@ export const getMostBookedPackagesAPI = (limit = 10) =>
 export const getLeastBookedPackagesAPI = (limit = 10) =>
   api.get(`/dashboard/packages/least-booked?limit=${limit}`);
 
-// ======================================================
 // REVENUE
-// ======================================================
-
 export const getRevenueStatisticsAPI = () =>
   api.get("/dashboard/revenues/statistics");
+
+export const getRevenueByDateRangeAPI = (
+  startDate: string,
+  endDate: string,
+) =>
+  api.get(
+    `/dashboard/revenues/by-date-range?startDate=${startDate}&endDate=${endDate}`,
+  );

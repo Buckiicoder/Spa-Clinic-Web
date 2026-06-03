@@ -9,7 +9,7 @@ import {
   CalendarCheck,
   Users,
   ChevronDown,
-  // DamIcon,
+  PaperclipIcon,
   BriefcaseMedical,
   ShoppingBasket,
   Volume,
@@ -166,7 +166,7 @@ export default function Navbar({ open, setOpen }: any) {
                     className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
                   >
                     <CalendarCheck size={18} />
-                    {open && <span>Check lịch</span>}
+                    {open && <span>Quản lý đặt lịch</span>}
                   </Link>
 
                   {!open && (
@@ -333,6 +333,8 @@ export default function Navbar({ open, setOpen }: any) {
                   </div>
                 </li>
 
+                
+
                 <li className="relative">
                   <div
                     onClick={() => toggleMenu("product")}
@@ -407,6 +409,27 @@ export default function Navbar({ open, setOpen }: any) {
                       </li> */}
                     </ul>
                   </div>
+                </li>
+
+                {/* Giảm giá */}
+                <li className="group relative">
+                  <Link
+                    to="/payment/bill"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
+                  >
+                    <PaperclipIcon size={18} />
+                    {open && <span>Quản lý hóa đơn</span>}
+                  </Link>
+
+                  {!open && (
+                    <span
+                      className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
+      bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 
+      group-hover:opacity-100 transition whitespace-nowrap"
+                    >
+                      Quản lý hóa đơn
+                    </span>
+                  )}
                 </li>
               </ul>
             </div>

@@ -6,6 +6,7 @@ import { ChatBookingService } from "./chat-booking.service.js";
 import { ChatServiceMatcherService } from "./chat-service-matcher.service.js";
 import { ChatAIService } from "./chat-ai.service.js";
 import { ChatConsultService } from "./chat-consult.service.js";
+import { ChatBookingExtractorService } from "./chat-booking-extractor.service.js";
 import {
   extractName,
   extractPhone,
@@ -14,8 +15,66 @@ import {
   extractTime,
   extractQuantity,
 } from "../../utils/extractors.js";
+import { ChatSkinAnalysisService } from "./chat-skin-analysis.service.js";
 
 export class ChatService {
+  private static isBookingConfirmation(message: string) {
+    const lower = this.normalizeText(message);
+
+    const bookingWords = [
+      "đặt lịch",
+      "tôi muốn đặt lịch",
+      "đặt giúp tôi",
+      "có",
+      "ok",
+      "oke",
+      "đồng ý",
+      "xác nhận",
+      "đặt luôn",
+      "book",
+    ];
+
+    return bookingWords.some((word) => lower.includes(word));
+  }
+
+  private static normalizeText(text: string) {
+    return text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\w\s]/g, "")
+      .trim();
+  }
+
+  private static validateBookingDraft(
+    draft: BookingDraft,
+    userId?: number,
+  ): string[] {
+    const missingFields: string[] = [];
+
+    if (!draft.service_name) {
+      missingFields.push("dịch vụ");
+    }
+
+    if (!userId && !draft.name) {
+      missingFields.push("tên");
+    }
+
+    if (!userId && !draft.phone) {
+      missingFields.push("số điện thoại");
+    }
+
+    if (!draft.booking_date) {
+      missingFields.push("ngày");
+    }
+
+    if (!draft.booking_time) {
+      missingFields.push("giờ");
+    }
+
+    return missingFields;
+  }
+
   static async handleMessage({
     message,
     userId,
@@ -25,25 +84,16 @@ export class ChatService {
     userId?: number;
     conversationId?: string;
   }) {
-    // =========================
     // create conversation
-    // =========================
-
     if (!conversationId) {
       conversationId = await this.createConversation(userId);
     }
 
-    // =========================
     // save user message
-    // =========================
-
     await this.saveMessage(conversationId, "user", message);
 
-    // =========================
     // memory
-    // =========================
-
-    ChatMemoryService.get(conversationId);
+    // ChatMemoryService.get(conversationId);
 
     if (userId) {
       const userRes = await db.query(
@@ -69,6 +119,11 @@ export class ChatService {
       }
     }
 
+    let memory =
+  ChatMemoryService.get(
+    conversationId,
+  );
+
     // =========================
     // extract info
     // =========================
@@ -80,106 +135,368 @@ export class ChatService {
       booking_date: extractDate(message),
       booking_time: extractTime(message),
       quantity: extractQuantity(message),
+      symptom:
+        message.length > 20
+          ? memory.symptom
+            ? `${memory.symptom}\n${message}`
+            : message
+          : memory.symptom,
     };
+
+    console.log("PURE REGEX", JSON.stringify(extracted, null, 2));
+
+    const aiExtract = await ChatBookingExtractorService.extract(message);
+
+    console.log("PURE AI", JSON.stringify(aiExtract, null, 2));
+
+    const merged: Partial<BookingDraft> = {
+      name: extracted.name ?? aiExtract.name,
+
+      phone: extracted.phone ?? aiExtract.phone,
+
+      email: extracted.email ?? aiExtract.email,
+
+      // DATE luôn ưu tiên regex
+      booking_date: extracted.booking_date ?? aiExtract.booking_date,
+
+      // TIME ưu tiên AI
+      booking_time:
+  /^\d{2}:\d{2}$/.test(
+    extracted.booking_time || "",
+  )
+    ? extracted.booking_time
+    : aiExtract.booking_time,
+
+      quantity: extracted.quantity ?? 1,
+
+      symptom: extracted.symptom,
+    };
+
+    ChatMemoryService.update(conversationId, {
+      ...merged,
+      booking_intent: this.isBookingConfirmation(message) ? true : undefined,
+    });
+
+    memory =
+  ChatMemoryService.get(conversationId);
+
+if (
+  !memory.service_name &&
+  memory.symptom
+) {
+  const suggestedService =
+    await ChatConsultService.recommendService(
+      memory.symptom,
+    );
+
+  console.log(
+    "AUTO SERVICE:",
+    suggestedService,
+  );
+
+  if (suggestedService) {
+    ChatMemoryService.update(
+      conversationId,
+      {
+        service_name:
+          suggestedService,
+      },
+    );
+
+    memory =
+      ChatMemoryService.get(
+        conversationId,
+      );
+  }
+}
 
     const matchedService = ChatServiceMatcherService.findService(message);
 
     if (matchedService) {
-      extracted.service_name = matchedService;
-    }
+  ChatMemoryService.update(
+    conversationId,
+    {
+      service_name:
+        matchedService,
+    },
+  );
+
+  memory =
+    ChatMemoryService.get(
+      conversationId,
+    );
+}
+
+    console.log("MATCHED SERVICE:", matchedService);
 
     // =========================
     // update memory
     // =========================
 
-    const updatedMemory = ChatMemoryService.update(conversationId, extracted);
+    const consultStep = (memory.consult_step || 0) + 1;
 
-    // =========================
+    ChatMemoryService.update(conversationId, {
+      consult_step: consultStep,
+    });
+
+    memory = ChatMemoryService.get(conversationId);
+
     // detect intent
-    // =========================
-
     const intent = ChatIntentService.detectIntent(message);
 
-    // =========================
-    // consult
-    // =========================
-
-    if (intent === "consult") {
-      // =========================
-      // lưu symptom
-      // =========================
-
-      ChatMemoryService.update(conversationId, {
-        symptom: message,
-      });
-
-      // =========================
-      // recommend middle service
-      // =========================
-
-      let serviceName = updatedMemory.service_name;
+    if (intent === "service_price") {
+      let serviceName = memory.service_name;
 
       if (!serviceName) {
-        const recommended = await ChatConsultService.recommendService(message);
+        serviceName = await ChatConsultService.recommendService(message);
+      }
 
-        if (recommended) {
-          serviceName = recommended;
+      if (serviceName) {
+        ChatMemoryService.update(conversationId, {
+          service_name: serviceName,
+        });
 
+        memory = ChatMemoryService.get(conversationId);
+      }
+
+      if (serviceName) {
+        const packages = await this.getServicePackages(serviceName);
+
+        const reply = `
+Dựa trên thông tin bạn chia sẻ, hiện dịch vụ ${serviceName} có các gói:
+
+${packages}
+
+Chi phí thực tế sẽ phụ thuộc tình trạng da sau khi bác sĩ thăm khám.
+
+Nếu thuận tiện mình có thể hỗ trợ đặt lịch soi da và tư vấn miễn phí cho bạn.
+`;
+
+        await this.saveMessage(conversationId, "assistant", reply);
+
+        return {
+          reply,
+          conversationId,
+        };
+      }
+    }
+
+    // =========================
+    // create booking
+    // =========================
+
+    if (intent === "booking" || memory.booking_intent) {
+      if (!memory.service_name && memory.symptom) {
+        const suggestedService = await ChatConsultService.recommendService(
+          memory.symptom,
+        );
+
+        if (suggestedService) {
           ChatMemoryService.update(conversationId, {
-            service_name: recommended,
+            service_name: suggestedService,
           });
+
+          memory = ChatMemoryService.get(conversationId);
         }
       }
 
-      // =========================
-      // chưa xác định được
-      // =========================
+if (!memory.service_name) {
+  const suggestedService =
+    await ChatConsultService.recommendService(
+      memory.symptom || message,
+    );
 
-      if (!serviceName) {
-        const aiReply = await ChatAIService.generateReply(`
-Khách đang mô tả tình trạng:
+  if (suggestedService) {
+    ChatMemoryService.update(
+      conversationId,
+      {
+        service_name:
+          suggestedService,
+      },
+    );
 
-${message}
+    memory =
+      ChatMemoryService.get(
+        conversationId,
+      );
+  }
+}
 
-Hãy hỏi thêm tối đa 1 câu
-để xác định khách đang gặp vấn đề gì.
-`);
+if (!memory.service_name) {
+  return {
+    reply:
+      "Hiện hệ thống chưa xác định được dịch vụ phù hợp. Bạn có thể mô tả rõ hơn tình trạng da để bác sĩ tư vấn chính xác nhé.",
+    conversationId,
+  };
+}
 
-        await this.saveMessage(conversationId, "assistant", aiReply);
+      const finalMissing = this.validateBookingDraft(memory, userId);
+
+      if (finalMissing.length > 0) {
+        const reply = `Vui lòng cung cấp các thông tin còn thiếu sau để có thể đặt lịch nhé: ${finalMissing.join(
+          ", ",
+        )}`;
+
+        await this.saveMessage(conversationId, "assistant", reply);
 
         return {
-          reply: aiReply,
+          reply,
           conversationId,
         };
       }
 
+      try {
+        const booking = await ChatBookingService.createBooking({
+          userId,
+          conversationId,
+          draft: memory,
+        });
+
+        console.log("REGEX EXTRACT:", extracted);
+
+        console.log("AI EXTRACT:", aiExtract);
+
+        ChatMemoryService.clear(conversationId);
+
+        const successReply = `
+      ✅ Đặt lịch thành công
+
+      Mã lịch hẹn: ${booking.booking_code}
+
+      Khách hàng:
+      ${memory.name}
+
+      Dịch vụ:
+      ${memory.service_name}
+
+      Ngày:
+      ${memory.booking_date}
+
+      Giờ:
+      ${memory.booking_time}
+
+      Vui lòng đến trước giờ hẹn khoảng 10 phút.
+
+      Bác sĩ sẽ thăm khám trực tiếp và tư vấn chi tiết tình trạng da của bạn trước khi thực hiện liệu trình.
+      `;
+        ``;
+
+        await this.saveMessage(conversationId, "assistant", successReply);
+
+        return {
+          reply: successReply,
+          conversationId,
+        };
+      } catch (error: any) {
+        const reply = error?.message || "Không thể tạo lịch hẹn.";
+
+        await this.saveMessage(conversationId, "assistant", reply);
+
+        return {
+          reply,
+          conversationId,
+        };
+      }
+    }
+
+    if (intent === "consult" || intent === "general") {
+      const history =
+        await ChatAIService.getConversationHistory(conversationId);
+
+      let analysis: any = null;
+
+      try {
+        const analysisRaw = await ChatSkinAnalysisService.analyze(message);
+
+        analysis = JSON.parse(analysisRaw || "{}");
+      } catch {
+        analysis = null;
+      }
+
       // =========================
-      // lấy package
+      // tìm dịch vụ phù hợp
       // =========================
 
-      const packages = await this.getServicePackages(serviceName);
+      let serviceName =
+  memory.service_name;
+
+if (!serviceName) {
+  serviceName =
+    await ChatConsultService.recommendService(
+      memory.symptom || message,
+    );
+}
+
+      if (serviceName && !memory.service_name) {
+        ChatMemoryService.update(conversationId, {
+          service_name: serviceName,
+        });
+
+        memory = ChatMemoryService.get(conversationId);
+      }
+
+      let packages = "";
+
+      if (serviceName) {
+        packages = await this.getServicePackages(serviceName);
+      }
 
       // =========================
-      // AI tư vấn mềm
+      // AI trả lời tư vấn
       // =========================
 
-      const aiReply = await ChatAIService.generateReply(`
-Khách mô tả:
+      const aiReply = await ChatAIService.generateReply(
+        `
+Khách hỏi:
 
 ${message}
 
-Spa xác định khách có thể phù hợp với:
-${serviceName}
+Phân tích:
 
-Các gói:
-${packages}
+${JSON.stringify(analysis)}
 
-Hãy:
-- tư vấn ngắn gọn
-- KHÔNG khẳng định bệnh
-- nói "có thể"
-- mời khách đặt lịch thăm khám
-`);
+Dịch vụ phù hợp:
+
+${serviceName || "chưa xác định"}
+
+Các gói hiện có:
+
+${packages || "không có"}
+
+Số lần tư vấn:
+
+${consultStep}
+
+QUY TẮC:
+
+1. Nếu chưa đủ thông tin:
+   chỉ hỏi thêm tối đa 1 câu.
+
+2. Nếu đã xác định được dịch vụ:
+   giải thích ngắn gọn.
+
+3. Nếu đã tư vấn từ 3 lần trở lên:
+   KHÔNG hỏi thêm.
+
+4. Nếu có dịch vụ phù hợp:
+   giới thiệu các gói hiện có.
+
+5. Nếu khách hỏi giá:
+   trả lời bằng các gói trong hệ thống.
+
+6. Sau khi giới thiệu dịch vụ:
+   chuyển sang mời đặt lịch.
+
+7. Nhấn mạnh khi đặt lịch online rằng:
+
+   "bác sĩ cần thăm khám trực tiếp
+   để đánh giá chính xác tình trạng."
+
+8. Mục tiêu cuối:
+   hướng khách tới đặt lịch.
+`,
+        history,
+      );
 
       await this.saveMessage(conversationId, "assistant", aiReply);
 
@@ -188,82 +505,9 @@ Hãy:
         conversationId,
       };
     }
-
-    // =========================
-    // booking flow
-    // =========================
-
-    const missingFields = [];
-
-    if (!updatedMemory.service_name) {
-      missingFields.push("dịch vụ");
-    }
-
-    if (!userId) {
-      if (!updatedMemory.name) {
-        missingFields.push("tên người đặt")
-      }
-      if (!updatedMemory.phone) {
-        missingFields.push("số điện thoại");
-      }
-    }
-
-    if (!updatedMemory.booking_date) {
-      missingFields.push("ngày");
-    }
-
-    if (!updatedMemory.booking_time) {
-      missingFields.push("giờ");
-    }
-
-    // =========================
-    // ask missing
-    // =========================
-
-    if (missingFields.length > 0) {
-      const reply = `Bạn vui lòng hãy cung cấp thêm các thông tin còn thiếu gồm: ${missingFields.join(", ")}`;
-
-      await this.saveMessage(conversationId, "assistant", reply);
-
-      return {
-        reply,
-        conversationId,
-      };
-    }
-
-    // =========================
-    // create booking
-    // =========================
-
-    const booking = await ChatBookingService.createBooking({
-      userId,
-      conversationId,
-      draft: updatedMemory,
-    });
-
-    console.log(booking);
-
-    // =========================
-    // clear memory
-    // =========================
-
-    ChatMemoryService.clear(conversationId);
-
-    const successReply = `
-Đặt lịch thành công.
-
-• Mã đặt lịch: ${booking.booking_code}
-• Dịch vụ: ${updatedMemory.service_name}
-• Ngày: ${updatedMemory.booking_date}
-• Giờ: ${updatedMemory.booking_time}
-
-Vui lòng có mặt đúng giờ hẹn.
-Cảm ơn bạn đã tin tưởng SpaClinic 💖
-`;
-    await this.saveMessage(conversationId, "assistant", successReply);
-
     return {
-      reply: successReply,
+      reply:
+        "Mình chưa hiểu rõ yêu cầu của bạn. Bạn có thể mô tả chi tiết hơn được không?",
       conversationId,
     };
   }
@@ -314,10 +558,9 @@ Cảm ơn bạn đã tin tưởng SpaClinic 💖
       FROM service_packages sp
       JOIN services s
         ON s.id = sp.service_id
-      WHERE LOWER(s.name)
-      LIKE LOWER($1)
+      WHERE LOWER(TRIM(s.name)) = LOWER(TRIM($1))
       `,
-      [`%${serviceName}%`],
+      [serviceName],
     );
 
     return result.rows

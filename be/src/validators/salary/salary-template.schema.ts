@@ -16,18 +16,18 @@ export const createSalaryTemplateSchema = z.object({
   has_commission: z.boolean().optional(),
 
   commission_revenue_type: z
-    .enum(["PERSONAL_REVENUE", "BRANCH_REVENUE"])
+    .enum(["PERSONAL_REVENUE", "BRANCH_REVENUE", "WORK_HOUR"])
     .nullable()
     .optional(),
 
   commission_calculation_type: z
-    .enum(["TOTAL_REVENUE", "REVENUE_OVER_TARGET"])
+    .enum(["TOTAL_REVENUE", "REVENUE_OVER_TARGET", "WORK_HOUR"])
     .nullable()
     .optional(),
 
   commission_value: z.number().nullable().optional(),
 
-  commission_unit: z.enum(["PERCENT","FIXED"]).nullable().optional(),
+  commission_unit: z.enum(["PERCENT", "FIXED"]).nullable().optional(),
 
   minimum_revenue_target: z.number().nullable().optional(),
 

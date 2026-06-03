@@ -522,86 +522,76 @@ export const getTechnicianWorkSummary = async (
 ) => {
   const executor = client || db;
 
-  const result = await executor.query(
-    `
-    SELECT
-      COUNT(DISTINCT css.id)
-        AS total_sessions,
+const result = await executor.query(
+  `
+  SELECT
+    COUNT(DISTINCT css.id)
+      AS total_sessions,
 
-      COALESCE(
-        SUM(
-          COALESCE(
-            sst.actual_duration_seconds,
+    COALESCE(
+      SUM(
+        CASE
+          -- STEP HOÀN THÀNH
+          WHEN sst.status = 'completed'
+          THEN COALESCE(
+            sst.estimated_duration_minutes,
             0
           )
-        ),
-        0
-      ) AS total_duration_seconds,
 
-      ROUND(
-        COALESCE(
-          SUM(
-            COALESCE(
-              sst.actual_duration_seconds,
-              0
-            )
-          ) / 3600.0,
-          0
-        ),
-        2
-      ) AS total_work_hours,
+          -- STEP CHƯA HOÀN THÀNH
+          ELSE COALESCE(
+            sst.actual_duration_seconds,
+            0
+          ) / 60.0
+        END
+      ),
+      0
+    ) AS total_work_minutes
 
-      ROUND(
-        COALESCE(
-          SUM(
-            COALESCE(
-              sst.actual_duration_seconds,
-              0
-            )
-          ) / 60.0,
-          0
-        ),
-        2
-      ) AS total_work_minutes
+  FROM customer_service_sessions css
 
-    FROM customer_service_sessions css
+  INNER JOIN session_step_trackings sst
+    ON sst.session_id = css.id
 
-    INNER JOIN session_step_trackings sst
-      ON sst.session_id = css.id
+  WHERE
+    sst.technician_id = $1
 
-    WHERE
-      sst.technician_id = $1
+    AND css.status != 'cancelled'
 
-      AND sst.status = 'completed'
+    AND EXTRACT(
+      MONTH FROM css.service_date
+    ) = $2
 
-      AND EXTRACT(
-        MONTH FROM css.service_date
-      ) = $2
+    AND EXTRACT(
+      YEAR FROM css.service_date
+    ) = $3
+  `,
+  [staff_id, month, year],
+);
 
-      AND EXTRACT(
-        YEAR FROM css.service_date
-      ) = $3
-    `,
-    [staff_id, month, year],
-  );
+const totalMinutes = Number(
+  result.rows[0]?.total_work_minutes || 0,
+);
 
-  return {
-    total_sessions: Number(
-      result.rows[0]?.total_sessions || 0,
-    ),
+const totalHours = totalMinutes / 60;
 
-    total_duration_seconds: Number(
-      result.rows[0]?.total_duration_seconds || 0,
-    ),
+return {
+  total_sessions: Number(
+    result.rows[0]?.total_sessions || 0,
+  ),
 
-    total_work_hours: Number(
-      result.rows[0]?.total_work_hours || 0,
-    ),
+  total_duration_seconds: Math.round(
+    totalMinutes * 60,
+  ),
 
-    total_work_minutes: Number(
-      result.rows[0]?.total_work_minutes || 0,
-    ),
-  };
+  total_work_minutes: Number(
+    totalMinutes.toFixed(2),
+  ),
+
+  total_work_hours: Number(
+    totalHours.toFixed(2),
+  ),
+};
 };
 
 export const getAllActiveStaffs = async (

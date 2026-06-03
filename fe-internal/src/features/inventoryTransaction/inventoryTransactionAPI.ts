@@ -1,17 +1,30 @@
 import { api } from "../../services/api";
 
-// 🔹 GET ALL
+// GET
 export const getInventoryTransactionsAPI = () =>
   api.get("/inventory-transactions");
 
-// 🔹 GET BY ID
-export const getInventoryTransactionByIdAPI = (id: number) =>
-  api.get(`/inventory-transactions/${id}`);
+export const getInventoryTransactionByIdAPI = (
+  id: number,
+) => api.get(`/inventory-transactions/${id}`);
 
-// 🔹 CREATE
-export const createInventoryTransactionAPI = (data: any) =>
-  api.post("/inventory-transactions", data);
+// CREATE
+export const createInventoryTransactionAPI = (
+  data: any,
+) => api.post("/inventory-transactions", data);
 
-// 🔹 DELETE
-export const deleteInventoryTransactionAPI = (id: number) =>
-  api.delete(`/inventory-transactions/${id}`);
+// UPDATE
+export const updateInventoryTransactionAPI = (
+  id: number,
+  data: any,
+) => api.put(`/inventory-transactions/${id}`, data);
+
+// CONFIRM
+export const confirmInventoryTransactionAPI = (
+  id: number,
+) => api.patch(`/inventory-transactions/${id}/confirm`);
+
+// CANCEL
+export const cancelInventoryTransactionAPI = (
+  id: number,
+) => api.patch(`/inventory-transactions/${id}/cancel`);

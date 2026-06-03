@@ -41,6 +41,8 @@ export const getConsultedToday = async () => {
       ss.total_actual_duration_seconds,
       ss.pause_count,
 
+      bc.diagnosis, 
+
       -- technician
       technician.name as technician_name,
 
@@ -144,28 +146,31 @@ export const getConsultedToday = async () => {
       ) as completed_steps,
 
       COALESCE(
-        progress.total_steps,
+        treatment_steps.total_steps,
         0
       ) as total_steps,
 
       CASE
-        WHEN COALESCE(
-          progress.total_steps,
-          0
-        ) = 0
+  WHEN COALESCE(
+    treatment_steps.total_steps,
+    0
+  ) = 0
           THEN 0
 
         ELSE ROUND(
           (
-            progress.completed_steps::decimal
-            /
-            progress.total_steps
+            COALESCE(progress.completed_steps,0)::decimal
+/
+NULLIF(treatment_steps.total_steps, 0)
           ) * 100,
           0
         )
       END as progress_percent
 
     FROM bookings b
+
+    JOIN booking_consultations bc
+      ON bc.booking_id = b.id
 
     JOIN users u 
       ON b.customer_id = u.id
@@ -192,24 +197,39 @@ export const getConsultedToday = async () => {
 
     -- progress
     LEFT JOIN (
-      SELECT
-        session_id,
+  SELECT
+    st.session_id,
 
-        COUNT(*) FILTER (
-          WHERE status = 'completed'
-        ) as completed_steps,
+    COUNT(*) FILTER (
+      WHERE st.status = 'completed'
+    ) AS completed_steps
 
-        COUNT(*) as total_steps
+  FROM session_step_trackings st
 
-      FROM session_step_trackings
+  GROUP BY st.session_id
+) progress
+  ON progress.session_id = ss.id
 
-      GROUP BY session_id
-    ) progress
-      ON progress.session_id = ss.id
+  LEFT JOIN (
+  SELECT
+    ts.package_id,
+    ts.session_no,
 
-    WHERE b.status = 'CONSULTED'
+    COUNT(tsss.id) AS total_steps
 
-      AND DATE(ss.service_date) = CURRENT_DATE
+  FROM treatment_sessions ts
+
+  LEFT JOIN treatment_session_steps tsss
+    ON tsss.session_id = ts.id
+
+  GROUP BY
+    ts.package_id,
+    ts.session_no
+) treatment_steps
+  ON treatment_steps.package_id = p.package_id
+  AND treatment_steps.session_no = ss.session_no
+
+    WHERE DATE(ss.service_date) = CURRENT_DATE
 
       AND ss.status IN (
         'scheduled',
@@ -246,20 +266,27 @@ export const getWorkingTechnicians = async () => {
       COALESCE(progress.completed_steps, 0)
         as completed_steps,
 
-      COALESCE(progress.total_steps, 0)
-        as total_steps,
+      COALESCE(
+  treatment_steps.total_steps,
+  0
+) as total_steps,
 
       CASE
-        WHEN COALESCE(progress.total_steps, 0) = 0
-          THEN 0
-        ELSE ROUND(
-          (
-            progress.completed_steps::decimal
-            / progress.total_steps
-          ) * 100,
-          0
-        )
-      END as progress_percent,
+  WHEN COALESCE(
+    treatment_steps.total_steps,
+    0
+  ) = 0
+    THEN 0
+
+  ELSE ROUND(
+    (
+      COALESCE(progress.completed_steps,0)::decimal
+      /
+      NULLIF(treatment_steps.total_steps,0)
+    ) * 100,
+    0
+  )
+END as progress_percent,
 
       customer.name as current_customer_name,
 
@@ -276,6 +303,7 @@ export const getWorkingTechnicians = async () => {
 
     LEFT JOIN customer_service_sessions busy_session
       ON busy_session.technician_id = u.id
+      AND busy_session.service_date = CURRENT_DATE
       AND busy_session.status IN (
         'assigned',
         'in_progress',
@@ -293,20 +321,37 @@ export const getWorkingTechnicians = async () => {
      * 🔥 progress realtime
      */
     LEFT JOIN (
-      SELECT
-        session_id,
+  SELECT
+    st.session_id,
 
-        COUNT(*) FILTER (
-          WHERE status = 'completed'
-        ) as completed_steps,
+    COUNT(*) FILTER (
+      WHERE st.status = 'completed'
+    ) AS completed_steps
 
-        COUNT(*) as total_steps
+  FROM session_step_trackings st
 
-      FROM session_step_trackings
+  GROUP BY st.session_id
+) progress
+  ON progress.session_id = busy_session.id
 
-      GROUP BY session_id
-    ) progress
-      ON progress.session_id = busy_session.id
+LEFT JOIN (
+  SELECT
+    ts.package_id,
+    ts.session_no,
+
+    COUNT(tsss.id) AS total_steps
+
+  FROM treatment_sessions ts
+
+  LEFT JOIN treatment_session_steps tsss
+    ON tsss.session_id = ts.id
+
+  GROUP BY
+    ts.package_id,
+    ts.session_no
+) treatment_steps
+  ON treatment_steps.package_id = p.package_id
+  AND treatment_steps.session_no = busy_session.session_no
 
     WHERE t.status = 'WORKING'
       AND DATE(t.work_date) = CURRENT_DATE
@@ -380,6 +425,7 @@ export const getMyAssignedSessions = async (technicianId: number) => {
     JOIN services s ON p.service_id = s.id
 
     WHERE ss.technician_id = $1
+    AND ss.service_date = CURRENT_DATE
       AND ss.status IN (
         'assigned',
         'in_progress',

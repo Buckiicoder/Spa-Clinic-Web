@@ -10,7 +10,7 @@ export const sendOTPEmail = async (to: string, otp: string) => {
   });
 
   console.log(process.env.EMAIL_USER);
-console.log(process.env.EMAIL_PASS);
+  console.log(process.env.EMAIL_PASS);
 
   await transporter.sendMail({
     from: process.env.EMAIL_USER,

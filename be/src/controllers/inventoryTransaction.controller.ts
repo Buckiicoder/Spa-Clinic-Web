@@ -1,11 +1,14 @@
 import { Request, Response } from "express";
 import * as inventoryService from "../services/inventoryTransaction.service.js";
-import { createInventoryTransactionSchema } from "../validators/inventoryTransaction.schema.js";
+import {
+  createInventoryTransactionSchema,
+  updateInventoryTransactionSchema,
+} from "../validators/inventoryTransaction.schema.js";
 
 // 🔹 GET ALL
 export const getInventoryTransactions = async (
   _req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const data = await inventoryService.getAllInventoryTransactions();
@@ -21,13 +24,12 @@ export const getInventoryTransactions = async (
 // 🔹 GET BY ID
 export const getInventoryTransactionById = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const id = Number(req.params.id);
 
-    const transaction =
-      await inventoryService.getInventoryTransactionById(id);
+    const transaction = await inventoryService.getInventoryTransactionById(id);
 
     if (!transaction) {
       return res.status(404).json({
@@ -46,14 +48,15 @@ export const getInventoryTransactionById = async (
 // 🔹 CREATE
 export const createInventoryTransaction = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const data = createInventoryTransactionSchema.parse(req.body);
 
     // check trùng code
-    const existed =
-      await inventoryService.findInventoryTransactionByCode(data.code);
+    const existed = await inventoryService.findInventoryTransactionByCode(
+      data.code,
+    );
 
     if (existed) {
       return res.status(400).json({
@@ -63,9 +66,7 @@ export const createInventoryTransaction = async (
 
     // check product tồn tại
     for (const item of data.items) {
-      const product = await inventoryService.getProductById(
-        item.product_id
-      );
+      const product = await inventoryService.getProductById(item.product_id);
 
       if (!product) {
         return res.status(400).json({
@@ -74,26 +75,22 @@ export const createInventoryTransaction = async (
       }
 
       // check tồn kho nếu xuất
-      if (
-        data.type === "EXPORT" &&
-        product.stock_quantity < item.quantity
-      ) {
-        return res.status(400).json({
-          message: `Sản phẩm "${product.name}" không đủ tồn kho`,
-        });
-      }
+      // if (data.type === "EXPORT" && product.stock_quantity < item.quantity) {
+      //   return res.status(400).json({
+      //     message: `Sản phẩm "${product.name}" không đủ tồn kho`,
+      //   });
+      // }
     }
 
-    const transaction =
-      await inventoryService.createInventoryTransaction(data);
+    const transaction = await inventoryService.createInventoryTransaction(data);
 
     return res.json({
       message:
         data.type === "IMPORT"
-          ? "Nhập kho thành công"
+          ? "Tạo phiếu nhập kho thành công"
           : data.type === "EXPORT"
-          ? "Xuất kho thành công"
-          : "Điều chỉnh kho thành công",
+            ? "Xuất kho thành công"
+            : "Điều chỉnh kho thành công",
       transaction,
     });
   } catch (err: any) {
@@ -103,16 +100,16 @@ export const createInventoryTransaction = async (
   }
 };
 
-// 🔹 DELETE
-export const deleteInventoryTransaction = async (
+export const updateInventoryTransaction = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const id = Number(req.params.id);
 
-    const transaction =
-      await inventoryService.getInventoryTransactionById(id);
+    const data = updateInventoryTransactionSchema.parse(req.body);
+
+    const transaction = await inventoryService.getInventoryTransactionById(id);
 
     if (!transaction) {
       return res.status(404).json({
@@ -120,10 +117,109 @@ export const deleteInventoryTransaction = async (
       });
     }
 
-    await inventoryService.deleteInventoryTransaction(id);
+    for (const item of data.items) {
+      const product = await inventoryService.getProductById(item.product_id);
+
+      if (!product) {
+        return res.status(400).json({
+          message: `Sản phẩm ID ${item.product_id} không tồn tại`,
+        });
+      }
+    }
+
+    await inventoryService.updateInventoryTransaction(id, {
+      ...transaction,
+      ...data,
+    });
+
+    const updatedTransaction =
+      await inventoryService.getInventoryTransactionById(id);
 
     return res.json({
-      message: "Xóa phiếu kho thành công",
+      message: "Cập nhật phiếu kho thành công",
+      transaction: updatedTransaction,
+    });
+  } catch (err: any) {
+    return res.status(400).json({
+      message: err.message,
+    });
+  }
+};
+
+export const confirmInventoryTransaction = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const id = Number(req.params.id);
+
+    const transaction = await inventoryService.getInventoryTransactionById(id);
+
+    if (!transaction) {
+      return res.status(404).json({
+        message: "Không tìm thấy phiếu kho",
+      });
+    }
+
+    if (transaction.status !== "DRAFT") {
+      return res.status(400).json({
+        message: "Phiếu kho đã được xử lý",
+      });
+    }
+
+    if (transaction.type === "EXPORT") {
+      for (const item of transaction.items) {
+        const product = await inventoryService.getProductById(item.product_id);
+
+        if (product.stock_quantity < item.quantity) {
+          return res.status(400).json({
+            message: `Sản phẩm "${product.name}" không đủ tồn kho`,
+          });
+        }
+      }
+    }
+
+    await inventoryService.confirmInventoryTransaction(id);
+
+    const updatedTransaction =
+      await inventoryService.getInventoryTransactionById(id);
+
+    return res.json({
+      message: "Xác nhận phiếu kho thành công",
+      transaction: updatedTransaction,
+    });
+  } catch (err: any) {
+    return res.status(400).json({
+      message: err.message,
+    });
+  }
+};
+
+export const cancelInventoryTransaction = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const id = Number(req.params.id);
+
+    const transaction = await inventoryService.getInventoryTransactionById(id);
+
+    if (!transaction) {
+      return res.status(404).json({
+        message: "Không tìm thấy phiếu kho",
+      });
+    }
+
+    if (transaction.status !== "DRAFT") {
+      return res.status(400).json({
+        message: "Chỉ được hủy phiếu DRAFT",
+      });
+    }
+
+    await inventoryService.cancelInventoryTransaction(id);
+
+    return res.json({
+      message: "Hủy phiếu kho thành công",
     });
   } catch (err: any) {
     return res.status(500).json({

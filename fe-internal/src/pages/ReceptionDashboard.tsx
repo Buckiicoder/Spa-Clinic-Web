@@ -102,7 +102,6 @@ export default function ReceptionDashboard() {
     page * limit,
   );
 
-  // ✅ status render
   const renderStatus = (status: string) => {
     const base = "px-3 py-1 rounded-full text-xs font-semibold";
 
@@ -112,32 +111,57 @@ export default function ReceptionDashboard() {
           <span className={`${base} bg-gray-100 text-gray-600`}>Chưa đến</span>
         );
 
-      case "CONFIRMED":
+      case "CHECKED_IN":
         return (
-          <span className={`${base} bg-blue-100 text-blue-600`}>
-            Chưa xác nhận
+          <span className={`${base} bg-amber-100 text-amber-700`}>
+            Đã check-in
           </span>
         );
 
-      case "CHECKED_IN":
+      case "IN_CONSULTATION":
         return (
-          <span className={`${base} bg-amber-100 text-amber-600`}>Đã đến</span>
+          <span className={`${base} bg-purple-100 text-purple-700`}>
+            Đang tư vấn
+          </span>
+        );
+
+      case "CONSULTED":
+        return (
+          <span className={`${base} bg-indigo-100 text-indigo-700`}>
+            Đã tư vấn
+          </span>
+        );
+
+      case "IN_TREATMENT":
+        return (
+          <span className={`${base} bg-amber-100 text-amber-700`}>
+            Đang thực hiện DV
+          </span>
         );
 
       case "COMPLETED":
         return (
-          <span className={`${base} bg-green-100 text-green-600`}>
+          <span className={`${base} bg-green-100 text-green-700`}>
             Hoàn thành
           </span>
         );
 
       case "CANCELLED":
         return (
-          <span className={`${base} bg-red-100 text-red-600`}>Đã hủy</span>
+          <span className={`${base} bg-red-100 text-red-700`}>Đã hủy</span>
+        );
+
+      case "NO_SHOW":
+        return (
+          <span className={`${base} bg-orange-100 text-orange-700`}>
+            Không đến
+          </span>
         );
 
       default:
-        return status;
+        return (
+          <span className={`${base} bg-gray-100 text-gray-500`}>{status}</span>
+        );
     }
   };
 
@@ -150,13 +174,9 @@ export default function ReceptionDashboard() {
     navigate(`/booking/${id}`);
   };
 
-const handlePayment = (
-  customerId: number
-) => {
-  navigate(
-    `/payment/customer/${customerId}`
-  );
-};
+  const handlePayment = (customerId: number) => {
+    navigate(`/payment/customer/${customerId}`);
+  };
 
   return (
     <div className="min-h-screen bg-[#f7f7f7] p-6">
@@ -204,10 +224,21 @@ const handlePayment = (
               className="h-12 rounded-2xl border border-gray-200 bg-white px-4 text-sm outline-none transition focus:border-black"
             >
               <option value="">Tất cả trạng thái</option>
+
               <option value="PENDING">Chưa đến</option>
-              <option value="CONFIRMED">Chưa xác nhận</option>
-              <option value="CHECKED_IN">Đã đến</option>
+
+              <option value="CHECKED_IN">Đã check-in</option>
+
+              <option value="IN_CONSULTATION">Đang tư vấn</option>
+
+              <option value="CONSULTED">Đã tư vấn</option>
+
+              <option value="IN_TREATMENT">Đang thực hiện dịch vụ</option>
+
               <option value="COMPLETED">Hoàn thành</option>
+
+              <option value="NO_SHOW">Không đến</option>
+
               <option value="CANCELLED">Đã hủy</option>
             </select>
 

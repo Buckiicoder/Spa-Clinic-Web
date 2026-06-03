@@ -55,7 +55,9 @@ export default function StaffManage() {
 
   const [tab, setTab] = useState("position");
   const [openModal, setOpenModal] = useState(false);
+  const [searchStaff, setSearchStaff] = useState("");
 
+  const [positionFilter, setPositionFilter] = useState("all");
   // FETCH DATA
   useEffect(() => {
     if (tab === "staff") {
@@ -145,6 +147,21 @@ export default function StaffManage() {
   const filteredPositions = positions.filter((p: any) =>
     p.name.toLowerCase().includes(searchPosition.toLowerCase()),
   );
+
+  const filteredStaffs = staffs.filter((staff: any) => {
+    const keyword = searchStaff.toLowerCase();
+
+    const matchSearch =
+      staff.name?.toLowerCase().includes(keyword) ||
+      staff.phone?.toLowerCase().includes(keyword);
+
+    const matchPosition =
+      positionFilter === "all"
+        ? true
+        : String(staff.position_id) === positionFilter;
+
+    return matchSearch && matchPosition;
+  });
 
   const handleDelete = async (e: any, staff: any) => {
     e.stopPropagation(); // ❗ chặn click row
@@ -291,15 +308,36 @@ export default function StaffManage() {
             </div>
 
             {/* SEARCH (UI trước, chưa gắn API) */}
-            <div className="relative w-full max-w-xl mb-4">
-              <Search
-                size={18}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                placeholder="Tìm theo , tên, số điện thoại..."
-                className="h-12 w-full rounded-2xl border border-gray-200 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-black"
-              />
+            <div className="mb-4 flex flex-col gap-4 lg:flex-row">
+              {/* SEARCH */}
+              <div className="relative w-full max-w-xl">
+                <Search
+                  size={18}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+
+                <input
+                  value={searchStaff}
+                  onChange={(e) => setSearchStaff(e.target.value)}
+                  placeholder="Tìm theo tên hoặc số điện thoại..."
+                  className="h-12 w-full rounded-2xl border border-gray-200 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-black"
+                />
+              </div>
+
+              {/* POSITION FILTER */}
+              <select
+                value={positionFilter}
+                onChange={(e) => setPositionFilter(e.target.value)}
+                className="h-12 min-w-[220px] rounded-2xl border border-gray-200 bg-white px-4 text-sm outline-none"
+              >
+                <option value="all">Tất cả chức vụ</option>
+
+                {positions.map((position: any) => (
+                  <option key={position.id} value={position.id}>
+                    {position.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* TABLE */}
@@ -319,7 +357,7 @@ export default function StaffManage() {
 
                 <tbody>
                   {!loading &&
-                    staffs.map((s: any) => (
+                    filteredStaffs.map((s: any) => (
                       <tr
                         key={s.id}
                         onClick={() => handleOpenEdit(s.id)}
@@ -329,8 +367,15 @@ export default function StaffManage() {
                         <td className="p-3">{s.name}</td>
                         <td className="p-3">{s.phone}</td>
                         <td className="p-3">{s.gender}</td>
-                        <td className="p-3">{s.position_name}</td>
-                        <td className="p-3">{s.employee_type.toLowerCase().replace(/^\w/, (c: string) => c.toUpperCase())}</td>
+                        <td className="p-3">
+                          {positions.find((p: any) => p.id === s.position_id)
+                            ?.name || "-"}
+                        </td>
+                        <td className="p-3">
+                          {s.employee_type
+                            .toLowerCase()
+                            .replace(/^\w/, (c: string) => c.toUpperCase())}
+                        </td>
                         <td className="p-3">
                           <button
                             onClick={(e) => handleDelete(e, s)}
@@ -352,7 +397,7 @@ export default function StaffManage() {
               )}
 
               {/* EMPTY */}
-              {!loading && staffs.length === 0 && (
+              {!loading && filteredStaffs.length === 0 && (
                 <div className="text-center py-10 text-gray-400">
                   Không có dữ liệu
                 </div>

@@ -64,64 +64,59 @@ export default function SalaryTemplateModal({
 
   const [openDeductionModal, setOpenDeductionModal] = useState(false);
 
-   const defaultTemplateForm: SalaryTemplateFormState = {
-  name: "",
+  const defaultTemplateForm: SalaryTemplateFormState = {
+    name: "",
 
-  employee_type: "FULLTIME",
+    employee_type: "FULLTIME",
 
-  pay_period: "MONTHLY",
+    pay_period: "MONTHLY",
 
-  salary_amount: "",
+    salary_amount: "",
 
-  salary_unit: "MONTHLY",
+    salary_unit: "MONTHLY",
 
-  has_commission: false,
+    has_commission: false,
 
-  commission_revenue_type: null,
+    commission_revenue_type: null,
 
-  commission_calculation_type: null,
+    commission_calculation_type: null,
 
-  commission_value: "",
+    commission_value: "",
 
-  commission_unit: "PERCENT",
+    commission_unit: "PERCENT",
 
-  minimum_revenue_target: "",
+    minimum_revenue_target: "",
 
-  note: "",
+    note: "",
 
-  is_active: true,
+    is_active: true,
 
-  allowances: [],
+    allowances: [],
 
-  deductions: [],
-};
+    deductions: [],
+  };
 
   const [internalForm, setInternalForm] =
-  useState<SalaryTemplateFormState>(defaultTemplateForm);
+    useState<SalaryTemplateFormState>(defaultTemplateForm);
 
-  const form =
-  embedded && externalForm
-    ? externalForm
-    : internalForm;
+  const form = embedded && externalForm ? externalForm : internalForm;
 
-const setForm =
-  embedded && externalSetForm
-    ? externalSetForm
-    : setInternalForm;
-
-useEffect(() => {
-  if (!embedded && open) {
-    setInternalForm(defaultTemplateForm);
-  }
-}, [open, embedded]);
+  const setForm =
+    embedded && externalSetForm ? externalSetForm : setInternalForm;
 
   useEffect(() => {
-  if (!embedded && !open) return;
+    if (!embedded && open) {
+      setInternalForm(defaultTemplateForm);
+    }
+  }, [open, embedded]);
 
-  dispatch(fetchSalaryAllowances(""));
+  useEffect(() => {
+    if (!embedded && !open) return;
 
-  dispatch(fetchSalaryDeductions(""));
-}, [dispatch, open, embedded]);
+    dispatch(fetchSalaryAllowances(""));
+
+    dispatch(fetchSalaryDeductions(""));
+  }, [dispatch, open, embedded]);
 
   useEffect(() => {
     dispatch(fetchSalaryAllowances(allowanceKeyword));
@@ -130,6 +125,24 @@ useEffect(() => {
   useEffect(() => {
     dispatch(fetchSalaryDeductions(deductionKeyword));
   }, [dispatch, deductionKeyword]);
+
+useEffect(() => {
+  if (!form.has_commission) return;
+
+  if (form.commission_calculation_type === "WORK_HOUR") {
+    setForm((prev: any) => ({
+      ...prev,
+
+      commission_unit: "FIXED_AMOUNT",
+
+      minimum_revenue_target: "0",
+
+      commission_revenue_type: "WORK_HOUR",
+    }));
+  }
+}, [setForm, form.commission_calculation_type, form.has_commission]);
+
+  const isWorkHour = form.commission_calculation_type === "WORK_HOUR";
 
   const handleSave = async () => {
     try {
@@ -168,10 +181,9 @@ useEffect(() => {
               ? form.commission_unit
               : null,
 
-          minimum_revenue_target:
-            form.has_commission && form.minimum_revenue_target !== ""
-              ? Number(form.minimum_revenue_target)
-              : null,
+          minimum_revenue_target: form.has_commission
+            ? Number(form.minimum_revenue_target || 0)
+            : null,
 
           note: form.note,
 
@@ -188,8 +200,8 @@ useEffect(() => {
       onCreated?.(created);
 
       if (!embedded) {
-  onClose();
-}
+        onClose();
+      }
 
       setInternalForm(defaultTemplateForm);
 
@@ -198,7 +210,6 @@ useEffect(() => {
         message: "Tạo biểu mẫu thành công",
         type: "success",
       });
-
     } catch (err: any) {
       setToast({
         open: true,
@@ -399,6 +410,10 @@ useEffect(() => {
                       <option value="BRANCH_REVENUE">
                         Doanh thu chi nhánh
                       </option>
+
+                      <option value="WORK_HOUR">
+                        Giờ làm thực tế
+                      </option>
                     </select>
 
                     <select
@@ -413,55 +428,75 @@ useEffect(() => {
                     >
                       <option value="">Chọn cách tính</option>
 
-                      <option value="TOTAL_REVENUE">Tính theo tổng doanh thu</option>
+                      <option value="TOTAL_REVENUE">
+                        Tính theo tổng doanh thu
+                      </option>
 
                       <option value="REVENUE_OVER_TARGET">
                         Tính theo mức vượt doanh thu tối thiểu
                       </option>
+
+                      <option value="WORK_HOUR">
+                        Tính theo giờ làm thực tế
+                      </option>
                     </select>
 
                     <div className="col-span-2">
-  <div className="text-sm font-medium mb-2">
-    Đơn vị hoa hồng
-  </div>
+                      <div className="text-sm font-medium mb-2">
+                        Đơn vị hoa hồng
+                      </div>
 
-  <div className="flex items-center gap-6">
-    <label className="flex items-center gap-2 cursor-pointer">
-      <input
-        type="radio"
-        name="commission_unit"
-        checked={form.commission_unit === "PERCENT"}
-        onChange={() =>
-          setForm({
-            ...form,
-            commission_unit: "PERCENT",
-          })
-        }
-      />
+                      <div className="flex items-center gap-6">
+                        <label
+                          className={`flex items-center gap-2 ${
+                            isWorkHour
+                              ? "cursor-not-allowed opacity-50"
+                              : "cursor-pointer"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            disabled={isWorkHour}
+                            name="commission_unit"
+                            checked={form.commission_unit === "PERCENT"}
+                            onChange={() =>
+                              setForm({
+                                ...form,
+                                commission_unit: "PERCENT",
+                              })
+                            }
+                          />
 
-      <span>Theo % doanh thu</span>
-    </label>
+                          <span>Theo % doanh thu</span>
+                        </label>
 
-    <label className="flex items-center gap-2 cursor-pointer">
-      <input
-        type="radio"
-        name="commission_unit"
-        checked={form.commission_unit === "FIXED_AMOUNT"}
-        onChange={() =>
-          setForm({
-            ...form,
-            commission_unit: "FIXED_AMOUNT",
-          })
-        }
-      />
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            disabled={isWorkHour}
+                            name="commission_unit"
+                            checked={form.commission_unit === "FIXED_AMOUNT"}
+                            onChange={() =>
+                              setForm({
+                                ...form,
+                                commission_unit: "FIXED_AMOUNT",
+                              })
+                            }
+                          />
 
-      <span>Tiền cố định (VNĐ)</span>
-    </label>
-  </div>
-</div>
+                          <span>Tiền cố định (VNĐ)</span>
+                        </label>
+                      </div>
+                    </div>
 
                     <input
-                      placeholder={form.commission_unit === "PERCENT" ? "Nhập % hoa hồng " : "Nhập tiền hoa hồng cố định"}
+                      placeholder={
+                        isWorkHour
+                          ? "Nhập tiền / giờ làm thực tế"
+                          : form.commission_unit === "PERCENT"
+                            ? "Nhập % hoa hồng"
+                            : "Nhập tiền hoa hồng cố định"
+                      }
                       type="number"
                       value={form.commission_value}
                       onChange={(e) =>
@@ -473,18 +508,20 @@ useEffect(() => {
                       className="border rounded px-3 py-2"
                     />
 
-                    <input
-                      placeholder="Target doanh thu"
-                      type="number"
-                      value={form.minimum_revenue_target}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          minimum_revenue_target: e.target.value,
-                        })
-                      }
-                      className="border rounded px-3 py-2"
-                    />
+                    {!isWorkHour && (
+                      <input
+                        placeholder="Target doanh thu"
+                        type="number"
+                        value={form.minimum_revenue_target}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            minimum_revenue_target: e.target.value,
+                          })
+                        }
+                        className="border rounded px-3 py-2"
+                      />
+                    )}
                   </div>
                 )}
               </div>

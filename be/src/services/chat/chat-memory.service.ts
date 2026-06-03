@@ -8,6 +8,18 @@ export type BookingDraft = {
   booking_time?: string | null;
   quantity?: number | null;
   symptom?: string | null;
+  last_topic?: string | null;
+  skin_type?: string | null;
+  concern?: string | null;
+  customer_stage?: "NEW" | "CONSULTING" | "INTERESTED" | "BOOKING";
+  consult_step?: number | null;
+  booking_intent?: boolean | null;
+  booking_stage?:
+  | "SERVICE"
+  | "CUSTOMER_INFO"
+  | "SCHEDULE"
+  | "CONFIRM"
+  | null;
 };
 
 const bookingMemory = new Map<string, BookingDraft>();

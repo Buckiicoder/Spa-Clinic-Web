@@ -19,8 +19,9 @@ export default function Login() {
         })).unwrap();
 
       navigate("/");
-    } catch (error) {
+    } catch (error: any) {
       alert("Đăng nhập thất bại");
+      console.log(error.message);
     }
   };
 

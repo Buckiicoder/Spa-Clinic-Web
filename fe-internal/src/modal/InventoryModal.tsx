@@ -10,6 +10,7 @@ import {
 import { formatPrice, getImageUrl } from "../features/product/productFunction";
 import ProductModal from "./ProductModal";
 import { createProduct } from "../features/product/productSlice";
+import { toDateInputValue } from "../utils/generalFunction";
 
 interface InventoryItem {
   product_id: number | null;
@@ -22,7 +23,10 @@ interface Props {
   open: boolean;
   onClose: () => void;
   initialData?: any;
-  onSubmit: (data: any) => void;
+
+  onSubmit: (data: any) => Promise<void>;
+
+  onConfirm?: (data: any, transactionId?: number) => Promise<void>;
 }
 
 export default function InventoryModal({
@@ -30,6 +34,7 @@ export default function InventoryModal({
   onClose,
   initialData,
   onSubmit,
+  onConfirm,
 }: Props) {
   const dispatch = useAppDispatch();
   const products = useAppSelector(selectProducts);
@@ -58,6 +63,16 @@ export default function InventoryModal({
     product: "",
     quantity: "",
   });
+
+  const [saving, setSaving] = useState(false);
+
+  const isEdit = !!initialData;
+
+  const isConfirmed = initialData?.status === "CONFIRMED";
+
+  const isCancelled = initialData?.status === "CANCELLED";
+
+  const readonly = isConfirmed || isCancelled;
 
   useEffect(() => {
     if (!open) return;
@@ -193,19 +208,46 @@ export default function InventoryModal({
     return true;
   };
 
-  const handleSubmitForm = () => {
+  const handleSubmitForm = async () => {
+    setSaving(true);
+
+    try {
+      await onSubmit({
+        ...form,
+        total_extra_cost: Number(form.total_extra_cost || 0),
+        items: items.map((item) => ({
+          ...item,
+          product_id: Number(item.product_id),
+          quantity: Number(item.quantity),
+        })),
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleConfirmForm = async () => {
     if (!validateForm()) return;
 
-    onSubmit({
-      ...form,
-      total_extra_cost: Number(form.total_extra_cost || 0),
-      items: items.map((item) => ({
-        ...item,
-        product_id: Number(item.product_id),
-        quantity: Number(item.quantity),
-        total_price: item.quantity * item.unit_price,
-      })),
-    });
+    if (!onConfirm) return;
+
+    setSaving(true);
+
+    try {
+      const payload = {
+        ...form,
+        total_extra_cost: Number(form.total_extra_cost || 0),
+        items: items.map((item) => ({
+          ...item,
+          product_id: Number(item.product_id),
+          quantity: Number(item.quantity),
+        })),
+      };
+
+      await onConfirm(payload, initialData?.id);
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!open) return null;
@@ -225,6 +267,32 @@ export default function InventoryModal({
               Chọn sản phẩm và số lượng cần nhập vào kho
             </p>
           </div>
+
+          {initialData?.status && (
+            <div className="mt-0">
+              <span
+                className={`rounded-full px-4 py-1 text-xs font-semibold ${
+                  initialData.status === "CONFIRMED"
+                    ? "bg-green-100 text-green-700"
+                    : initialData.status === "CANCELLED"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-amber-100 text-amber-700"
+                }`}
+              >
+                {initialData.status === "DRAFT"
+                  ? "Nháp"
+                  : initialData.status === "CONFIRMED"
+                    ? "Đã xác nhận"
+                    : "Đã hủy"}
+              </span>
+              {initialData && (
+                <div className="mt-2 text-xs text-gray-500">
+                  Tạo ngày:{" "}
+                  {new Date(initialData.created_at).toLocaleString("vi-VN")}
+                </div>
+              )}
+            </div>
+          )}
 
           <button
             onClick={onClose}
@@ -250,7 +318,12 @@ export default function InventoryModal({
             </label>
             <input
               type="date"
-              value={form.transaction_date}
+              disabled={readonly}
+              value={
+                form.transaction_date
+                  ? toDateInputValue(form.transaction_date)
+                  : ""
+              }
               onChange={(e) =>
                 setForm({
                   ...form,
@@ -268,6 +341,7 @@ export default function InventoryModal({
 
             <input
               type="number"
+              disabled={readonly}
               value={form.total_extra_cost}
               onChange={(e) =>
                 setForm({
@@ -284,6 +358,7 @@ export default function InventoryModal({
             <label className="mb-1 block text-sm font-medium">Ghi chú</label>
             <textarea
               rows={1}
+              disabled={readonly}
               value={form.note}
               onChange={(e) =>
                 setForm({
@@ -310,6 +385,7 @@ export default function InventoryModal({
 
             <button
               type="button"
+              disabled={readonly}
               onClick={() => setOpenProductModal(true)}
               className="flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
             >
@@ -338,6 +414,7 @@ export default function InventoryModal({
 
                   <input
                     value={searchProduct}
+                    disabled={readonly}
                     onChange={(e) => setSearchProduct(e.target.value)}
                     placeholder="Tìm sản phẩm..."
                     className="h-11 w-full rounded-xl border border-gray-200 pl-10 pr-4 text-sm outline-none transition focus:border-black focus:border-2"
@@ -351,6 +428,7 @@ export default function InventoryModal({
                     <button
                       key={product.id}
                       type="button"
+                      disabled={readonly}
                       onClick={() => handleSelectProduct(product)}
                       className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-3 text-left transition hover:border-amber-400 hover:bg-amber-50"
                     >
@@ -439,6 +517,7 @@ export default function InventoryModal({
                         <td className="p-3 w-[120px]">
                           <input
                             type="number"
+                            disabled={readonly}
                             min={1}
                             value={item.quantity}
                             onChange={(e) =>
@@ -456,6 +535,7 @@ export default function InventoryModal({
                           <input
                             type="number"
                             min={0}
+                            disabled={readonly}
                             value={item.unit_price}
                             onChange={(e) =>
                               handleChangeItem(
@@ -474,6 +554,7 @@ export default function InventoryModal({
 
                         <td className="p-3 min-w-[200px]">
                           <input
+                            disabled={readonly}
                             value={item.note}
                             onChange={(e) =>
                               handleChangeItem(
@@ -490,6 +571,7 @@ export default function InventoryModal({
                         <td className="p-3 text-center">
                           <button
                             type="button"
+                            disabled={readonly}
                             onClick={() => handleRemoveRow(originalIndex)}
                             className="rounded-lg p-2 text-red-500 transition hover:bg-red-50"
                           >
@@ -527,45 +609,57 @@ export default function InventoryModal({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="rounded-xl border px-5 py-2 text-gray-700 transition hover:bg-gray-100"
+              className="rounded-xl border px-5 py-2 text-gray-700"
             >
-              Hủy
+              Đóng
             </button>
 
-            <button
-              onClick={handleSubmitForm}
-              className={`rounded-xl px-5 py-2 font-medium text-white transition ${
-                items.length === 0
-                  ? "cursor-not-allowed bg-gray-300"
-                  : "bg-amber-600 hover:bg-amber-700"
-              }`}
-            >
-              {initialData ? "Cập nhật phiếu" : "Lưu phiếu nhập"}
-            </button>
+            {!readonly && (
+              <>
+                <button
+                  disabled={saving}
+                  onClick={handleSubmitForm}
+                  className="rounded-xl bg-gray-700 px-5 py-2 font-medium text-white"
+                >
+                  {saving ? "Đang lưu..." : isEdit ? "Lưu nháp" : "Tạo nháp"}
+                </button>
+
+                <button
+                  disabled={saving}
+                  onClick={handleConfirmForm}
+                  className="rounded-xl bg-green-600 px-5 py-2 font-medium text-white"
+                >
+                  {saving
+                    ? "Đang xử lý..."
+                    : isEdit
+                      ? "Lưu & Xác nhận"
+                      : "Tạo & Xác nhận"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
-      <ProductModal
-        open={openProductModal}
-        onClose={() => setOpenProductModal(false)}
-        initialData={null}
-        onSubmit={async (data) => {
-          try {
-            const newProduct = await dispatch(createProduct(data)).unwrap();
+      {!readonly && (
+        <ProductModal
+          open={openProductModal}
+          onClose={() => setOpenProductModal(false)}
+          initialData={null}
+          onSubmit={async (data) => {
+            try {
+              const newProduct = await dispatch(createProduct(data)).unwrap();
 
-            // load lại danh sách sản phẩm
-            await dispatch(fetchProducts());
+              await dispatch(fetchProducts());
 
-            // tự động chọn sản phẩm vừa tạo vào bảng nhập kho
-            handleSelectProduct(newProduct);
+              handleSelectProduct(newProduct);
 
-            setOpenProductModal(false);
-          } catch (error) {
-            console.error(error);
-            alert("Thêm sản phẩm thất bại");
-          }
-        }}
-      />
+              setOpenProductModal(false);
+            } catch (error) {
+              console.error(error);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

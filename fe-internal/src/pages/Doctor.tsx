@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { io } from "socket.io-client";
 import { useAppDispatch, useAppSelector } from "../app/hook";
 import Toast from "../components/Toast";
@@ -22,26 +22,15 @@ import { selectUser } from "../features/auth/authSlice";
 export default function DoctorExamination() {
   const dispatch = useAppDispatch();
 
-  const waitingList = useAppSelector(selectWaitingConsultations);
+  const consultations = useAppSelector(selectWaitingConsultations);
   const services = useAppSelector(selectServices);
   const booking = useAppSelector(selectConsultationDetail);
+  const canEdit = booking?.status === "IN_CONSULTATION";
   const user = useAppSelector(selectUser);
   const [packageSearch, setPackageSearch] = useState("");
   const [tab, setTab] = useState<"waiting" | "done">("waiting");
   const [selectedPackages, setSelectedPackages] = useState<any[]>([]);
-  /*
-[
-  {
-    id,
-    service_id,
-    total_sessions,
-    sessions: [
-      { session_no: 1, date: "" },
-      { session_no: 2, date: "" }
-    ]
-  }
-]
-*/
+
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
   const socketRef = useRef<any>(null);
@@ -50,6 +39,11 @@ export default function DoctorExamination() {
     diagnosis: "",
     consultation_note: "",
     recommended_package_id: "",
+  });
+
+  const [errors, setErrors] = useState({
+    diagnosis: "",
+    consultation_note: "",
   });
 
   const [toast, setToast] = useState<{
@@ -89,6 +83,19 @@ export default function DoctorExamination() {
     }
   }, [booking]);
 
+  const waitingBookings = useMemo(() => {
+    return consultations.filter((b: any) => b.status === "CHECKED_IN");
+  }, [consultations]);
+
+  const completedBookings = useMemo(() => {
+    return consultations.filter((b: any) =>
+      ["IN_CONSULTATION", "CONSULTED"].includes(b.status),
+    );
+  }, [consultations]);
+
+  const displayBookings =
+    tab === "waiting" ? waitingBookings : completedBookings;
+
   const handleSelect = (id: number) => {
     dispatch(fetchConsultationDetail(id));
   };
@@ -99,6 +106,36 @@ export default function DoctorExamination() {
   };
 
   const handleSave = () => {
+    if (!canEdit) {
+      setToast({
+        type: "error",
+        message: "Vui lòng nhận khách trước khi tư vấn",
+      });
+      return;
+    }
+
+    const newErrors = {
+      diagnosis: "",
+      consultation_note: "",
+    };
+
+    let hasError = false;
+
+    if (!form.diagnosis?.trim()) {
+      newErrors.diagnosis = "Vui lòng nhập chẩn đoán";
+      hasError = true;
+    }
+
+    if (!form.consultation_note?.trim()) {
+      newErrors.consultation_note = "Vui lòng nhập ghi chú tư vấn";
+      hasError = true;
+    }
+
+    if (hasError) {
+      setErrors(newErrors);
+      return;
+    }
+
     if (!booking) return;
 
     dispatch(
@@ -110,6 +147,14 @@ export default function DoctorExamination() {
   };
 
   const handleComplete = async () => {
+    if (!canEdit) {
+      setToast({
+        type: "error",
+        message: "Vui lòng nhận khách trước khi hoàn thành tư vấn",
+      });
+      return;
+    }
+
     if (!booking) return;
 
     try {
@@ -207,7 +252,7 @@ export default function DoctorExamination() {
           </div>
 
           <div className="space-y-2">
-            {waitingList.map((b: any) => (
+            {displayBookings.map((b: any) => (
               <div
                 key={b.id}
                 onClick={() => handleSelect(b.id)}
@@ -313,34 +358,92 @@ export default function DoctorExamination() {
                 </div>
               </div>
 
+              {booking.status === "CHECKED_IN" && (
+                <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3">
+                  <p className="text-sm text-blue-700">
+                    Vui lòng bấm <b>"Nhận khách"</b> trước khi nhập chẩn đoán,
+                    ghi chú tư vấn hoặc tạo liệu trình.
+                  </p>
+                </div>
+              )}
+
               {/* FORM */}
               <div className="space-y-1">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium">Chẩn đoán</label>
+                    <label className="text-sm font-medium">
+                      Chẩn đoán <span className="text-red-500">*</span>
+                    </label>
+
                     <textarea
+                      disabled={!canEdit}
                       value={form.diagnosis}
-                      onChange={(e) =>
-                        setForm({ ...form, diagnosis: e.target.value })
-                      }
-                      className="w-full border rounded-xl p-3"
+                      onChange={(e) => {
+                        setForm({
+                          ...form,
+                          diagnosis: e.target.value,
+                        });
+
+                        if (errors.diagnosis) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            diagnosis: "",
+                          }));
+                        }
+                      }}
+                      className={`w-full rounded-xl p-3 border ${
+                        errors.diagnosis ? "border-red-500" : "border-gray-300"
+                      } ${
+                        !canEdit
+                          ? "bg-gray-100 cursor-not-allowed opacity-70"
+                          : ""
+                      }`}
                     />
+
+                    {errors.diagnosis && (
+                      <p className="mt-1 text-xs text-red-500">
+                        {errors.diagnosis}
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <label className="text-sm font-medium">
-                      Ghi chú tư vấn
+                      Ghi chú tư vấn <span className="text-red-500">*</span>
                     </label>
+
                     <textarea
+                      disabled={!canEdit}
                       value={form.consultation_note}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setForm({
                           ...form,
                           consultation_note: e.target.value,
-                        })
-                      }
-                      className="w-full border rounded-xl p-3"
+                        });
+
+                        if (errors.consultation_note) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            consultation_note: "",
+                          }));
+                        }
+                      }}
+                      className={`w-full rounded-xl p-3 border ${
+                        errors.consultation_note
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      } ${
+                        !canEdit
+                          ? "bg-gray-100 cursor-not-allowed opacity-70"
+                          : ""
+                      }`}
                     />
+
+                    {errors.consultation_note && (
+                      <p className="mt-1 text-xs text-red-500">
+                        {errors.consultation_note}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -350,6 +453,7 @@ export default function DoctorExamination() {
                   </label>
 
                   <input
+                    disabled={!canEdit}
                     value={packageSearch}
                     onChange={(e) => {
                       const value = e.target.value;
@@ -373,7 +477,11 @@ export default function DoctorExamination() {
 
                       setSearchResults(results.slice(0, 5));
                     }}
-                    className="w-full border rounded-xl p-3"
+                    className={`w-full border rounded-xl p-3" ${
+                      !canEdit
+                        ? "bg-gray-100 cursor-not-allowed opacity-70"
+                        : ""
+                    }`}
                     placeholder="Tìm gói..."
                   />
                 </div>
@@ -384,16 +492,10 @@ export default function DoctorExamination() {
                       <div
                         key={p.id}
                         onClick={() => {
+                          if (!canEdit) return;
+
                           setSelectedPackages((prev) => {
                             if (prev.find((x) => x.id === p.id)) return prev;
-
-                            Array.from(
-                              { length: p.total_sessions },
-                              (_, i) => ({
-                                session_no: i + 1,
-                                date: "",
-                              }),
-                            );
 
                             return [
                               ...prev,
@@ -454,12 +556,17 @@ export default function DoctorExamination() {
                           </div>
 
                           <button
+                            disabled={!canEdit}
                             onClick={() =>
                               setSelectedPackages((prev) =>
                                 prev.filter((x) => x.id !== p.id),
                               )
                             }
-                            className="text-red-500 text-sm ml-3"
+                            className={`text-sm ml-3 ${
+                              canEdit
+                                ? "text-red-500"
+                                : "text-gray-400 cursor-not-allowed"
+                            }`}
                           >
                             Xóa
                           </button>
@@ -470,6 +577,7 @@ export default function DoctorExamination() {
                           <div>
                             <p className="text-xs mb-1">Buổi 1 (bắt buộc)</p>
                             <input
+                              disabled={!canEdit}
                               type="date"
                               value={p.session1_date || ""}
                               onChange={(e) => {
@@ -483,7 +591,9 @@ export default function DoctorExamination() {
                                   ),
                                 );
                               }}
-                              className="border rounded px-2 py-1 w-full"
+                              className={`border rounded px-2 py-1 w-full ${
+                                !canEdit ? "bg-gray-100 cursor-not-allowed" : ""
+                              }`}
                             />
                           </div>
 
@@ -491,6 +601,7 @@ export default function DoctorExamination() {
                           <div>
                             <p className="text-xs mb-1">Buổi 2 (tuỳ chọn)</p>
                             <input
+                              disabled={!canEdit}
                               type="date"
                               value={p.session2_date || ""}
                               onChange={(e) => {
@@ -504,7 +615,9 @@ export default function DoctorExamination() {
                                   ),
                                 );
                               }}
-                              className="border rounded px-2 py-1 w-full"
+                              className={`border rounded px-2 py-1 w-full ${
+                                !canEdit ? "bg-gray-100 cursor-not-allowed" : ""
+                              }`}
                             />
                           </div>
                         </div>

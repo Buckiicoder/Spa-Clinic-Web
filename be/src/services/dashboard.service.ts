@@ -21,6 +21,7 @@ export const getLowStockProducts = async (
       ON pc.id = p.category_id
 
     WHERE p.is_active = true
+    AND stock_quantity < 11
 
     ORDER BY p.stock_quantity ASC, p.id DESC
 
@@ -553,6 +554,51 @@ export const getRevenueStatistics =
 
     return result.rows[0];
   };
+
+// ======================================================
+// WEEKLY REVENUE BY DATE RANGE
+// ======================================================
+
+export const getRevenueByDateRange = async (
+  startDate: string,
+  endDate: string,
+) => {
+  const result = await db.query(
+    `
+    WITH date_series AS (
+      SELECT generate_series(
+        $1::date,
+        $2::date,
+        interval '1 day'
+      )::date AS revenue_date
+    )
+
+    SELECT
+      ds.revenue_date,
+
+      COALESCE(
+        SUM(p.paid_amount),
+        0
+      ) AS revenue
+
+    FROM date_series ds
+
+    LEFT JOIN payments p
+      ON DATE(p.created_at) = ds.revenue_date
+      AND p.status IN (
+        'paid',
+        'partial_paid'
+      )
+
+    GROUP BY ds.revenue_date
+
+    ORDER BY ds.revenue_date
+    `,
+    [startDate, endDate],
+  );
+
+  return result.rows;
+};
 
 //
 // ======================================================

@@ -1,9 +1,6 @@
 import { z } from "zod";
 
-// ======================================================
 // GENERATE PAYROLL
-// ======================================================
-
 export const generatePayrollSchema = z.object({
   staff_id: z.number(),
 
@@ -21,10 +18,7 @@ export const generatePayrollSchema = z.object({
     .optional(),
 });
 
-// ======================================================
 // GENERATE MULTIPLE PAYROLLS
-// ======================================================
-
 export const generateMultiplePayrollsSchema =
   z.object({
     staff_ids: z.array(z.number()),

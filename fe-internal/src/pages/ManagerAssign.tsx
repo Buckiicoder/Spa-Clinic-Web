@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hook";
 import Toast from "../components/Toast";
-
+import { formatTimeForInput } from "../utils/generalFunction";
 import {
   fetchConsultedToday,
   fetchTechnicians,
@@ -372,10 +372,10 @@ export default function ManagerAssign() {
               {/* CUSTOMER INFO */}
               <div className="grid grid-cols-4 gap-4 mb-6">
                 <div className="rounded-2xl border p-4 bg-gray-50">
-                  <p className="text-xs text-gray-500 mb-1">Giờ đặt lịch</p>
+                  <p className="text-xs text-gray-500 mb-1">Buổi hiện tại</p>
 
                   <p className="font-semibold text-sm">
-                    {selectedBooking.booking_time || "Chưa có"}
+                    {`${selectedBooking.session_no}/${selectedBooking.total_sessions}`}
                   </p>
                 </div>
 
@@ -388,10 +388,10 @@ export default function ManagerAssign() {
                 </div>
 
                 <div className="rounded-2xl border p-4 bg-gray-50">
-                  <p className="text-xs text-gray-500 mb-1">Tổng liệu trình</p>
+                  <p className="text-xs text-gray-500 mb-1">Giờ bắt đầu làm</p>
 
                   <p className="font-semibold text-sm">
-                    {selectedBooking.profiles?.length || 0}
+                    {formatTimeForInput(selectedBooking.started_at) || 0}
                   </p>
                 </div>
 
@@ -399,7 +399,7 @@ export default function ManagerAssign() {
                   <p className="text-xs text-gray-500 mb-1">Ghi chú</p>
 
                   <p className="font-semibold text-sm">
-                    {selectedBooking.customer_note || "Không có"}
+                    {selectedBooking.diagnosis || "Không có"}
                   </p>
                 </div>
               </div>

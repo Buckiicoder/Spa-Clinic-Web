@@ -27,7 +27,7 @@ export default function Treatment() {
   const [onlyActive, setOnlyActive] = useState(false);
 
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
+  const [limit, setLimit] = useState(10);
 
   const [openModal, setOpenModal] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
@@ -49,6 +49,14 @@ export default function Treatment() {
       return matchSearch && matchStatus;
     });
   }, [packages, search, onlyActive]);
+
+  useEffect(() => {
+  const total = Math.max(1, Math.ceil(filtered.length / limit));
+
+  if (page > total) {
+    setPage(total);
+  }
+}, [filtered.length, limit, page]);
 
   // ================= PAGINATION =================
   const totalPage = Math.max(1, Math.ceil(filtered.length / limit));
@@ -87,10 +95,10 @@ export default function Treatment() {
 
   return (
     <div className="min-h-screen bg-[#f7f7f7] p-6">
-      <div className="rounded-3xl border bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
         {/* HEADER */}
-        <div className="mb-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Quản lý liệu trình</h1>
+        <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <h1 className="text-2xl font-bold text-black">Quản lý liệu trình</h1>
 
           {/* <button
             className="flex items-center gap-2 rounded-xl bg-black px-5 py-3 text-white"
@@ -127,7 +135,10 @@ export default function Treatment() {
           <label className="flex items-center gap-3 text-sm font-medium">
             <button
               type="button"
-              onClick={() => setOnlyActive(!onlyActive)}
+              onClick={() => {
+                setOnlyActive(!onlyActive);
+                setPage(1);
+              }}
               className={`relative h-7 w-12 rounded-full ${
                 onlyActive ? "bg-black" : "bg-gray-300"
               }`}
@@ -144,72 +155,73 @@ export default function Treatment() {
 
         {/* TABLE */}
         <div className="overflow-hidden rounded-2xl border">
-          <table className="w-full text-sm">
-            <thead className="bg-amber-50">
-              <tr>
-                <th className="p-3 text-left">ID</th>
-                <th className="p-3 text-left">Tên gói</th>
-                <th className="p-3 text-left">Giá</th>
-                <th className="p-3 text-left">Số buổi</th>
-                <th className="p-3 text-left">Trạng thái</th>
-                <th className="p-3 text-left">Hành động</th>
-              </tr>
-            </thead>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-amber-50">
+                <tr>
+                  <th className="p-3 text-left">ID</th>
+                  <th className="p-3 text-left">Tên gói</th>
+                  <th className="p-3 text-left">Giá</th>
+                  <th className="p-3 text-left">Số buổi</th>
+                  <th className="p-3 text-left">Trạng thái</th>
+                  <th className="p-3 text-left">Hành động</th>
+                </tr>
+              </thead>
 
-            <tbody>
-              {!loading &&
-                paginated.map((pkg: any) => (
-                  <tr
-                    key={pkg.id}
-                    className="cursor-pointer border-t hover:bg-amber-50"
-                    onClick={() => handleOpen(pkg)}
-                  >
-                    <td className="p-3">{pkg.id}</td>
+              <tbody>
+                {!loading &&
+                  paginated.map((pkg: any) => (
+                    <tr
+                      key={pkg.id}
+                      className="cursor-pointer border-t hover:bg-amber-50"
+                      onClick={() => handleOpen(pkg)}
+                    >
+                      <td className="p-3">{pkg.id}</td>
 
-                    <td className="p-3 font-medium flex flex-wrap gap-2">
-                      <span className="rounded-full bg-gray-100 px-3 py-1 text-xs">
-                        {pkg.name}
-                      </span>
-                    </td>
+                      <td className="p-3 font-medium flex flex-wrap gap-2">
+                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs">
+                          {pkg.name}
+                        </span>
+                      </td>
 
-                    <td className="p-3">
-                      {Number(pkg.price).toLocaleString()}
-                    </td>
+                      <td className="p-3">
+                        {Number(pkg.price).toLocaleString()}
+                      </td>
 
-                    <td className="p-3">
-                      {pkg.total_sessions} {pkg.unit}
-                    </td>
+                      <td className="p-3">
+                        {pkg.total_sessions} {pkg.unit}
+                      </td>
 
-                    <td className="p-3">
-                      <span
-                        className={`px-3 py-1 text-xs rounded-full ${
-                          pkg.is_active
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {pkg.is_active ? "Hoạt động" : "Ngừng"}
-                      </span>
-                    </td>
+                      <td className="p-3">
+                        <span
+                          className={`px-3 py-1 text-xs rounded-full ${
+                            pkg.is_active
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {pkg.is_active ? "Hoạt động" : "Ngừng"}
+                        </span>
+                      </td>
 
-                    <td className="p-3">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpen(pkg);
-                        }}
-                        className="rounded bg-amber-500 px-3 py-1 text-xs text-white"
-                      >
-                        Xem
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-
+                      <td className="p-3">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpen(pkg);
+                          }}
+                          className="rounded bg-amber-500 px-3 py-1 text-xs text-white"
+                        >
+                          Xem
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
           {loading && (
-            <div className="py-10 text-center text-gray-400">Đang tải...</div>
+            <div className="py-10 text-center text-gray-400">Đang tải dữ liệu...</div>
           )}
 
           {!loading && paginated.length === 0 && (
@@ -220,31 +232,73 @@ export default function Treatment() {
         </div>
 
         {/* PAGINATION */}
-        <div className="mt-5 flex justify-between items-center">
-          <span>Tổng: {filtered.length}</span>
+        <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+  {/* LEFT */}
+  <div className="flex items-center gap-4">
+    <span className="text-sm text-gray-500">
+      Tổng: {filtered.length}
+    </span>
 
-          <div className="flex gap-2 items-center">
-            <button onClick={() => setPage(1)}>
-              <ChevronsLeft size={18} />
-            </button>
+    <div className="flex items-center gap-2 text-sm">
+      <span>Hiển thị</span>
 
-            <button onClick={() => setPage(page - 1)}>
-              <ChevronLeft size={18} />
-            </button>
+      <select
+        value={limit}
+        onChange={(e) => {
+          setLimit(Number(e.target.value));
+          setPage(1);
+        }}
+        className="rounded-lg border px-2 py-1"
+      >
+        <option value={5}>5</option>
+        <option value={10}>10</option>
+        <option value={20}>20</option>
+        <option value={50}>50</option>
+      </select>
 
-            <span>
-              {page}/{totalPage}
-            </span>
+      <span>dòng</span>
+    </div>
+  </div>
 
-            <button onClick={() => setPage(page + 1)}>
-              <ChevronRight size={18} />
-            </button>
+  {/* RIGHT */}
+  <div className="flex items-center gap-3">
+    <span>
+      Trang {page}/{totalPage}
+    </span>
 
-            <button onClick={() => setPage(totalPage)}>
-              <ChevronsRight size={18} />
-            </button>
-          </div>
-        </div>
+    <button
+      disabled={page === 1}
+      onClick={() => setPage(1)}
+      className="disabled:opacity-40"
+    >
+      <ChevronsLeft size={18} />
+    </button>
+
+    <button
+      disabled={page === 1}
+      onClick={() => setPage(page - 1)}
+      className="disabled:opacity-40"
+    >
+      <ChevronLeft size={18} />
+    </button>
+
+    <button
+      disabled={page === totalPage}
+      onClick={() => setPage(page + 1)}
+      className="disabled:opacity-40"
+    >
+      <ChevronRight size={18} />
+    </button>
+
+    <button
+      disabled={page === totalPage}
+      onClick={() => setPage(totalPage)}
+      className="disabled:opacity-40"
+    >
+      <ChevronsRight size={18} />
+    </button>
+  </div>
+</div>
       </div>
 
       {/* MODAL */}

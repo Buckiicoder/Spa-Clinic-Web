@@ -14,6 +14,7 @@ import {
   getMostBookedPackagesAPI,
   getLeastBookedPackagesAPI,
   getRevenueStatisticsAPI,
+  getRevenueByDateRangeAPI,
 } from "./dashboardAPI";
 
 // ======================================================
@@ -43,6 +44,7 @@ interface DashboardState {
   leastBookedPackages: any[];
 
   revenueStatistics: any | null;
+  weelyRevenue: any[];
 }
 
 const initialState: DashboardState = {
@@ -68,6 +70,7 @@ const initialState: DashboardState = {
   leastBookedPackages: [],
 
   revenueStatistics: null,
+  weelyRevenue: [],
 };
 
 // ======================================================
@@ -211,6 +214,15 @@ export const fetchRevenueStatistics = createAsyncThunk(
   },
 );
 
+export const fetchRevenueByDateRange = createAsyncThunk(
+  "dashboard/revenueByDateRange",
+  async ({ startDate, endDate }: { startDate: string; endDate: string }) => {
+    const res = await getRevenueByDateRangeAPI(startDate, endDate);
+
+    return res.data;
+  },
+);
+
 // ======================================================
 // SLICE
 // ======================================================
@@ -242,11 +254,11 @@ const dashboardSlice = createSlice({
       state.leastBookedPackages = [];
 
       state.revenueStatistics = null;
+      state.weelyRevenue = [];
     },
   },
 
   extraReducers: (builder) => {
-    
     // ======================================================
     // OVERVIEW
     // ======================================================
@@ -349,6 +361,11 @@ const dashboardSlice = createSlice({
       state.revenueStatistics = action.payload;
     });
 
+    builder.addCase(fetchRevenueByDateRange.fulfilled, (state, action) => {
+      state.loading = false;
+      state.weelyRevenue = action.payload || [];
+    });
+
     builder.addMatcher(
       (action) => action.type.endsWith("/pending"),
       (state) => {
@@ -362,7 +379,6 @@ const dashboardSlice = createSlice({
         state.loading = false;
       },
     );
-
   },
 });
 
@@ -420,3 +436,6 @@ export const selectLeastBookedPackages = (state: any) =>
 // REVENUE
 export const selectRevenueStatistics = (state: any) =>
   state.dashboard?.revenueStatistics || null;
+
+export const selectWeeklyRevenue = (state: any) =>
+  state.dashboard?.weelyRevenue || [];

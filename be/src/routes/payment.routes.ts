@@ -7,9 +7,15 @@ import {
   calculateDiscountAmount,
   createPayment,
   getPaymentSummaryByProfile,
+  getAllPayments,
+  getPaymentBillDetail,
 } from "../controllers/payment.controller.js";
 
 const router = Router();
+
+router.get("/bills", getAllPayments);
+
+router.get("/bills/:payment_id", getPaymentBillDetail);
 
 router.get("/customer/:customer_id/unpaid-profiles", getCustomerUnpaidProfiles);
 

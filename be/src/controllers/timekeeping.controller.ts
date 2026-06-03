@@ -35,6 +35,43 @@ export const getTimekeepingByMonth = async (req: Request, res: Response) => {
 };
 
 //
+// 🔹 GET chi tiết chấm công theo ngày
+//
+export const getTimekeepingByDate = async (req: Request, res: Response) => {
+  try {
+    const workDate = String(req.query.work_date || "");
+    const userId = Number(req.query.user_id);
+
+    if (!workDate) {
+      return res.status(400).json({
+        message: "Thiếu work_date",
+      });
+    }
+
+    if (!userId) {
+      return res.status(400).json({
+        message: "Thiếu user_id",
+      });
+    }
+
+    const data = await timekeepingService.getTimekeepingByDate(
+      userId,
+      workDate,
+    );
+
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (err: any) {
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+//
 // 🔹 CREATE (đăng ký lịch làm)
 //
 // timekeeping.controller.ts
@@ -233,101 +270,7 @@ export const checkOut = async (req: Request, res: Response) => {
     }
 
     const now = new Date();
-
-    const totalMinutes = current?.check_in_time
-      ? Math.max(
-          0,
-          Math.round(
-            (now.getTime() - new Date(current.check_in_time).getTime()) / 60000,
-          ),
-        )
-      : 0;
-
-    const totalBreakMinutes = Number(current?.break_minutes || 0);
-
-    const workedAfterBreak = Math.max(totalMinutes - totalBreakMinutes, 0);
-
-    // SHIFT DURATION
-    const workDate =
-      typeof current.work_date === "string"
-        ? current.work_date.split("T")[0]
-        : new Date(
-            current.work_date.getTime() -
-              current.work_date.getTimezoneOffset() * 60000,
-          )
-            .toISOString()
-            .split("T")[0];
-
-    const shiftStart = new Date(`${workDate}T${current.start_time}`);
-
-    const shiftEnd = new Date(`${workDate}T${current.end_time}`);
-
-    if (
-      Number.isNaN(shiftStart.getTime()) ||
-      Number.isNaN(shiftEnd.getTime())
-    ) {
-      throw new Error("Không thể parse thời gian ca làm");
-    }
-
-    console.log({
-      workDate,
-      start_time: current.start_time,
-      end_time: current.end_time,
-      shiftStart,
-      shiftEnd,
-    });
-
-    const shiftMinutes = Math.max(
-      0,
-      Math.round((shiftEnd.getTime() - shiftStart.getTime()) / 60000),
-    );
-
-    // GET APPROVED OT
-    const approvedOt =
-      await overtimeService.getApprovedOtRequestByTimekeeping(id);
-
-    // ======================================================
-    // REAL OT MINUTES
-    // ======================================================
-
-    let actualOtMinutes = 0;
-
-    if (
-      approvedOt &&
-      approvedOt.status === "APPROVED" &&
-      current.check_out_time === null
-    ) {
-      // chỉ tính OT nếu checkout sau giờ kết thúc ca
-
-      if (now.getTime() > shiftEnd.getTime()) {
-        actualOtMinutes = Math.max(
-          0,
-          Math.round((now.getTime() - shiftEnd.getTime()) / 60000),
-        );
-
-        const approvedMinutesRaw =
-          approvedOt?.approved_minutes ?? approvedOt?.requested_minutes ?? 0;
-
-        const approvedMinutes = Number(approvedMinutesRaw);
-
-        if (Number.isNaN(approvedMinutes)) {
-          throw new Error("approved_minutes không hợp lệ");
-        }
-
-        actualOtMinutes = Math.min(actualOtMinutes, approvedMinutes);
-      }
-    }
-
-    // FINAL WORK MINUTES
-    const workMinutes = Math.min(workedAfterBreak, shiftMinutes);
-
-    console.log({
-      totalMinutes,
-      workedAfterBreak,
-      shiftMinutes,
-      workMinutes,
-      actualOtMinutes,
-    });
+    const calc = await timekeepingService.calculateCheckoutData(id, now);
 
     const result = await timekeepingService.updateTimekeepingAndReturn(
       id,
@@ -336,31 +279,31 @@ export const checkOut = async (req: Request, res: Response) => {
         status: "COMPLETED",
       },
       {
-        work_minutes: workMinutes,
+        work_minutes: calc.workMinutes,
 
-        ot_minutes: actualOtMinutes,
+        ot_minutes: calc.actualOtMinutes,
 
-        break_minutes: totalBreakMinutes,
+        break_minutes: calc.breakMinutes,
 
         check_out_lat: lat,
         check_out_lng: lng,
 
-        is_full_work: workMinutes >= shiftMinutes,
+        is_full_work: calc.isFullWork,
       },
     );
 
-    if (approvedOt) {
-      await overtimeService.completeApprovedOt(approvedOt.id, {
-        actual_ot_minutes: actualOtMinutes,
+    if (calc.approvedOt) {
+      await overtimeService.completeApprovedOt(calc.approvedOt.id, {
+        actual_ot_minutes: calc.actualOtMinutes,
 
         approved_end_time:
-          actualOtMinutes > 0
+          calc.actualOtMinutes > 0
             ? new Date(
-                shiftEnd.getTime() + actualOtMinutes * 60000,
+                calc.shiftEnd.getTime() + calc.actualOtMinutes * 60000,
               ).toISOString()
             : null,
 
-        shift_end_time: shiftEnd.toISOString(),
+        shift_end_time: calc.shiftEnd.toISOString(),
 
         is_locked: true,
       });
@@ -443,3 +386,4 @@ export const endBreak = async (req: Request, res: Response) => {
     return res.status(400).json({ message: err.message });
   }
 };
+

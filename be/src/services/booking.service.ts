@@ -280,19 +280,39 @@ export const createBooking = async (data: any) => {
   return result.rows[0];
 };
 
-export const updateBooking = async (id: string, data: any) => {
-  const { note } = data;
+export const updateBooking = async (
+  id: string,
+  data: any,
+) => {
+  const {
+    service_id,
+    booking_date,
+    booking_time,
+    quantity,
+    note,
+  } = data;
 
   const result = await db.query(
     `
     UPDATE bookings
     SET
-      note = COALESCE($1, note),
+      service_id = COALESCE($1, service_id),
+      booking_date = COALESCE($2, booking_date),
+      booking_time = COALESCE($3, booking_time),
+      quantity = COALESCE($4, quantity),
+      note = COALESCE($5, note),
       updated_at = NOW()
-    WHERE id = $2
+    WHERE id = $6
     RETURNING *
-  `,
-    [note ?? null, id],
+    `,
+    [
+      service_id ?? null,
+      booking_date ?? null,
+      booking_time ?? null,
+      quantity ?? null,
+      note ?? null,
+      id,
+    ],
   );
 
   return result.rows[0];

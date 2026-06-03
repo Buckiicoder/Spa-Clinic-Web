@@ -7,6 +7,8 @@ import {
   createPaymentAPI,
   fetchCustomerUnpaidProfilesAPI,
   fetchPaymentSummaryByProfileAPI,
+  fetchPaymentBillsAPI,
+  fetchPaymentBillDetailAPI,
 } from "./paymentAPI";
 
 interface PaymentState {
@@ -27,6 +29,10 @@ interface PaymentState {
   paymentResult: any | null;
 
   error: string | null;
+
+  paymentBills: any[];
+
+  paymentBillDetail: any | null;
 }
 
 const initialState: PaymentState = {
@@ -47,6 +53,10 @@ const initialState: PaymentState = {
   paymentResult: null,
 
   error: null,
+
+  paymentBills: [],
+
+  paymentBillDetail: null,
 };
 
 export const fetchCustomerUnpaidProfiles = createAsyncThunk(
@@ -80,6 +90,31 @@ export const fetchPaymentSummaryByProfile = createAsyncThunk(
 
   async (profile_id: number) => {
     const res = await fetchPaymentSummaryByProfileAPI(profile_id);
+
+    return res.data;
+  },
+);
+
+export const fetchPaymentBills = createAsyncThunk(
+  "payment/fetchBills",
+
+  async (params?: {
+    day?: number;
+    month?: number;
+    year?: number;
+    status?: string;
+  }) => {
+    const res = await fetchPaymentBillsAPI(params);
+
+    return res.data;
+  },
+);
+
+export const fetchPaymentBillDetail = createAsyncThunk(
+  "payment/fetchBillDetail",
+
+  async (payment_id: number) => {
+    const res = await fetchPaymentBillDetailAPI(payment_id);
 
     return res.data;
   },
@@ -169,6 +204,14 @@ const paymentSlice = createSlice({
 
     clearPaymentResult: (state) => {
       state.paymentResult = null;
+    },
+
+    clearPaymentBillDetail: (state) => {
+      state.paymentBillDetail = null;
+    },
+
+    clearPaymentBills: (state) => {
+      state.paymentBills = [];
     },
   },
 
@@ -306,6 +349,38 @@ const paymentSlice = createSlice({
 
       state.error = action.error.message || "Create payment failed";
     });
+
+    builder.addCase(fetchPaymentBills.pending, (state) => {
+      state.loading = true;
+    });
+
+    builder.addCase(fetchPaymentBills.fulfilled, (state, action) => {
+      state.loading = false;
+
+      state.paymentBills = action.payload || [];
+    });
+
+    builder.addCase(fetchPaymentBills.rejected, (state, action) => {
+      state.loading = false;
+
+      state.error = action.error.message || "Fetch payment bills failed";
+    });
+
+    builder.addCase(fetchPaymentBillDetail.pending, (state) => {
+      state.loading = true;
+    });
+
+    builder.addCase(fetchPaymentBillDetail.fulfilled, (state, action) => {
+      state.loading = false;
+
+      state.paymentBillDetail = action.payload;
+    });
+
+    builder.addCase(fetchPaymentBillDetail.rejected, (state, action) => {
+      state.loading = false;
+
+      state.error = action.error.message || "Fetch payment bill detail failed";
+    });
   },
 });
 
@@ -313,6 +388,8 @@ export const {
   clearPaymentError,
   clearCalculatedDiscount,
   clearPaymentResult,
+  clearPaymentBillDetail,
+  clearPaymentBills,
 } = paymentSlice.actions;
 
 export default paymentSlice.reducer;
@@ -344,3 +421,8 @@ export const selectCalculatedDiscount = (state: any) =>
 export const selectPaymentResult = (state: any) => state.payment.paymentResult;
 
 export const selectPaymentError = (state: any) => state.payment.error;
+
+export const selectPaymentBills = (state: any) => state.payment.paymentBills;
+
+export const selectPaymentBillDetail = (state: any) =>
+  state.payment.paymentBillDetail;

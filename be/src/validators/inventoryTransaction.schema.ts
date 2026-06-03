@@ -33,3 +33,21 @@ export const createInventoryTransactionSchema = z.object({
     .array(inventoryTransactionItemSchema)
     .min(1, "Phải có ít nhất 1 sản phẩm"),
 });
+
+export const updateInventoryTransactionSchema = z.object({
+  note: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => val ?? undefined),
+
+  total_extra_cost: z
+    .number()
+    .min(0)
+    .optional()
+    .default(0),
+
+  items: z
+    .array(inventoryTransactionItemSchema)
+    .min(1, "Phải có ít nhất 1 sản phẩm"),
+});

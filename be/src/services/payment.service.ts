@@ -787,3 +787,266 @@ export const getPaymentSummaryByProfile = async (profileId: number) => {
 
   return result.rows[0];
 };
+
+export const getAllPayments = async ({
+  day,
+  month,
+  year,
+  status,
+}: {
+  day?: number;
+  month: number;
+  year: number;
+  status?: string;
+}) => {
+  const conditions: string[] = [];
+const values: any[] = [];
+
+if (day) {
+  values.push(day);
+
+  conditions.push(
+    `EXTRACT(DAY FROM p.created_at) = $${values.length}`,
+  );
+}
+
+values.push(month);
+
+conditions.push(
+  `EXTRACT(MONTH FROM p.created_at) = $${values.length}`,
+);
+
+values.push(year);
+
+conditions.push(
+  `EXTRACT(YEAR FROM p.created_at) = $${values.length}`,
+);
+
+if (status) {
+  values.push(status);
+
+  conditions.push(
+    `p.status = $${values.length}`,
+  );
+}
+
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const result = await db.query(
+    `
+    SELECT
+  p.id,
+  p.payment_code,
+
+  p.customer_id,
+
+  p.subtotal_amount,
+  p.discount_amount,
+  p.final_amount,
+  p.paid_amount,
+  p.remaining_amount,
+
+  p.status,
+
+  p.created_at,
+  p.updated_at,
+
+  u.name AS customer_name,
+  u.phone,
+  u.email,
+
+  (
+    SELECT COUNT(*)
+    FROM payment_items pi2
+    WHERE pi2.payment_id = p.id
+  )::INTEGER AS total_items,
+
+  (
+    SELECT COUNT(*)
+    FROM payment_transactions pt
+    WHERE pt.payment_id = p.id
+  )::INTEGER AS total_transactions,
+
+  STRING_AGG(
+    DISTINCT s.name,
+    ', '
+  ) AS service_names,
+
+  STRING_AGG(
+    DISTINCT sp.name,
+    ', '
+  ) AS package_names
+
+FROM payments p
+
+INNER JOIN users u
+  ON u.id = p.customer_id
+
+LEFT JOIN payment_items pi
+  ON pi.payment_id = p.id
+
+LEFT JOIN services s
+  ON s.id = pi.service_id
+
+LEFT JOIN service_packages sp
+  ON sp.id = pi.package_id
+
+${whereClause}
+
+GROUP BY
+  p.id,
+  u.id
+
+ORDER BY p.created_at DESC
+    `,
+    values,
+  );
+
+  return result.rows;
+};
+
+export const getPaymentBillDetail = async (paymentId: number) => {
+  const result = await db.query(
+    `
+    SELECT
+      p.id,
+      p.payment_code,
+
+      p.customer_id,
+
+      p.subtotal_amount,
+      p.discount_amount,
+      p.final_amount,
+
+      p.paid_amount,
+      p.remaining_amount,
+
+      p.status,
+      p.note,
+
+      p.created_at,
+      p.updated_at,
+
+      -- CUSTOMER
+      u.name AS customer_name,
+      u.phone,
+      u.email,
+      u.avatar,
+
+      c.rank,
+      c.loyalty_points,
+      c.total_spending,
+      c.total_visits,
+      c.first_visit_at,
+
+      -- DISCOUNT
+      d.id AS discount_id,
+      d.code AS discount_code,
+      d.name AS discount_name,
+      d.discount_type,
+      d.discount_value,
+
+      -- PAYMENT ITEMS
+      COALESCE(
+        json_agg(
+          DISTINCT jsonb_build_object(
+            'payment_item_id', pi.id,
+
+            'profile_id', csp.id,
+
+            'service_id', s.id,
+            'service_name', s.name,
+
+            'package_id', sp.id,
+            'package_name', sp.name,
+
+            'item_type', pi.item_type,
+            'item_name', pi.item_name,
+
+            'quantity', pi.quantity,
+
+            'unit_price', pi.unit_price,
+            'subtotal_amount', pi.subtotal_amount,
+            'discount_amount', pi.discount_amount,
+            'final_amount', pi.final_amount,
+
+            -- PROFILE
+            'total_sessions', csp.total_sessions,
+            'used_sessions', csp.used_sessions,
+            'profile_status', csp.status,
+
+            'started_at', csp.started_at,
+            'completed_at', csp.completed_at,
+            'profile_created_at', csp.created_at
+          )
+        ) FILTER (WHERE pi.id IS NOT NULL),
+        '[]'
+      ) AS items,
+
+      -- TRANSACTIONS
+      COALESCE(
+        json_agg(
+          DISTINCT jsonb_build_object(
+            'transaction_id', pt.id,
+
+            'payment_method', pt.payment_method,
+
+            'gateway_provider', pt.gateway_provider,
+
+            'transaction_code', pt.transaction_code,
+
+            'amount', pt.amount,
+
+            'status', pt.status,
+
+            'paid_at', pt.paid_at,
+
+            'note', pt.note
+          )
+        ) FILTER (WHERE pt.id IS NOT NULL),
+        '[]'
+      ) AS transactions
+
+    FROM payments p
+
+    INNER JOIN users u
+      ON u.id = p.customer_id
+
+    LEFT JOIN customers c
+      ON c.user_id = u.id
+
+    LEFT JOIN discounts d
+      ON d.id = p.discount_id
+
+    LEFT JOIN payment_items pi
+      ON pi.payment_id = p.id
+
+    LEFT JOIN customer_service_profiles csp
+      ON csp.id = pi.profile_id
+
+    LEFT JOIN services s
+      ON s.id = pi.service_id
+
+    LEFT JOIN service_packages sp
+      ON sp.id = pi.package_id
+
+    LEFT JOIN payment_transactions pt
+      ON pt.payment_id = p.id
+
+    WHERE p.id = $1
+
+    GROUP BY
+      p.id,
+
+      u.id,
+
+      c.id,
+
+      d.id
+    `,
+    [paymentId],
+  );
+
+  return result.rows[0];
+};

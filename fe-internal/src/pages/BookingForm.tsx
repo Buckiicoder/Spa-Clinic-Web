@@ -76,8 +76,8 @@ export default function BookingForm() {
   }, [dispatch]);
 
   useEffect(() => {
-  dispatch(fetchMiddleServices());
-}, [dispatch]);
+    dispatch(fetchMiddleServices());
+  }, [dispatch]);
 
   const formatDateLocal = (iso: string) => {
     const d = new Date(iso);
@@ -226,16 +226,14 @@ export default function BookingForm() {
             id,
             data: {
               service_id: Number(form.service),
-              booking_date: toISOStringLocal(form.date, form.time), // ✅ FIX
+              booking_date: form.date,
               booking_time: form.time,
-              quantity: form.quantity,
+              quantity: Number(form.quantity),
               note: form.note,
-
-              // ✅ customer
               source: form.source,
               customer_note: form.customer_note,
               customer_status: form.customer_status,
-              referrer_id: form.referrer_id,
+              referrer_id: form.referrer_id || null,
             },
           }),
         );
@@ -300,7 +298,7 @@ export default function BookingForm() {
 
   return (
     <div className="min-h-screen bg-amber-50 flex items-center justify-center px-6 py-20">
-      <Navbar />
+      {/* <Navbar /> */}
 
       <div className="w-full max-w-xl bg-white rounded-3xl shadow-xl p-8">
         <h1 className="text-2xl font-bold text-amber-600 mb-6 text-center">

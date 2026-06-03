@@ -26,6 +26,8 @@ import TimekeepingDaily from "./pages/TimekeepingDaily";
 import Discount from "./pages/Discount";
 import Payment from "./pages/Payment";
 import Customer from "./pages/Customer";
+import PaymentBill from "./pages/PaymentBill";
+import BillDetail from "./pages/BillDetail";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -49,18 +51,17 @@ export default function App() {
       <Routes>
         {/* Public */}
         <Route path="/" element={<Login />} />
-        <Route element={<MainLayout />} />
+        {/* <Route element={<MainLayout />} /> */}
 
-        
         <Route element={<MainLayout />}>
-        <Route
-          path="/trangchu"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/trangchu"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/chamcong"
             element={
@@ -210,6 +211,22 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Payment />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/payment/bill"
+            element={
+              <ProtectedRoute>
+                <PaymentBill />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/payment/bill/:paymentId"
+            element={
+              <ProtectedRoute>
+                <BillDetail />
               </ProtectedRoute>
             }
           />

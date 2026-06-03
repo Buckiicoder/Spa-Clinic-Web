@@ -12,8 +12,10 @@ import {
   fetchTimekeepingDailyView,
   selectTimekeepingDaily,
   selectTimekeepingDailyLoading,
+  selectPendingOvertimeRequests,
   approveOvertimeRequest,
   rejectOvertimeRequest,
+  fetchOvertimeRequests,
 } from "../features/overtime/overtimeSlice";
 import { selectUser } from "../features/auth/authSlice";
 
@@ -31,6 +33,8 @@ export default function TimekeepingDaily() {
   const data = useAppSelector(selectTimekeepingDaily);
   const loading = useAppSelector(selectTimekeepingDailyLoading);
 
+  const pendingOtRequests = useAppSelector(selectPendingOvertimeRequests);
+
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [status, setStatus] = useState("");
   const [shift, setShift] = useState("");
@@ -40,6 +44,15 @@ export default function TimekeepingDaily() {
   const [limit, setLimit] = useState(10);
 
   const [realtimeOtMap, setRealtimeOtMap] = useState<Record<number, any>>({});
+  const pendingOtMap = useMemo(() => {
+    const map: Record<number, any> = {};
+
+    pendingOtRequests.forEach((request: any) => {
+      map[request.timekeeping_id] = request;
+    });
+
+    return map;
+  }, [pendingOtRequests]);
   const [selectedOT, setSelectedOT] = useState<any>(null);
   const [openOTModal, setOpenOTModal] = useState(false);
 
@@ -50,6 +63,12 @@ export default function TimekeepingDaily() {
       fetchTimekeepingDailyView({
         date,
         ...(status ? { status } : {}),
+      }),
+    );
+
+    dispatch(
+      fetchOvertimeRequests({
+        status: "PENDING",
       }),
     );
   }, [dispatch, date, status]);
@@ -76,6 +95,11 @@ export default function TimekeepingDaily() {
           ...(status ? { status } : {}),
         }),
       );
+      dispatch(
+        fetchOvertimeRequests({
+          status: "PENDING",
+        }),
+      );
     });
 
     socket.on("overtime:approved", () => {
@@ -85,6 +109,11 @@ export default function TimekeepingDaily() {
           ...(status ? { status } : {}),
         }),
       );
+      dispatch(
+        fetchOvertimeRequests({
+          status: "PENDING",
+        }),
+      );
     });
 
     socket.on("overtime:rejected", () => {
@@ -92,6 +121,11 @@ export default function TimekeepingDaily() {
         fetchTimekeepingDailyView({
           date,
           ...(status ? { status } : {}),
+        }),
+      );
+      dispatch(
+        fetchOvertimeRequests({
+          status: "PENDING",
         }),
       );
     });
@@ -122,7 +156,7 @@ export default function TimekeepingDaily() {
   const paginated = filtered.slice((page - 1) * limit, page * limit);
 
   const getStatusStyle = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case "WORKING":
         return "bg-blue-100 text-blue-700";
       case "COMPLETED":
@@ -138,13 +172,31 @@ export default function TimekeepingDaily() {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch ((status || "").toUpperCase()) {
+      case "SCHEDULED":
+        return "Đã phân ca";
+      case "WORKING":
+        return "Đang làm việc";
+      case "COMPLETED":
+        return "Hoàn thành";
+      case "OFF":
+        return "Nghỉ";
+      case "BREAK":
+        return "Nghỉ giữa ca";
+      default:
+        return status;
+    }
+  };
+
   const handleOpenOT = (item: any) => {
-    const realtimeData = realtimeOtMap[item.id];
+    const pendingRequest =
+      pendingOtMap[item.id] || realtimeOtMap[item.id] || null;
 
     setSelectedOT({
       ...item,
 
-      overtime_request: realtimeData || item.overtime_request || null,
+      overtime_request: pendingRequest,
     });
 
     setOpenOTModal(true);
@@ -225,11 +277,15 @@ export default function TimekeepingDaily() {
             className="h-10 rounded-xl border px-3 text-sm"
           >
             <option value="">Tất cả trạng thái</option>
-            <option value="SCHEDULED">Scheduled</option>
-            <option value="WORKING">Working</option>
-            <option value="BREAK">Break</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="OFF">Off</option>
+            <option value="SCHEDULED">Đã phân ca</option>
+
+            <option value="WORKING">Đang làm việc</option>
+
+            <option value="BREAK">Nghỉ giữa ca</option>
+
+            <option value="COMPLETED">Hoàn thành</option>
+
+            <option value="OFF">Nghỉ</option>
           </select>
 
           {/* shift */}
@@ -243,8 +299,9 @@ export default function TimekeepingDaily() {
           >
             <option value="">Tất cả ca</option>
             <option value="1">Ca sáng</option>
-            <option value="2">Ca chiều</option>
-            <option value="3">Ca tối</option>
+            <option value="3">Ca chiều</option>
+            <option value="4">Ca tối</option>
+            <option value="2">Fulltime</option>
           </select>
         </div>
 
@@ -283,7 +340,7 @@ export default function TimekeepingDaily() {
                           item.status,
                         )}`}
                       >
-                        {item.status}
+                        {getStatusLabel(item.status)}
                       </span>
                     </td>
 
@@ -311,7 +368,7 @@ export default function TimekeepingDaily() {
                       >
                         <Bell size={16} />
 
-                        {(item.overtime_request || realtimeOtMap[item.id]) && (
+                        {(pendingOtMap[item.id] || realtimeOtMap[item.id]) && (
                           <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-500" />
                         )}
                       </button>
@@ -337,34 +394,30 @@ export default function TimekeepingDaily() {
         {/* FOOTER */}
         <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
-  <p className="text-sm text-gray-500">
-    Tổng: {filtered.length} bản ghi
-  </p>
+            <p className="text-sm text-gray-500">
+              Tổng: {filtered.length} bản ghi
+            </p>
 
-  <div className="flex items-center gap-2">
-    <span className="text-sm text-gray-500">
-      Hiển thị
-    </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Hiển thị</span>
 
-    <select
-      value={limit}
-      onChange={(e) => {
-        setLimit(Number(e.target.value));
-        setPage(1);
-      }}
-      className="rounded-lg border px-2 py-1 text-sm"
-    >
-      <option value={5}>5</option>
-      <option value={10}>10</option>
-      <option value={20}>20</option>
-      <option value={50}>50</option>
-    </select>
+              <select
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="rounded-lg border px-2 py-1 text-sm"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
 
-    <span className="text-sm text-gray-500">
-      dòng
-    </span>
-  </div>
-</div>
+              <span className="text-sm text-gray-500">dòng</span>
+            </div>
+          </div>
 
           <div className="flex items-center gap-2">
             <button

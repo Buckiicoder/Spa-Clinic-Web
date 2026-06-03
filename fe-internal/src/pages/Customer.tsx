@@ -19,17 +19,32 @@ import {
   fetchCustomerDetail,
   selectCustomers,
   selectCustomerLoading,
+  selectCustomerPagination,
   createCustomer,
 } from "../features/customer/customerSlice";
 import CustomerDetailModal from "../modal/CustomerDetailModal";
 import CreateCustomer from "../modal/CreateCustomer";
 
 export default function Customer() {
+  const rankLabels: Record<string, string> = {
+    BRONZE: "Đồng",
+    SILVER: "Bạc",
+    GOLD: "Vàng",
+    DIAMOND: "Kim cương",
+    VIP: "VIP",
+    SUPER_VIP: "VIP Đặc biệt",
+  };
+
+  const getRankLabel = (rank?: string) => {
+    return rankLabels[rank || "BRONZE"] || rank || "Đồng";
+  };
+
   const dispatch = useAppDispatch();
   // const navigate = useNavigate();
 
   const customers = useAppSelector(selectCustomers);
   const loading = useAppSelector(selectCustomerLoading);
+  const pagination = useAppSelector(selectCustomerPagination);
 
   const [openDetail, setOpenDetail] = useState(false);
   const [openCreateModal, setOpenCreateModal] = useState(false);
@@ -49,8 +64,13 @@ export default function Customer() {
   const [limit, setLimit] = useState(10);
 
   useEffect(() => {
-    dispatch(fetchCustomers({}));
-  }, [dispatch]);
+    dispatch(
+      fetchCustomers({
+        page,
+        limit,
+      }),
+    );
+  }, [dispatch, page, limit]);
 
   // ================= FILTER =================
 
@@ -76,12 +96,9 @@ export default function Customer() {
 
   // ================= PAGINATION =================
 
-  const totalPage = Math.max(1, Math.ceil(filteredCustomers.length / limit));
+  const totalPage = Math.max(1, Math.ceil(pagination.total / limit));
 
-  const paginatedCustomers = filteredCustomers.slice(
-    (page - 1) * limit,
-    page * limit,
-  );
+  const paginatedCustomers = filteredCustomers;
 
   // ================= UI =================
 
@@ -197,11 +214,11 @@ export default function Customer() {
             >
               <option value="all">Tất cả trạng thái</option>
 
-              <option value="active">Active</option>
+              <option value="active">Hoạt động</option>
 
-              <option value="inactive">Inactive</option>
+              <option value="inactive">Không hoạt động</option>
 
-              <option value="blocked">Blocked</option>
+              <option value="blocked">Đã khóa</option>
             </select>
 
             {/* rank */}
@@ -215,17 +232,17 @@ export default function Customer() {
             >
               <option value="all">Tất cả hạng khách</option>
 
-              <option value="BRONZE">BRONZE</option>
+              <option value="BRONZE">Đồng</option>
 
-              <option value="SILVER">SILVER</option>
+              <option value="SILVER">Bạc</option>
 
-              <option value="GOLD">GOLD</option>
+              <option value="GOLD">Vàng</option>
 
-              <option value="DIAMOND">DIAMOND</option>
+              <option value="DIAMOND">Kim cương</option>
 
               <option value="VIP">VIP</option>
 
-              <option value="SUPER_VIP">SUPER VIP</option>
+              <option value="SUPER_VIP">VIP Đặc biệt</option>
             </select>
           </div>
         </div>
@@ -279,15 +296,15 @@ export default function Customer() {
                       <td className="p-3">
                         <div className="flex items-center gap-3">
                           {item.avatar ? (
-  <img
-    src={getImageUrl(item.avatar)}
-    alt={item.name}
-    onError={(e) => {
-      e.currentTarget.style.display = "none";
-    }}
-    className="h-11 w-11 rounded-full border object-cover"
-  />
-) : (
+                            <img
+                              src={getImageUrl(item.avatar)}
+                              alt={item.name}
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                              className="h-11 w-11 rounded-full border object-cover"
+                            />
+                          ) : (
                             <div className="flex h-11 w-11 items-center justify-center rounded-full border bg-gray-100 text-gray-400">
                               <User size={18} />
                             </div>
@@ -331,7 +348,7 @@ export default function Customer() {
                       {/* rank */}
                       <td className="p-3">
                         <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-                          {item.rank || "BRONZE"}
+                          {getRankLabel(item.rank)}
                         </span>
                       </td>
 
@@ -355,14 +372,16 @@ export default function Customer() {
                       {/* customer status */}
                       <td className="p-3">
                         <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            item.status === "active"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {item.status || "active"}
-                        </span>
+    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+      item.status === "active"
+        ? "bg-green-100 text-green-700"
+        : "bg-red-100 text-red-700"
+    }`}
+  >
+    {item.status === "active"
+      ? "Hoạt động"
+      : "Ngừng hoạt động"}
+  </span>
                       </td>
 
                       {/* active */}
@@ -401,7 +420,7 @@ export default function Customer() {
         {/* ================= FOOTER ================= */}
         <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <p className="text-sm text-gray-500">
-            Tổng {filteredCustomers.length} khách hàng
+             Tổng {pagination.total} khách hàng
           </p>
 
           <div className="flex flex-col items-start gap-4 lg:flex-row lg:items-center">

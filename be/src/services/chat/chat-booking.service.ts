@@ -42,13 +42,13 @@ export class ChatBookingService {
       `
       SELECT id, name
       FROM services
-      WHERE LOWER(name) LIKE LOWER($1)
+      WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))
         AND is_active = true
         AND parent_id IS NOT NULL
         AND area IS NULL
       LIMIT 1
       `,
-      [`%${draft.service_name}%`],
+      [draft.service_name],
     );
 
     if ((serviceRes.rowCount ?? 0) === 0) {

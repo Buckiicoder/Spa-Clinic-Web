@@ -11,18 +11,53 @@ import {
   Users,
 } from "lucide-react";
 
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+} from "recharts";
+
 import { useAppDispatch, useAppSelector } from "../app/hook";
 
 import {
   fetchDashboardOverview,
-  fetchRevenueStatistics,
+  fetchLowStockProducts,
+  fetchTopAttendanceStaffs,
+  fetchLateStaffs,
+  fetchTopDoctorRevenue,
+  fetchTopTechnicianRevenue,
   fetchTopVipCustomers,
+  fetchTopLoyalCustomers,
   fetchMostBookedServices,
+  fetchLeastBookedServices,
+  fetchMostBookedPackages,
+  fetchLeastBookedPackages,
+  fetchRevenueStatistics,
   selectDashboardOverview,
-  selectRevenueStatistics,
+  selectLowStockProducts,
+  // selectTopAttendanceStaffs,
+  // selectLateStaffs,
+  selectTopDoctorRevenue,
+  selectTopTechnicianRevenue,
   selectTopVipCustomers,
+  selectTopLoyalCustomers,
   selectMostBookedServices,
+  selectLeastBookedServices,
+  selectMostBookedPackages,
+  selectLeastBookedPackages,
+  // selectRevenueStatistics,
   selectDashboardLoading,
+  fetchRevenueByDateRange,
+  selectWeeklyRevenue,
 } from "../features/dashboard/dashboardSlice";
 
 const formatCurrency = (value: number) => {
@@ -33,22 +68,81 @@ const formatCurrency = (value: number) => {
   }).format(value || 0);
 };
 
+const getWeekRange = (dateString: string) => {
+  const date = new Date(dateString);
+
+  const day = date.getDay();
+
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+
+  const monday = new Date(date);
+
+  monday.setDate(date.getDate() + diffToMonday);
+
+  const sunday = new Date(monday);
+
+  sunday.setDate(monday.getDate() + 6);
+
+  return {
+    startDate: monday,
+    endDate: sunday,
+  };
+};
+
+const CUSTOMER_COLORS = ["#d97706", "#f59e0b"];
+
 export default function Dashboard() {
   const dispatch = useAppDispatch();
 
   const overview = useAppSelector(selectDashboardOverview);
 
-  const revenueStatistics = useAppSelector(selectRevenueStatistics);
+  // const revenueStatistics = useAppSelector(selectRevenueStatistics);
 
   const customers = useAppSelector(selectTopVipCustomers);
+
+  const lowStockProducts = useAppSelector(selectLowStockProducts);
+
+  // const topAttendanceStaffs = useAppSelector(selectTopAttendanceStaffs);
+
+  // const lateStaffs = useAppSelector(selectLateStaffs);
+
+  const topDoctorRevenue = useAppSelector(selectTopDoctorRevenue);
+
+  const topTechnicianRevenue = useAppSelector(selectTopTechnicianRevenue);
+
+  const topLoyalCustomers = useAppSelector(selectTopLoyalCustomers);
+
+  const leastBookedServices = useAppSelector(selectLeastBookedServices);
+
+  const mostBookedPackages = useAppSelector(selectMostBookedPackages);
+
+  const leastBookedPackages = useAppSelector(selectLeastBookedPackages);
 
   const mostBookedServices = useAppSelector(selectMostBookedServices);
 
   const loading = useAppSelector(selectDashboardLoading);
 
+  const weeklyRevenue = useAppSelector(selectWeeklyRevenue);
+
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+
+  useEffect(() => {
+    const { startDate, endDate } = getWeekRange(selectedDate);
+
+    dispatch(
+      fetchRevenueByDateRange({
+        startDate: startDate.toISOString().split("T")[0],
+
+        endDate: endDate.toISOString().split("T")[0],
+      }),
+    );
+  }, [selectedDate, dispatch]);
 
   useEffect(() => {
     document.title = "Spa Clinic Dashboard";
@@ -57,9 +151,22 @@ export default function Dashboard() {
 
     dispatch(fetchRevenueStatistics());
 
+    dispatch(fetchLowStockProducts(10));
+
+    dispatch(fetchTopAttendanceStaffs(10));
+    dispatch(fetchLateStaffs(10));
+
+    dispatch(fetchTopDoctorRevenue(10));
+    dispatch(fetchTopTechnicianRevenue(10));
+
     dispatch(fetchTopVipCustomers(10));
+    dispatch(fetchTopLoyalCustomers(10));
 
     dispatch(fetchMostBookedServices(10));
+    dispatch(fetchLeastBookedServices(10));
+
+    dispatch(fetchMostBookedPackages(10));
+    dispatch(fetchLeastBookedPackages(10));
   }, [dispatch]);
 
   // ================= FILTER =================
@@ -83,7 +190,7 @@ export default function Dashboard() {
   );
 
   // ================= STATS =================
-  const stats = [
+  const stats = useMemo(() => [
     {
       title: "Lịch hẹn hôm nay",
       value: overview?.today_bookings || 0,
@@ -104,7 +211,49 @@ export default function Dashboard() {
       value: overview?.total_services || 0,
       icon: <BarChart3 size={22} />,
     },
-  ];
+  ], [overview]);
+
+  const weeklyRevenueData = useMemo(() => {
+    const { startDate } = getWeekRange(selectedDate);
+
+    const days = [];
+
+    for (let i = 0; i < 7; i++) {
+      const current = new Date(startDate);
+
+      current.setDate(startDate.getDate() + i);
+
+      const key = current.toISOString().split("T")[0];
+
+      const found = weeklyRevenue.find((x: any) => x.date === key) || {};
+
+      days.push({
+        date: key,
+
+        dayLabel: current.toLocaleDateString("vi-VN", {
+          weekday: "short",
+        }),
+
+        revenue: found.total_revenue || 0,
+      });
+    }
+
+    return days;
+  }, [selectedDate, weeklyRevenue]);
+
+  const customerAnalytics = useMemo(() => {
+    return [
+      {
+        name: "VIP",
+        value: customers.length,
+      },
+      {
+        name: "Loyal",
+        value: topLoyalCustomers.length,
+      },
+    ];
+  }, [customers, topLoyalCustomers]);
+
 
   return (
     <div className="min-h-screen bg-[#f7f7f7] p-6">
@@ -160,47 +309,91 @@ export default function Dashboard() {
           <div className="lg:col-span-2 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="mb-5 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-amber-700">
-                Doanh thu theo tháng
+                Doanh thu theo tuần
               </h3>
+
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="
+        rounded-xl
+        border
+        border-gray-200
+        px-3
+        py-2
+        text-sm
+      "
+              />
             </div>
 
-            {/* SIMPLE CHART */}
-            <div className="flex h-72 items-end gap-3 rounded-2xl bg-gray-50 p-5">
-              {(revenueStatistics?.monthlyRevenue || []).map(
-                (item: any, index: number) => {
-                  const maxRevenue = Math.max(
-                    ...(revenueStatistics?.monthlyRevenue || []).map(
-                      (i: any) => i.revenue || 0,
-                    ),
-                    1,
-                  );
+            <div className="h-80 rounded-2xl bg-[#faf7f2] p-4">
+              <ResponsiveContainer
+  width="100%"
+  height={window.innerWidth < 640 ? 250 : 320}
+>
+                <BarChart data={weeklyRevenueData}>
+                  <CartesianGrid strokeDasharray="3 3" />
 
-                  const height = ((item.revenue || 0) / maxRevenue) * 100;
+                  <XAxis dataKey="dayLabel" tick={{ fontSize: 12 }} />
 
-                  return (
-                    <div
-                      key={index}
-                      className="flex flex-1 flex-col items-center justify-end gap-2"
-                    >
-                      <div
-                        className="w-full rounded-t-xl bg-amber-500 transition-all"
-                        style={{
-                          height: `${Math.min(Math.max(height, 8), 100)}%`,
-                        }}
-                      />
+                  <YAxis
+                    tickFormatter={(value) => `${Math.round(value / 1000000)}M`}
+                  />
 
-                      <span className="text-xs text-gray-500">
-                        T{item.month}
-                      </span>
-                    </div>
-                  );
-                },
-              )}
+                  <Tooltip
+                    formatter={(value: any) => formatCurrency(Number(value))}
+                  />
+
+                  <Bar
+                    dataKey="revenue"
+                    radius={[10, 10, 0, 0]}
+                    fill="#d97706"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          {/* RECENT BOOKINGS */}
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h4 className="mb-3 text-sm font-semibold text-gray-600">
+              Xu hướng doanh thu
+            </h4>
+
+            <div className="h-80 rounded-2xl bg-[#faf7f2] p-4">
+              <ResponsiveContainer
+  width="100%"
+  height={window.innerWidth < 640 ? 250 : 320}
+>
+                <LineChart data={weeklyRevenueData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+
+                  <XAxis dataKey="dayLabel" />
+
+                  <YAxis
+                    tickFormatter={(value) => `${Math.round(value / 1000000)}M`}
+                  />
+
+                  <Tooltip
+                    formatter={(value: any) => formatCurrency(Number(value))}
+                  />
+
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#d97706"
+                    strokeWidth={3}
+                    dot={{ r: 5 }}
+                    activeDot={{ r: 7 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          </div>
+
+          {/* RECENT BOOKINGS */}
+          <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <h3 className="mb-5 text-lg font-semibold text-amber-700">
               Dịch vụ được đặt nhiều
             </h3>
@@ -218,9 +411,7 @@ export default function Dashboard() {
                   className="flex items-center justify-between border-b pb-3"
                 >
                   <div>
-                    <p className="font-medium text-black">
-                      {item.service_name}
-                    </p>
+                    <p className="font-medium text-black">{item.name}</p>
 
                     <p className="mt-1 text-xs text-gray-400">
                       {item.total_bookings || 0} lượt đặt
@@ -233,6 +424,326 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
+          </div>
+
+        {/* DOCTOR PERFORMANCE */}
+        <div className="mt-6 grid gap-5 lg:grid-cols-2">
+          {/* DOCTOR */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-5 text-lg font-semibold text-amber-700">
+              Hiệu suất bác sĩ
+            </h3>
+
+            <div className="space-y-5">
+              {topDoctorRevenue.map((item: any) => (
+                <div
+                  key={item.doctor_id}
+                  className="rounded-2xl border border-gray-100 bg-[#faf7f2] p-4"
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-black">{item.name}</p>
+
+                      <p className="text-xs text-gray-400">#{item.doctor_id}</p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Hồ sơ</p>
+
+                      <p className="font-bold text-amber-700">
+                        {item.total_profiles}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mb-2 h-3 overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className="h-full rounded-full bg-amber-500"
+                      style={{
+                        width: `${Math.min(
+                          item.total_revenue / 1000000,
+                          100,
+                        )}%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="text-sm font-medium text-gray-700">
+                    {formatCurrency(item.total_revenue)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* TECHNICIAN */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-5 text-lg font-semibold text-amber-700">
+              Hiệu suất kỹ thuật viên
+            </h3>
+
+            <div className="space-y-5">
+              {topTechnicianRevenue.map((item: any) => (
+                <div
+                  key={item.user_id}
+                  className="rounded-2xl border border-gray-100 bg-[#faf7f2] p-4"
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-black">{item.name}</p>
+
+                      <p className="text-xs text-gray-400">#{item.user_id}</p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Sessions</p>
+
+                      <p className="font-bold text-amber-700">
+                        {item.total_sessions}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mb-2 h-3 overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className="h-full rounded-full bg-orange-400"
+                      style={{
+                        width: `${Math.min(item.total_work_hours, 100)}%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <span>{item.total_work_hours} giờ</span>
+
+                    <span className="font-semibold text-amber-700">
+                      {formatCurrency(item.realtime_salary)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* CUSTOMER ANALYTICS */}
+        <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-5 text-lg font-semibold text-amber-700">
+            Phân bố khách hàng
+          </h3>
+
+          <div className="h-80">
+            <ResponsiveContainer
+  width="100%"
+  height={window.innerWidth < 640 ? 250 : 320}
+>
+              <PieChart>
+                <Pie
+                  data={customerAnalytics}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius="70%"
+                  label
+                >
+                  {customerAnalytics.map((entry, index) => (
+                    <Cell
+                      key={index}
+                      fill={CUSTOMER_COLORS[index % CUSTOMER_COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* SERVICE ANALYTICS */}
+        <div className="mt-6 grid gap-5 lg:grid-cols-2">
+          {/* MOST BOOKED */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-5 text-lg font-semibold text-amber-700">
+              Dịch vụ được đặt nhiều nhất
+            </h3>
+
+            <div className="h-80">
+              <ResponsiveContainer
+  width="100%"
+  height={window.innerWidth < 640 ? 250 : 320}
+>
+                <BarChart data={mostBookedServices}>
+                  <CartesianGrid strokeDasharray="3 3" />
+
+                  <XAxis
+  dataKey="name"
+  interval={0}
+  angle={-25}
+  textAnchor="end"
+  height={80}
+/>
+
+                  <YAxis />
+
+                  <Tooltip />
+
+                  <Bar
+                    dataKey="total_bookings"
+                    fill="#d97706"
+                    radius={[8, 8, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* LEAST BOOKED */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-5 text-lg font-semibold text-red-500">
+              Dịch vụ ít đặt nhất
+            </h3>
+
+            <div className="h-80">
+              <ResponsiveContainer
+  width="100%"
+  height={window.innerWidth < 640 ? 250 : 320}
+>
+                <BarChart data={leastBookedServices}>
+                  <CartesianGrid strokeDasharray="3 3" />
+
+                  <XAxis
+  dataKey="name"
+  interval={0}
+  angle={-25}
+  textAnchor="end"
+  height={80}
+/>
+
+                  <YAxis />
+
+                  <Tooltip />
+
+                  <Bar
+                    dataKey="total_bookings"
+                    fill="#f97316"
+                    radius={[8, 8, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* PACKAGE ANALYTICS */}
+        <div className="mt-6 grid gap-5 lg:grid-cols-2">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-5 text-lg font-semibold text-amber-700">
+              Gói liệu trình bán chạy
+            </h3>
+
+            <div className="h-80">
+              <ResponsiveContainer
+  width="100%"
+  height={window.innerWidth < 640 ? 250 : 320}
+>
+                <BarChart data={mostBookedPackages}>
+                  <CartesianGrid strokeDasharray="3 3" />
+
+                  <XAxis
+  dataKey="name"
+  interval={0}
+  angle={-25}
+  textAnchor="end"
+  height={80}
+/>
+
+                  <YAxis />
+
+                  <Tooltip />
+
+                  <Bar
+                    dataKey="total_bookings"
+                    fill="#d97706"
+                    radius={[8, 8, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-5 text-lg font-semibold text-red-500">
+              Gói liệu trình ít được đặt
+            </h3>
+
+            <div className="h-80">
+              <ResponsiveContainer
+  width="100%"
+  height={window.innerWidth < 640 ? 250 : 320}
+>
+                <BarChart data={leastBookedPackages}>
+                  <CartesianGrid strokeDasharray="3 3" />
+
+                  <XAxis
+  dataKey="name"
+  interval={0}
+  angle={-25}
+  textAnchor="end"
+  height={80}
+/>
+
+                  <YAxis />
+
+                  <Tooltip />
+
+                  <Bar
+                    dataKey="total_bookings"
+                    fill="#f97316"
+                    radius={[8, 8, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* LOW STOCK PRODUCTS */}
+        <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-5 text-lg font-semibold text-red-500">
+            Sản phẩm sắp hết hàng
+          </h3>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {lowStockProducts.map((item: any) => (
+              <div
+                key={item.id}
+                className="rounded-2xl border border-gray-100 bg-[#faf7f2] p-4"
+              >
+                <div className="mb-3 flex items-center gap-4">
+                  <img
+                    src={item.image_url}
+                    alt={item.name}
+                    className="h-16 w-16 rounded-xl object-cover"
+                  />
+
+                  <div>
+                    <p className="font-semibold text-black">{item.name}</p>
+
+                    <p className="text-xs text-gray-400">
+                      {item.category_name}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Tồn kho</span>
+
+                  <span className="font-bold text-red-500">
+                    {item.stock_quantity}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -270,9 +781,7 @@ export default function Dashboard() {
                         <td className="p-3 font-medium">#{item.id}</td>
 
                         <td className="p-3">
-                          <div className="font-medium">
-                            {item.customer_name}
-                          </div>
+                          <div className="font-medium">{item.name}</div>
 
                           <div className="text-xs text-gray-400">
                             {item.email || "—"}
@@ -384,6 +893,33 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm mt-6">
+          <h3 className="mb-5 text-lg font-semibold text-amber-700">
+            Khách hàng trung thành
+          </h3>
+
+          <div className="space-y-4">
+            {topLoyalCustomers.map((item: any) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between border-b pb-3"
+              >
+                <div>
+                  <p className="font-medium">{item.customer_name}</p>
+
+                  <p className="text-xs text-gray-400">
+                    {item.total_bookings} lượt đặt
+                  </p>
+                </div>
+
+                <span className="font-semibold text-green-600">
+                  {formatCurrency(item.total_spent)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div> */}
       </div>
     </div>
   );

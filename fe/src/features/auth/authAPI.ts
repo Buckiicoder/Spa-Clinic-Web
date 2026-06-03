@@ -18,3 +18,19 @@ export const uploadAvatarAPI = (data: FormData) =>
       "Content-Type": "multipart/form-data",
     },
   });
+
+export const getPendingRatingsAPI = () =>
+  api.get("/auth/customer/pending-ratings");
+
+export const getCustomerRatingsAPI = () =>
+  api.get("/auth/customer/ratings");
+
+export const rateSessionAPI = (data: {
+  sessionId: number;
+  rating: number;
+  feedback?: string;
+}) =>
+  api.post(
+    "/auth/customer/rate-session",
+    data
+  );

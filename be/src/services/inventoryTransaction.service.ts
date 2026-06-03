@@ -20,7 +20,17 @@ export type InventoryTransactionInput = {
 export const getAllInventoryTransactions = async () => {
   const result = await db.query(`
     SELECT
-      t.*,
+       t.id,
+  t.code,
+  t.type,
+  t.note,
+  t.total_extra_cost,
+
+  t.transaction_date::text AS transaction_date,
+
+  t.created_at,
+  t.status,
+
       COALESCE(
         json_agg(
           json_build_object(
@@ -40,7 +50,15 @@ export const getAllInventoryTransactions = async () => {
       ON i.transaction_id = t.id
     LEFT JOIN products p
       ON p.id = i.product_id
-    GROUP BY t.id
+    GROUP BY
+      t.id,
+      t.code,
+      t.type,
+      t.note,
+      t.total_extra_cost,
+      t.transaction_date,
+      t.created_at,
+      t.status
     ORDER BY t.id DESC
   `);
 
@@ -52,7 +70,17 @@ export const getInventoryTransactionById = async (id: number) => {
   const result = await db.query(
     `
     SELECT
-      t.*,
+       t.id,
+  t.code,
+  t.type,
+  t.note,
+  t.total_extra_cost,
+
+  t.transaction_date::text AS transaction_date,
+
+  t.created_at,
+  t.status,
+  
       COALESCE(
         json_agg(
           json_build_object(
@@ -73,9 +101,17 @@ export const getInventoryTransactionById = async (id: number) => {
     LEFT JOIN products p
       ON p.id = i.product_id
     WHERE t.id = $1
-    GROUP BY t.id
+    GROUP BY
+      t.id,
+      t.code,
+      t.type,
+      t.note,
+      t.total_extra_cost,
+      t.transaction_date,
+      t.created_at,
+      t.status
     `,
-    [id]
+    [id],
   );
 
   return result.rows[0];
@@ -85,15 +121,44 @@ export const getInventoryTransactionById = async (id: number) => {
 export const findInventoryTransactionByCode = async (code: string) => {
   const result = await db.query(
     `SELECT * FROM inventory_transactions WHERE code = $1`,
-    [code]
+    [code],
   );
 
   return result.rows[0];
 };
 
+const applyInventoryEffect = async (
+  client: any,
+  type: string,
+  productId: number,
+  quantity: number,
+) => {
+  if (type === "IMPORT") {
+    await client.query(
+      `
+      UPDATE products
+      SET stock_quantity = stock_quantity + $1
+      WHERE id = $2
+      `,
+      [quantity, productId],
+    );
+  }
+
+  if (type === "EXPORT") {
+    await client.query(
+      `
+      UPDATE products
+      SET stock_quantity = stock_quantity - $1
+      WHERE id = $2
+      `,
+      [quantity, productId],
+    );
+  }
+};
+
 // 🔹 CREATE
 export const createInventoryTransaction = async (
-  data: InventoryTransactionInput
+  data: InventoryTransactionInput,
 ) => {
   const client = await db.connect();
 
@@ -105,11 +170,12 @@ export const createInventoryTransaction = async (
       INSERT INTO inventory_transactions (
         code,
         type,
+        status,
         note,
         total_extra_cost,
         transaction_date
       )
-      VALUES ($1, $2, $3, $4, COALESCE($5, CURRENT_TIMESTAMP))
+      VALUES ($1, $2, 'DRAFT', $3, $4, COALESCE($5, CURRENT_TIMESTAMP))
       RETURNING *
       `,
       [
@@ -118,7 +184,7 @@ export const createInventoryTransaction = async (
         data.note || null,
         data.total_extra_cost || 0,
         data.transaction_date || null,
-      ]
+      ],
     );
 
     const transaction = transactionResult.rows[0];
@@ -145,44 +211,8 @@ export const createInventoryTransaction = async (
           item.unit_price,
           total_price,
           item.note || null,
-        ]
+        ],
       );
-
-      // IMPORT => tăng kho
-      if (data.type === "IMPORT") {
-        await client.query(
-          `
-          UPDATE products
-          SET stock_quantity = stock_quantity + $1
-          WHERE id = $2
-          `,
-          [item.quantity, item.product_id]
-        );
-      }
-
-      // EXPORT => giảm kho
-      if (data.type === "EXPORT") {
-        await client.query(
-          `
-          UPDATE products
-          SET stock_quantity = stock_quantity - $1
-          WHERE id = $2
-          `,
-          [item.quantity, item.product_id]
-        );
-      }
-
-      // ADJUST => set trực tiếp số lượng
-      if (data.type === "ADJUST") {
-        await client.query(
-          `
-          UPDATE products
-          SET stock_quantity = $1
-          WHERE id = $2
-          `,
-          [item.quantity, item.product_id]
-        );
-      }
     }
 
     await client.query("COMMIT");
@@ -196,20 +226,174 @@ export const createInventoryTransaction = async (
   }
 };
 
+export const updateInventoryTransaction = async (
+  id: number,
+  data: InventoryTransactionInput,
+) => {
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const transactionResult = await client.query(
+      `
+      SELECT *
+      FROM inventory_transactions
+      WHERE id = $1
+      FOR UPDATE
+      `,
+      [id],
+    );
+
+    const transaction = transactionResult.rows[0];
+
+    if (!transaction) {
+      throw new Error("Transaction not found");
+    }
+
+    if (transaction.status !== "DRAFT") {
+      throw new Error("Only DRAFT transaction can be updated");
+    }
+
+    await client.query(
+      `
+      UPDATE inventory_transactions
+      SET
+        note = $1,
+        total_extra_cost = $2
+      WHERE id = $3
+      `,
+      [data.note || null, data.total_extra_cost || 0, id],
+    );
+
+    await client.query(
+      `
+      DELETE FROM inventory_transaction_items
+      WHERE transaction_id = $1
+      `,
+      [id],
+    );
+
+    for (const item of data.items) {
+      const total_price = item.quantity * item.unit_price;
+
+      await client.query(
+        `
+        INSERT INTO inventory_transaction_items (
+          transaction_id,
+          product_id,
+          quantity,
+          unit_price,
+          total_price,
+          note
+        )
+        VALUES ($1,$2,$3,$4,$5,$6)
+        `,
+        [
+          id,
+          item.product_id,
+          item.quantity,
+          item.unit_price,
+          total_price,
+          item.note || null,
+        ],
+      );
+    }
+
+    await client.query("COMMIT");
+
+    return true;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+export const confirmInventoryTransaction = async (id: number) => {
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const transactionResult = await client.query(
+      `
+      SELECT *
+      FROM inventory_transactions
+      WHERE id = $1
+      FOR UPDATE
+      `,
+      [id],
+    );
+
+    const transaction = transactionResult.rows[0];
+
+    if (!transaction) {
+      throw new Error("Transaction not found");
+    }
+
+    if (transaction.status !== "DRAFT") {
+      throw new Error("Transaction already confirmed");
+    }
+
+    const itemsResult = await client.query(
+      `
+      SELECT *
+      FROM inventory_transaction_items
+      WHERE transaction_id = $1
+      `,
+      [id],
+    );
+
+    for (const item of itemsResult.rows) {
+      await applyInventoryEffect(
+        client,
+        transaction.type,
+        item.product_id,
+        item.quantity,
+      );
+    }
+
+    await client.query(
+      `
+      UPDATE inventory_transactions
+      SET status = 'CONFIRMED'
+      WHERE id = $1
+      `,
+      [id],
+    );
+
+    await client.query("COMMIT");
+
+    return true;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
 // 🔹 DELETE
-export const deleteInventoryTransaction = async (id: number) => {
-  await db.query(
-    `DELETE FROM inventory_transactions WHERE id = $1`,
-    [id]
+export const cancelInventoryTransaction = async (id: number) => {
+  const result = await db.query(
+    `
+    UPDATE inventory_transactions
+    SET status = 'CANCELLED'
+    WHERE id = $1
+      AND status = 'DRAFT'
+    RETURNING *
+    `,
+    [id],
   );
+
+  return result.rows[0];
 };
 
 // 🔹 CHECK PRODUCT
 export const getProductById = async (id: number) => {
-  const result = await db.query(
-    `SELECT * FROM products WHERE id = $1`,
-    [id]
-  );
+  const result = await db.query(`SELECT * FROM products WHERE id = $1`, [id]);
 
   return result.rows[0];
 };

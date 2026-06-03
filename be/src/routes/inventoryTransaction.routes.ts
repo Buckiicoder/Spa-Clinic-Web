@@ -4,22 +4,32 @@ import { authStaffMiddleware } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
-// GET
 router.get("/", inventoryController.getInventoryTransactions);
+
 router.get("/:id", inventoryController.getInventoryTransactionById);
 
-// CREATE
 router.post(
   "/",
   authStaffMiddleware,
-  inventoryController.createInventoryTransaction
+  inventoryController.createInventoryTransaction,
 );
 
-// DELETE
-router.delete(
+router.put(
   "/:id",
   authStaffMiddleware,
-  inventoryController.deleteInventoryTransaction
+  inventoryController.updateInventoryTransaction,
+);
+
+router.patch(
+  "/:id/confirm",
+  authStaffMiddleware,
+  inventoryController.confirmInventoryTransaction,
+);
+
+router.patch(
+  "/:id/cancel",
+  authStaffMiddleware,
+  inventoryController.cancelInventoryTransaction,
 );
 
 export default router;

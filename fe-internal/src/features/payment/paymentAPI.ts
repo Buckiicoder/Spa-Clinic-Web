@@ -53,3 +53,18 @@ export const createPaymentAPI = (data: {
 
   note?: string;
 }) => api.post(`/payment`, data);
+
+// PAYMENT BILLS MANAGEMENT
+
+export const fetchPaymentBillsAPI = (params?: {
+  day?: number;
+  month?: number;
+  year?: number;
+  status?: string;
+}) =>
+  api.get("/payment/bills", {
+    params,
+  });
+
+export const fetchPaymentBillDetailAPI = (payment_id: number) =>
+  api.get(`/payment/bills/${payment_id}`);

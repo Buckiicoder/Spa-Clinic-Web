@@ -75,81 +75,81 @@ export default function StaffSalaryForm({ initialData, onClose }: Props) {
   }, [dispatch]);
 
   useEffect(() => {
-  if (!initialData?.id) return;
+    if (!initialData?.id) return;
 
-  const loadStaffSalary = async () => {
-    try {
-      const detail = await dispatch(
-        fetchStaffSalaryDetail(initialData.id),
-      ).unwrap();
+    const staffId = Number(initialData?.id);
 
-      if (!detail) return;
+    if (!staffId) {
+      setToast({
+        open: true,
+        message:
+          "Người dùng chưa có thông tin nhân viên, không thể thiết lập lương",
+        type: "error",
+      });
 
-      setForm((prev: any) => ({
-        ...prev,
+      return;
+    }
 
-        template_id: detail.template_id
-          ? String(detail.template_id)
-          : "",
+    const loadStaffSalary = async () => {
+      try {
+        const detail = await dispatch(
+          fetchStaffSalaryDetail(initialData.id),
+        ).unwrap();
 
-        name: detail.template_name || "",
+        if (!detail) return;
 
-        employee_type:
-          detail.employee_type || "FULLTIME",
+        setForm((prev: any) => ({
+          ...prev,
 
-        pay_period:
-          detail.pay_period || "MONTHLY",
+          template_id: detail.template_id ? String(detail.template_id) : "",
 
-        salary_amount:
-          detail.salary_amount?.toString() || "",
+          name: detail.template_name || "",
 
-        salary_unit:
-          detail.salary_unit || "MONTHLY",
+          employee_type: detail.employee_type || "FULLTIME",
 
-        has_commission:
-          detail.has_commission || false,
+          pay_period: detail.pay_period || "MONTHLY",
 
-        commission_revenue_type:
-          detail.commission_revenue_type || null,
+          salary_amount: detail.salary_amount?.toString() || "",
 
-        commission_calculation_type:
-          detail.commission_calculation_type || null,
+          salary_unit: detail.salary_unit || "MONTHLY",
 
-        commission_value:
-          detail.commission_value?.toString() || "",
+          has_commission: detail.has_commission || false,
 
-        commission_unit:
-          detail.commission_unit || "PERCENT",
+          commission_revenue_type: detail.commission_revenue_type || null,
 
-        minimum_revenue_target:
-          detail.minimum_revenue_target?.toString() || "",
+          commission_calculation_type:
+            detail.commission_calculation_type || null,
 
-        effective_from:
-          detail.effective_from
+          commission_value: detail.commission_value?.toString() || "",
+
+          commission_unit: detail.commission_unit || "PERCENT",
+
+          minimum_revenue_target:
+            detail.minimum_revenue_target?.toString() || "",
+
+          effective_from: detail.effective_from
             ? detail.effective_from.split("T")[0]
             : "",
 
-        effective_to:
-          detail.effective_to
+          effective_to: detail.effective_to
             ? detail.effective_to.split("T")[0]
             : "",
 
-        note: detail.note || "",
+          note: detail.note || "",
 
-        is_active:
-          detail.is_active ?? true,
+          is_active: detail.is_active ?? true,
 
-        allowances: detail.allowances || [],
+          allowances: detail.allowances || [],
 
-        deductions: detail.deductions || [],
-      }));
-    } catch (err) {
-      console.error("Load salary detail failed", err);
-    }
-  };
+          deductions: detail.deductions || [],
+        }));
+      } catch (err) {
+        console.error("Load salary detail failed", err);
+      }
+    };
 
-  loadStaffSalary();
-}, [dispatch, initialData]);
+    loadStaffSalary();
+  }, [dispatch, initialData]);
 
   const hasSalaryConfig = !!form.template_id || !!initialData?.salary_config;
 
@@ -177,8 +177,7 @@ export default function StaffSalaryForm({ initialData, onClose }: Props) {
 
       commission_value: detail.commission_value?.toString() || "",
 
-      commission_unit:
-        detail.commission_unit || "PERCENT",
+      commission_unit: detail.commission_unit || "PERCENT",
 
       minimum_revenue_target: detail.minimum_revenue_target?.toString() || "",
 
@@ -233,6 +232,19 @@ export default function StaffSalaryForm({ initialData, onClose }: Props) {
   }, [initialData]);
 
   const handleSave = async () => {
+    const staffId = Number(initialData?.id);
+
+    if (!staffId) {
+      setToast({
+        open: true,
+        message:
+          "Người dùng chưa có thông tin nhân viên, không thể thiết lập lương",
+        type: "error",
+      });
+
+      return;
+    }
+
     try {
       await dispatch(
         assignStaffSalary({
@@ -258,10 +270,7 @@ export default function StaffSalaryForm({ initialData, onClose }: Props) {
           commission_value:
             form.commission_value !== "" ? Number(form.commission_value) : null,
 
-          commission_unit:
-            form.has_commission
-              ? form.commission_unit
-              : null,
+          commission_unit: form.has_commission ? form.commission_unit : null,
 
           minimum_revenue_target:
             form.minimum_revenue_target !== ""
@@ -277,7 +286,7 @@ export default function StaffSalaryForm({ initialData, onClose }: Props) {
           is_active: form.is_active,
 
           allowance_ids: (form.allowances || []).map((a: any) => a.id),
-deduction_ids: (form.deductions || []).map((d: any) => d.id),
+          deduction_ids: (form.deductions || []).map((d: any) => d.id),
         }),
       ).unwrap();
 

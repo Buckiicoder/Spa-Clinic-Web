@@ -68,8 +68,11 @@ export default function StaffModal({
     if (initialData) {
       setForm({
         ...originForm,
-
         ...initialData,
+
+        city: initialData.city || "",
+  ward: initialData.ward || "",
+  address_detail: initialData.address_detail || "",
 
         // ✅ map lại đúng field
         position: initialData.position_id?.toString() || "",
@@ -84,29 +87,54 @@ export default function StaffModal({
           ? String(initialData.experience_years)
           : "",
       });
+
+      setErrors({});
     } else {
       setForm({ ...originForm });
+      setErrors({});
     }
   }, [initialData]);
 
   if (!open) return null;
 
-  const validate = () => {
-    const newErrors: any = {};
+const validate = () => {
+  const newErrors: any = {};
 
-    if (!form.name) newErrors.name = "Vui lòng nhập tên nhân viên";
+  if (!form.name?.trim()) {
+    newErrors.name = "Vui lòng nhập tên nhân viên";
+  }
 
-    if (!form.phone) newErrors.phone = "Vui lòng nhập số điện thoại";
+  if (!form.phone?.trim()) {
+    newErrors.phone = "Vui lòng nhập số điện thoại";
+  }
 
-    if (!form.position) newErrors.position = "Vui lòng chọn chức danh";
+  if (!form.position) {
+    newErrors.position = "Vui lòng chọn chức danh";
+  }
 
-    if (!form.salary_type) newErrors.salary_type = "Vui lòng chọn loại lương";
+  if (!form.employee_type) {
+    newErrors.employee_type = "Vui lòng chọn loại nhân viên";
+  }
 
-    if (!form.employee_type)
-      newErrors.employee_type = "Vui lòng chọn loại nhân viên";
+  // ✅ DOB
+  if (!form.dob) {
+    newErrors.dob = "Vui lòng chọn ngày sinh";
+  } else {
+    const dobDate = new Date(form.dob);
 
-    return newErrors;
-  };
+    if (isNaN(dobDate.getTime())) {
+      newErrors.dob = "Ngày sinh không hợp lệ";
+    } else {
+      const today = new Date();
+
+      if (dobDate > today) {
+        newErrors.dob = "Ngày sinh không được lớn hơn hiện tại";
+      }
+    }
+  }
+
+  return newErrors;
+};
 
   const handleSubmit = () => {
     const validateErrors = validate();
@@ -118,6 +146,10 @@ export default function StaffModal({
 
     const payload: any = {
       ...form,
+
+      city: form.city || "",
+  ward: form.ward || "",
+  address_detail: form.address_detail || "",
       experience_years: Number(form.experience_years || 0),
       salary_amount: Number(form.salary_amount || 0),
       dob: form.dob || "",
@@ -234,14 +266,49 @@ export default function StaffModal({
                 </div>
 
                 <div className="grid grid-cols-3 items-center pt-1">
-                  <label className="text-sm font-medium">Ngày sinh</label>
-                  <input
-                    type="date"
-                    className="col-span-2 border px-3 py-1 rounded"
-                    value={form.dob}
-                    onChange={(e) => setForm({ ...form, dob: e.target.value })}
-                  />
-                </div>
+  <label className="text-sm font-medium">Ngày sinh</label>
+
+  <div className="col-span-2">
+    <input
+      type="date"
+      className="w-full border px-3 py-1 rounded"
+      value={form.dob}
+      onChange={(e) => {
+        const value = e.target.value;
+
+        setForm({
+          ...form,
+          dob: value,
+        });
+
+        let dobError = "";
+
+        if (!value) {
+          dobError = "Vui lòng chọn ngày sinh";
+        } else {
+          const date = new Date(value);
+
+          if (isNaN(date.getTime())) {
+            dobError = "Ngày sinh không hợp lệ";
+          } else if (date > new Date()) {
+            dobError = "Ngày sinh không được lớn hơn hiện tại";
+          }
+        }
+
+        setErrors((prev: any) => ({
+          ...prev,
+          dob: dobError,
+        }));
+      }}
+    />
+
+    {errors.dob && (
+      <p className="text-red-500 text-xs mt-1">
+        {errors.dob}
+      </p>
+    )}
+  </div>
+</div>
 
                 <div className="grid grid-cols-3 items-center pt-1">
                   <label className="text-sm font-medium">Giới tính</label>

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { loginSchema, registerSchema } from "../validators/auth.schema.js";
+import { loginSchema, registerSchema, rateSessionSchema } from "../validators/auth.schema.js";
 import * as authService from "../services/auth.service.js";
 import { updateAvatarService } from "../services/auth.service.js";
 import { sendOTPEmail } from "../utils/mailer.js";
@@ -59,14 +59,14 @@ export const verifyOTP = async (req: Request, res: Response) => {
     const token = await authService.verifyOTPService(contact, otp);
 
     //demo local
-    // res.cookie("customerAccessToken", token, {
-    //   httpOnly: true,
-    //   secure: false,
-    //   sameSite: "lax",
-    // });
+    res.cookie("customerAccessToken", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+    });
 
     //production
-    res.cookie("customerAccessToken", token, customerCookieOptions);
+    // res.cookie("customerAccessToken", token, customerCookieOptions);
 
     return res.json({
       message: "Xác thực thành công",
@@ -92,15 +92,15 @@ export const customerLogin = async (req: Request, res: Response) => {
     });
 
     // demo local
-    // res.cookie("customerAccessToken", token, {
-    //   httpOnly: true,
-    //   secure: false,
-    //   sameSite: "lax",
-    //   maxAge: 1000 * 60 * 60 * 24,
-    // });
+    res.cookie("customerAccessToken", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24,
+    });
 
     //production
-    res.cookie("customerAccessToken", token, customerCookieOptions);
+    // res.cookie("customerAccessToken", token, customerCookieOptions);
 
     return res.json({ message: "Login success" });
   } catch (err: any) {
@@ -110,10 +110,10 @@ export const customerLogin = async (req: Request, res: Response) => {
 
 export const customerLogout = async (_req: Request, res: Response) => {
   //demo
-  // res.clearCookie('customerAccessToken')
+  res.clearCookie('customerAccessToken')
 
   //production
-  res.clearCookie("customerAccessToken", customerCookieOptions);
+  // res.clearCookie("customerAccessToken", customerCookieOptions);
   return res.json({
     message: "Logout success",
   });
@@ -136,14 +136,15 @@ export const staffLogin = async (req: Request, res: Response) => {
     });
 
     //demo local
-    // res.cookie("staffAccessToken", token, {
-    //   httpOnly: true,
-    //   secure: false,
-    //   sameSite: "lax",
-    //   maxAge: 1000 * 60 * 60 * 24,
-    // });
+    res.cookie("staffAccessToken", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24,
+    });
 
-    res.cookie("staffAccessToken", token, staffCookieOptions);
+    //production
+    // res.cookie("staffAccessToken", token, staffCookieOptions);
 
     return res.json({ message: "Login success" });
   } catch (err: any) {
@@ -153,10 +154,10 @@ export const staffLogin = async (req: Request, res: Response) => {
 
 export const staffLogout = async (_req: Request, res: Response) => {
   // demo local
-  // res.clearCookie("staffAccessToken");
+  res.clearCookie("staffAccessToken");
 
   //production
-  res.clearCookie("staffAccessToken", staffCookieOptions);
+  // res.clearCookie("staffAccessToken", staffCookieOptions);
   return res.json({
     message: "Logout success",
   });
@@ -218,27 +219,97 @@ export const uploadAvatar = async (req: Request, res: Response) => {
   }
 };
 
-// //staff only
-// export const staffLogin = async (req: Request, res: Response) => {
-//   try {
-//     const data = loginSchema.parse(req.body)
-//     const token = await authService.staffLoginService(
-//       data.email,
-//       data.password
-//     )
+export const getPendingRatings = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
 
-//     /*Set Cookie*/
-//     res.cookie('staffAccessToken', token, {
-//       httpOnly: true,
-//       secure: false,
-//       sameSite: 'lax',
-//       maxAge: 1000 * 60 * 60 * 24 * 1
-//     })
+    const ratings =
+      await authService.getPendingRatings(
+        req.user.id,
+      );
 
-//     return res.json({
-//       message: 'Login success'
-//     })
-//   } catch (err: any) {
-//     return res.status(401).json({ message: err.message })
-//   }
-// }
+    return res.json({
+      success: true,
+      data: ratings,
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+export const getCustomerRatings = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+
+    const ratings =
+      await authService.getCustomerRatings(
+        req.user.id,
+      );
+
+    return res.json({
+      success: true,
+      data: ratings,
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+export const rateSession = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+
+    const {
+      sessionId,
+      rating,
+      feedback,
+    } = rateSessionSchema.parse(
+      req.body,
+    );
+
+    const result =
+      await authService.rateSession({
+        sessionId,
+        customerId: req.user.id,
+        rating,
+        feedback,
+      });
+
+    return res.json({
+      success: true,
+      rewardPoints:
+        result.rewardPoints,
+      message:
+        "Đánh giá thành công",
+    });
+  } catch (err: any) {
+    return res.status(400).json({
+      message: err.message,
+    });
+  }
+};

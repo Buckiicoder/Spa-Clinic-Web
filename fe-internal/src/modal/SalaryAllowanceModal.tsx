@@ -36,9 +36,7 @@ export default function SalaryAllowanceModal({
         createSalaryAllowance({
           ...form,
 
-          amount_value: Number(
-            form.amount_value,
-          ),
+          amount_value: Number(form.amount_value),
         }),
       ).unwrap();
 
@@ -74,9 +72,7 @@ export default function SalaryAllowanceModal({
           p-5 w-full max-w-lg
         "
       >
-        <h2 className="text-lg font-semibold mb-4">
-          Thêm phụ cấp
-        </h2>
+        <h2 className="text-lg font-semibold mb-4">Thêm phụ cấp</h2>
 
         <div className="space-y-4">
           <input
@@ -98,8 +94,7 @@ export default function SalaryAllowanceModal({
             onChange={(e) =>
               setForm({
                 ...form,
-                amount_value:
-                  e.target.value,
+                amount_value: e.target.value,
               })
             }
             className="w-full border rounded px-3 py-2"
@@ -110,19 +105,14 @@ export default function SalaryAllowanceModal({
             onChange={(e) =>
               setForm({
                 ...form,
-                amount_type:
-                  e.target.value,
+                amount_type: e.target.value,
               })
             }
             className="w-full border rounded px-3 py-2"
           >
-            <option value="FIXED">
-              VNĐ
-            </option>
+            <option value="FIXED">VNĐ</option>
 
-            <option value="PERCENT">
-              % lương
-            </option>
+            <option value="PERCENT">% lương</option>
           </select>
 
           <select
@@ -130,27 +120,19 @@ export default function SalaryAllowanceModal({
             onChange={(e) =>
               setForm({
                 ...form,
-                apply_type:
-                  e.target.value,
+                apply_type: e.target.value,
               })
             }
             className="w-full border rounded px-3 py-2"
           >
-            <option value="DAILY">
-              Mỗi ngày
-            </option>
+            <option value="DAILY">Mỗi ngày</option>
 
-            <option value="MONTHLY">
-              Hàng tháng
-            </option>
+            <option value="MONTHLY">Hàng tháng</option>
           </select>
         </div>
 
         <div className="flex justify-end gap-3 mt-5">
-          <button
-            onClick={onClose}
-            className="border px-4 py-2 rounded"
-          >
+          <button onClick={onClose} className="border px-4 py-2 rounded">
             Hủy
           </button>
 
