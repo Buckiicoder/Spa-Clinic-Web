@@ -23,7 +23,7 @@ import {
 import ShiftModal from "../modal/ShiftModal";
 import ScheduleModal from "../modal/ScheduleModal";
 import Toast from "../components/Toast";
-import PayrollTable from "./payroll/PayrollTable";
+// import PayrollTable from "./payroll/PayrollTable";
 
 export default function TimeKeepingManage() {
   const [tab, setTab] = useState("shift");
@@ -232,7 +232,7 @@ export default function TimeKeepingManage() {
         {[
           { key: "shift", label: "Ca làm" },
           { key: "schedule", label: "Lịch làm" },
-          { key: "payroll", label: "Bảng lương" },
+          // { key: "payroll", label: "Bảng lương" },
         ].map((item) => (
           <button
             key={item.key}
@@ -585,8 +585,6 @@ export default function TimeKeepingManage() {
           </div>
         )}
 
-        {/* PAYROLL TAB */}
-        {tab === "payroll" && <PayrollTable embedded />}
       </div>
       <ShiftModal
         open={openModal}

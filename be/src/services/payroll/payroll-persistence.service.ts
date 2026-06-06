@@ -31,6 +31,10 @@ export interface CreatePayrollInput {
 
   gross_salary: number;
 
+  ot_hours: number;
+
+  ot_salary: number;
+
   allowance_total: number;
 
   commission_total: number;
@@ -163,6 +167,9 @@ export const createPayroll = async (
       deduction_total,
       net_salary,
 
+      ot_hours,
+      ot_salary,
+
       payroll_status,
       note
     )
@@ -175,7 +182,7 @@ export const createPayroll = async (
       $8,$9,
       $10,$11,
       $12,$13,$14,$15,
-      $16,$17,$18
+      $16,$17,$18,$19,$20
     )
     RETURNING *
   `,
@@ -203,6 +210,9 @@ export const createPayroll = async (
       data.deduction_total,
       data.net_salary,
 
+      data.ot_hours,
+      data.ot_salary,
+
       data.payroll_status || "DRAFT",
       data.note || null,
     ],
@@ -219,6 +229,10 @@ export const updatePayrollSummary = async (
   payrollId: number,
   data: {
     gross_salary: number;
+
+    ot_hours: number;
+
+    ot_salary: number;
 
     allowance_total: number;
 
@@ -240,24 +254,32 @@ export const updatePayrollSummary = async (
     SET
       gross_salary = $1,
 
-      allowance_total = $2,
+      ot_hours = $2,
 
-      commission_total = $3,
+ot_salary = $3,
 
-      deduction_total = $4,
+      allowance_total = $4,
 
-      net_salary = $5,
+      commission_total = $5,
 
-      payroll_status = COALESCE($6, payroll_status),
+      deduction_total = $6,
+
+      net_salary = $7,
+
+      payroll_status = COALESCE($8, payroll_status),
 
       calculated_at = CURRENT_TIMESTAMP
 
-    WHERE id = $7
+    WHERE id = $9
 
     RETURNING *
   `,
     [
       data.gross_salary,
+
+      data.ot_hours,
+
+      data.ot_salary,
 
       data.allowance_total,
 
@@ -612,17 +634,20 @@ export const upsertPayroll = async (
         actual_work_hours = $8,
 
         gross_salary = $9,
-        allowance_total = $10,
-        commission_total = $11,
-        deduction_total = $12,
-        net_salary = $13,
+        ot_hours = $10,
+        ot_salary = $11,
 
-        payroll_status = $14,
-        note = $15,
+        allowance_total = $12,
+        commission_total = $13,
+        deduction_total = $14,
+        net_salary = $15,
+
+        payroll_status = $16,
+        note = $17,
 
         calculated_at = CURRENT_TIMESTAMP
 
-      WHERE id = $16
+      WHERE id = $18
 
       RETURNING *
     `,
@@ -641,6 +666,10 @@ export const upsertPayroll = async (
         data.actual_work_hours,
 
         data.gross_salary,
+
+        data.ot_hours,
+        data.ot_salary,
+
         data.allowance_total,
         data.commission_total,
         data.deduction_total,

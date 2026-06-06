@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import * as consultationService from "../services/doctor.service.js";
-import { updateConsultationSchema } from "../validators/doctor.schema.js";
+import {
+  updateConsultationSchema,
+  createSessionSchema,
+  updateSessionSchema,
+} from "../validators/doctor.schema.js";
 import { getIO } from "../socket.js";
 
 /**
@@ -27,9 +31,7 @@ export const getMyConsultations = async (req: Request, res: Response) => {
  */
 export const getConsultationDetail = async (req: Request, res: Response) => {
   try {
-    const data = await consultationService.getConsultationDetail(
-      req.params.id,
-    );
+    const data = await consultationService.getConsultationDetail(req.params.id);
 
     if (!data) {
       return res.status(404).json({ message: "Not found" });
@@ -59,9 +61,7 @@ export const startConsultation = async (req: Request, res: Response) => {
       });
     }
 
-    const full = await consultationService.getConsultationDetail(
-      req.params.id,
-    );
+    const full = await consultationService.getConsultationDetail(req.params.id);
 
     // 🔥 realtime
     getIO().to("reception").emit("booking:updated", full);
@@ -85,9 +85,7 @@ export const updateConsultation = async (req: Request, res: Response) => {
       data,
     );
 
-    const full = await consultationService.getConsultationDetail(
-      req.params.id,
-    );
+    const full = await consultationService.getConsultationDetail(req.params.id);
 
     getIO().to("doctor").emit("booking:updated", full);
 
@@ -102,13 +100,9 @@ export const updateConsultation = async (req: Request, res: Response) => {
  */
 export const finishConsultation = async (req: Request, res: Response) => {
   try {
-    const booking = await consultationService.finishConsultation(
-      req.params.id,
-    );
+    const booking = await consultationService.finishConsultation(req.params.id);
 
-    const full = await consultationService.getConsultationDetail(
-      req.params.id,
-    );
+    const full = await consultationService.getConsultationDetail(req.params.id);
 
     getIO().to("reception").emit("booking:updated", full);
     getIO().to("doctor").emit("booking:updated", full);
@@ -168,9 +162,7 @@ export const updateProfile = async (req: Request, res: Response) => {
  * 🔹 9. Delete profile
  */
 export const deleteProfile = async (req: Request, res: Response) => {
-  await consultationService.deleteCustomerServiceProfile(
-    Number(req.params.id),
-  );
+  await consultationService.deleteCustomerServiceProfile(Number(req.params.id));
 
   res.json({ success: true });
 };
@@ -180,9 +172,9 @@ export const deleteProfile = async (req: Request, res: Response) => {
  */
 export const createSession = async (req: Request, res: Response) => {
   try {
-    const session = await consultationService.createServiceSession(
-      req.body,
-    );
+    const payload = createSessionSchema.parse(req.body);
+
+    const session = await consultationService.createServiceSession(payload);
 
     res.json(session);
   } catch (err: any) {
@@ -195,9 +187,10 @@ export const createSession = async (req: Request, res: Response) => {
  */
 export const updateSession = async (req: Request, res: Response) => {
   try {
+    const payload = updateConsultationSchema.parse(req.body);
     const session = await consultationService.updateServiceSession(
       Number(req.params.id),
-      req.body,
+      payload,
     );
 
     res.json(session);
@@ -210,9 +203,7 @@ export const updateSession = async (req: Request, res: Response) => {
  * 🔹 12. Delete session
  */
 export const deleteSession = async (req: Request, res: Response) => {
-  await consultationService.deleteServiceSession(
-    Number(req.params.id),
-  );
+  await consultationService.deleteServiceSession(Number(req.params.id));
 
   res.json({ success: true });
 };

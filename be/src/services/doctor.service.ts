@@ -118,10 +118,7 @@ export const startConsultation = async (
 /**
  * 🔹 4. Cập nhật thông tin chẩn đoán của bác sĩ
  */
-export const updateConsultation = async (
-  bookingId: string,
-  data: any,
-) => {
+export const updateConsultation = async (bookingId: string, data: any) => {
   const {
     diagnosis,
     consultation_note,
@@ -216,7 +213,6 @@ export const getConsultingBookings = async (doctorId: number) => {
   return result.rows;
 };
 
-
 // TƯƠNG TÁC VỚI CUSTOMER-SERVICE
 
 export const createCustomerServiceProfile = async (data: any) => {
@@ -259,10 +255,7 @@ export const createCustomerServiceProfile = async (data: any) => {
   return result.rows[0];
 };
 
-export const updateCustomerServiceProfile = async (
-  id: number,
-  data: any,
-) => {
+export const updateCustomerServiceProfile = async (id: number, data: any) => {
   const {
     doctor_id,
     technician_id,
@@ -310,54 +303,123 @@ export const deleteCustomerServiceProfile = async (id: number) => {
 };
 
 export const createServiceSession = async (data: any) => {
-  const {
-    profile_id,
-    session_no,
-    service_date,
-    technician_id,
-    booking_id,
-  } = data;
+  const client = await db.connect();
 
-  const result = await db.query(
-    `
-    INSERT INTO customer_service_sessions (
+  try {
+    await client.query("BEGIN");
+
+    const {
       profile_id,
       session_no,
       service_date,
+      service_time,
       technician_id,
-      booking_id,
-      status
-    )
-    VALUES ($1,$2,$3,$4,$5,'scheduled')
-    RETURNING *
-  `,
-    [
-      profile_id,
-      session_no,
-      service_date,
-      technician_id ?? null,
-      booking_id ?? null,
-    ],
-  );
+    } = data;
 
-  return result.rows[0];
+    const profileResult = await client.query(
+      `
+SELECT
+  p.*,
+  b.customer_id,
+  b.service_id
+FROM customer_service_profiles p
+JOIN bookings b
+  ON b.id = p.booking_id
+WHERE p.id = $1
+`,
+      [profile_id],
+    );
+
+    const profile = profileResult.rows[0];
+
+    const bookingResult = await client.query(
+      `
+INSERT INTO bookings (
+  booking_code,
+  customer_id,
+  service_id,
+  booking_date,
+  booking_time,
+  quantity,
+  created_source,
+  status
+)
+VALUES (
+  CONCAT(
+    'BK',
+    EXTRACT(EPOCH FROM NOW())::BIGINT,
+    FLOOR(RANDOM()*1000)
+  ),
+  $1,
+  $2,
+  $3,
+  $4,
+  1,
+  'STAFF',
+  'PENDING'
+)
+RETURNING *
+`,
+      [profile.customer_id, profile.service_id, service_date, service_time],
+    );
+
+    const newBooking = bookingResult.rows[0];
+
+    const result = await client.query(
+      `
+INSERT INTO customer_service_sessions (
+  profile_id,
+  session_no,
+  service_date,
+  service_time,
+  technician_id,
+  booking_id,
+  status
+)
+VALUES (
+  $1,$2,$3,$4,$5,$6,'scheduled'
+)
+RETURNING *
+`,
+      [
+        profile_id,
+        session_no,
+        service_date,
+        service_time,
+        technician_id ?? null,
+        newBooking.id,
+      ],
+    );
+
+    await client.query("COMMIT");
+
+    return result.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
-export const updateServiceSession = async (
-  id: number,
-  data: any,
-) => {
-  const {
-    technician_id,
-    doctor_note,
-    skin_reaction,
-    customer_feedback,
-    rating,
-    status,
-  } = data;
+export const updateServiceSession = async (id: number, data: any) => {
+  const client = await db.connect();
 
-  const result = await db.query(
-    `
+  try {
+    await client.query("BEGIN");
+    const {
+      technician_id,
+      doctor_note,
+      skin_reaction,
+      customer_feedback,
+      rating,
+      status,
+      service_date,
+      service_time,
+    } = data;
+
+    const result = await client.query(
+      `
     UPDATE customer_service_sessions
     SET
       technician_id = COALESCE($1, technician_id),
@@ -365,30 +427,93 @@ export const updateServiceSession = async (
       skin_reaction = COALESCE($3, skin_reaction),
       customer_feedback = COALESCE($4, customer_feedback),
       rating = COALESCE($5, rating),
-      status = COALESCE($6, status)
-    WHERE id = $7
+      status = COALESCE($6, status),
+      service_date = COALESCE($7, service_date),
+service_time = COALESCE($8, service_time)
+    WHERE id = $9
     RETURNING *
   `,
-    [
-      technician_id ?? null,
-      doctor_note ?? null,
-      skin_reaction ?? null,
-      customer_feedback ?? null,
-      rating ?? null,
-      status ?? null,
-      id,
-    ],
-  );
+      [
+        technician_id ?? null,
+        doctor_note ?? null,
+        skin_reaction ?? null,
+        customer_feedback ?? null,
+        rating ?? null,
+        status ?? null,
+        service_date ?? null,
+        service_time ?? null,
+        id,
+      ],
+    );
 
-  return result.rows[0];
+    const session = result.rows[0];
+    if (service_date || service_time) {
+      await client.query(
+        `
+  UPDATE bookings
+  SET
+    booking_date =
+      COALESCE($1, booking_date),
+
+    booking_time =
+      COALESCE($2, booking_time),
+
+    updated_at = NOW()
+
+  WHERE id = $3
+  `,
+        [service_date ?? null, service_time ?? null, session.booking_id],
+      );
+
+      
+      return session;
+    }
+    await client.query("COMMIT");
+
+    return session;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 export const deleteServiceSession = async (id: number) => {
-  await db.query(
-    `
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+    const session = await client.query(
+      `
+SELECT booking_id
+FROM customer_service_sessions
+WHERE id = $1
+`,
+      [id],
+    );
+
+    await db.query(
+      `
+DELETE FROM bookings
+WHERE id = $1
+`,
+      [session.rows[0].booking_id],
+    );
+
+    await client.query(
+      `
     DELETE FROM customer_service_sessions
     WHERE id = $1
   `,
-    [id],
-  );
+      [id],
+    );
+    await client.query("COMMIT");
+    return true;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };

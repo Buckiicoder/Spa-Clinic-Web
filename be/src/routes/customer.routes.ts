@@ -5,7 +5,9 @@ import {
   getCustomerDetail,
   createCustomer,
   updateCustomer,
-  getMyServiceHistory
+  updateMyProfile,
+  getMyServiceHistory,
+  rescheduleSession
 } from "../controllers/customer.controller.js";
 import { authCustomerMiddleware } from "../middleware/auth.middleware.js";
 
@@ -16,6 +18,20 @@ const router = Router();
 // GET ALL
 router.get("/", getCustomers);
 
+router.put("/me/profile", authCustomerMiddleware, updateMyProfile);
+
+router.get(
+  "/me/service-history",
+ authCustomerMiddleware, getMyServiceHistory
+);
+
+// RESCHEDULE SESSION
+router.put(
+  "/me/sessions/reschedule",
+  authCustomerMiddleware,
+  rescheduleSession,
+);
+
 // GET DETAIL
 router.get("/:id", getCustomerDetail);
 
@@ -24,10 +40,5 @@ router.post("/", createCustomer);
 
 // UPDATE
 router.put("/:id", updateCustomer);
-
-router.get(
-  "/me/service-history",
- authCustomerMiddleware, getMyServiceHistory
-);
 
 export default router;

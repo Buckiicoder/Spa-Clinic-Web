@@ -27,9 +27,7 @@ export const createCustomerSchema = z.object({
 
   avatar: z.string().optional(),
 
-  gender: z
-    .enum(["male", "female", "other"])
-    .optional(),
+  gender: z.enum(["male", "female", "other"]).optional(),
 
   dob: z.string().optional(),
 
@@ -48,9 +46,16 @@ export const createCustomerSchema = z.object({
 
 // ================= UPDATE =================
 
-export const updateCustomerSchema =
-  createCustomerSchema.partial().extend({
-    is_active: z.boolean().optional(),
+export const updateCustomerSchema = createCustomerSchema.partial().extend({
+  is_active: z.boolean().optional(),
 
-    referrer_id: z.number().optional(),
-  });
+  referrer_id: z.number().optional(),
+});
+
+export const rescheduleSessionSchema = z.object({
+  session_id: z.number(),
+
+  service_date: z.string().min(1),
+
+  service_time: z.string().min(1),
+});

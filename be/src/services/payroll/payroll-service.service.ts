@@ -32,7 +32,7 @@ import {
   createPayrollDeductions,
   createPayrollCommission,
 } from "./payroll-persistence.service.js";
- 
+
 export interface GeneratePayrollInput {
   staff_id: number;
 
@@ -120,6 +120,8 @@ export const generatePayrollTransaction = async (
     standard_work_hours: Number(attendanceSummary.standard_work_hours || 208),
 
     actual_work_hours: Number(attendanceSummary.total_work_hours || 0),
+
+    actual_ot_hours: Number(attendanceSummary.total_ot_hours || 0),
   });
 
   // ====================================================
@@ -142,7 +144,7 @@ export const generatePayrollTransaction = async (
     client,
   );
 
-    // ====================================================
+  // ====================================================
   // 6. CALCULATE COMMISSION
   // ====================================================
 
@@ -190,6 +192,7 @@ export const generatePayrollTransaction = async (
 
   const netSalary =
     salaryCalculation.gross_salary +
+    salaryCalculation.ot_salary +
     allowanceCalculation.allowance_total -
     deductionCalculation.deduction_total +
     commissionCalculation.commission_total;
@@ -221,6 +224,9 @@ export const generatePayrollTransaction = async (
       actual_work_hours: salaryCalculation.actual_work_hours,
 
       gross_salary: salaryCalculation.gross_salary,
+      ot_hours: salaryCalculation.actual_ot_hours,
+
+      ot_salary: salaryCalculation.ot_salary,
 
       allowance_total: allowanceCalculation.allowance_total,
 
@@ -244,59 +250,59 @@ export const generatePayrollTransaction = async (
   await deletePayrollRelations(payroll.id, client);
 
   // ====================================================
-// 10. INSERT ALLOWANCES
-// ====================================================
+  // 10. INSERT ALLOWANCES
+  // ====================================================
 
-if (allowanceCalculation.payrollAllowances.length) {
-  await createPayrollAllowances(
-    allowanceCalculation.payrollAllowances.map((item) => ({
-      payroll_id: payroll.id,
+  if (allowanceCalculation.payrollAllowances.length) {
+    await createPayrollAllowances(
+      allowanceCalculation.payrollAllowances.map((item) => ({
+        payroll_id: payroll.id,
 
-      allowance_id: item.allowance_id,
+        allowance_id: item.allowance_id,
 
-      allowance_name: item.allowance_name,
+        allowance_name: item.allowance_name,
 
-      amount_type: item.amount_type,
+        amount_type: item.amount_type,
 
-      amount_value: item.amount_value,
+        amount_value: item.amount_value,
 
-      quantity: item.quantity || 1,
+        quantity: item.quantity || 1,
 
-      total_amount: item.total_amount,
+        total_amount: item.total_amount,
 
-      apply_type: item.apply_type || null,
+        apply_type: item.apply_type || null,
 
-      note: item.note || null,
-    })),
-    client,
-  );
-}
+        note: item.note || null,
+      })),
+      client,
+    );
+  }
 
-// 11. INSERT DEDUCTIONS
-if (deductionCalculation.payrollDeductions.length) {
-  await createPayrollDeductions(
-    deductionCalculation.payrollDeductions.map((item) => ({
-      payroll_id: payroll.id,
+  // 11. INSERT DEDUCTIONS
+  if (deductionCalculation.payrollDeductions.length) {
+    await createPayrollDeductions(
+      deductionCalculation.payrollDeductions.map((item) => ({
+        payroll_id: payroll.id,
 
-      deduction_id: item.deduction_id,
+        deduction_id: item.deduction_id,
 
-      deduction_name: item.deduction_name,
+        deduction_name: item.deduction_name,
 
-      amount_type: item.amount_type,
+        amount_type: item.amount_type,
 
-      amount_value: item.amount_value,
+        amount_value: item.amount_value,
 
-      calculated_amount: item.calculated_amount,
+        calculated_amount: item.calculated_amount,
 
-      unit_type: item.unit_type || null,
+        unit_type: item.unit_type || null,
 
-      quantity: item.quantity || 1,
+        quantity: item.quantity || 1,
 
-      note: item.note || null,
-    })),
-    client,
-  );
-}
+        note: item.note || null,
+      })),
+      client,
+    );
+  }
 
   // ====================================================
   // 12. INSERT COMMISSION
@@ -308,87 +314,54 @@ if (deductionCalculation.payrollDeductions.length) {
   ) {
     await createPayrollCommission(
       {
-  payroll_id: payroll.id,
+        payroll_id: payroll.id,
 
-  commission_revenue_type:
-    commissionCalculation
-      .payrollCommission
-      .commission_revenue_type,
+        commission_revenue_type:
+          commissionCalculation.payrollCommission.commission_revenue_type,
 
-  commission_calculation_type:
-    commissionCalculation
-      .payrollCommission
-      .commission_calculation_type,
+        commission_calculation_type:
+          commissionCalculation.payrollCommission.commission_calculation_type,
 
-  commission_unit:
-    commissionCalculation
-      .payrollCommission
-      .commission_unit,
+        commission_unit:
+          commissionCalculation.payrollCommission.commission_unit,
 
-  commission_value:
-    commissionCalculation
-      .payrollCommission
-      .commission_value,
+        commission_value:
+          commissionCalculation.payrollCommission.commission_value,
 
-  minimum_revenue_target:
-    commissionCalculation
-      .payrollCommission
-      .minimum_revenue_target,
+        minimum_revenue_target:
+          commissionCalculation.payrollCommission.minimum_revenue_target,
 
-  actual_revenue:
-    commissionCalculation
-      .payrollCommission
-      .actual_revenue,
+        actual_revenue: commissionCalculation.payrollCommission.actual_revenue,
 
-  commission_amount:
-    commissionCalculation
-      .payrollCommission
-      .commission_amount,
+        commission_amount:
+          commissionCalculation.payrollCommission.commission_amount,
 
-  total_work_sessions:
-    commissionCalculation
-      .payrollCommission
-      .total_work_sessions || 0,
+        total_work_sessions:
+          commissionCalculation.payrollCommission.total_work_sessions || 0,
 
-  total_work_hours:
-    commissionCalculation
-      .payrollCommission
-      .total_work_hours || 0,
+        total_work_hours:
+          commissionCalculation.payrollCommission.total_work_hours || 0,
 
-  total_work_minutes:
-    commissionCalculation
-      .payrollCommission
-      .total_work_minutes || 0,
+        total_work_minutes:
+          commissionCalculation.payrollCommission.total_work_minutes || 0,
 
-  calculation_base_amount:
-    commissionCalculation
-      .payrollCommission
-      .calculation_base_amount || 0,
+        calculation_base_amount:
+          commissionCalculation.payrollCommission.calculation_base_amount || 0,
 
-  exceeded_revenue_amount:
-    commissionCalculation
-      .payrollCommission
-      .exceeded_revenue_amount || 0,
+        exceeded_revenue_amount:
+          commissionCalculation.payrollCommission.exceeded_revenue_amount || 0,
 
-  commission_source_type:
-    commissionCalculation
-      .payrollCommission
-      .commission_source_type || undefined,
+        commission_source_type:
+          commissionCalculation.payrollCommission.commission_source_type ||
+          undefined,
 
-  metadata:
-    commissionCalculation
-      .payrollCommission
-      .metadata || {},
+        metadata: commissionCalculation.payrollCommission.metadata || {},
 
-  note:
-    commissionCalculation
-      .payrollCommission
-      .note || null,
-},
+        note: commissionCalculation.payrollCommission.note || null,
+      },
       client,
     );
   }
-
 
   // 13. RETURN DETAIL
   return {
@@ -396,7 +369,13 @@ if (deductionCalculation.payrollDeductions.length) {
 
     attendance: attendanceSummary,
 
-    salary_calculation: salaryCalculation,
+    salary_calculation: {
+    ...salaryCalculation,
+
+    ot_hours: salaryCalculation.actual_ot_hours,
+
+    ot_salary: salaryCalculation.ot_salary,
+  },
 
     allowances: allowanceCalculation,
 
@@ -483,10 +462,10 @@ export const generateDailyPayrolls = async () => {
 
         payroll_id: payroll.payroll.id,
       });
-      
+
       console.log("PAYROLL ERROR", {
-  staff_id: staff.id,
-});
+        staff_id: staff.id,
+      });
     } catch (err: any) {
       results.push({
         staff_id: staff.id,
@@ -494,17 +473,14 @@ export const generateDailyPayrolls = async () => {
         success: false,
 
         error: err.message,
-
-        
       });
 
       console.log("PAYROLL ERROR", {
-  staff_id: staff.id,
-  error: err,
-});
+        staff_id: staff.id,
+        error: err,
+      });
     }
   }
-  
 
   return {
     total: staffs.length,
@@ -523,7 +499,6 @@ export const generateDailyPayrolls = async () => {
 export const runPayrollDailySyncNow = async () => {
   return generateDailyPayrolls();
 };
-
 
 // REGENERATE PAYROLL
 export const regeneratePayroll = async (

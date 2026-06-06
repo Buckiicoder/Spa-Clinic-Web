@@ -4,6 +4,7 @@ import bookingReducer from '../features/booking/bookingSlice'
 import serviceReducer from '../features/service/serviceSlice'
 import chatReducer from '../features/chat/chatSlice'
 import customerPortalReducer from '../features/customer/customerSlice'
+import paymentReducer from '../features/payment/paymentSlice'
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     service: serviceReducer,
     chat: chatReducer,
     customerPortal: customerPortalReducer,
+    payment: paymentReducer,
   }
 })
 

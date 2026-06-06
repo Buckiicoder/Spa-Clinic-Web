@@ -116,7 +116,7 @@ export const getStaffTimekeepingSummary = async (
         ),
         2
       ) AS standard_work_hours
-
+    
     FROM staffs s
 
     INNER JOIN users u
@@ -136,9 +136,9 @@ export const getStaffTimekeepingSummary = async (
       AND EXTRACT(MONTH FROM tk.work_date) = $2
       AND EXTRACT(YEAR FROM tk.work_date) = $3
     `,
+    
     [staff_id, month, year],
   );
-
   return result.rows[0];
 };
 

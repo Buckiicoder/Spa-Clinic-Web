@@ -46,6 +46,8 @@ export default function TimeKeeping() {
   const [checkingLocation, setCheckingLocation] = useState(false);
   const [locationError, setLocationError] = useState("");
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
   const today = new Date();
   const todayStr = [
     today.getFullYear(),
@@ -90,7 +92,15 @@ export default function TimeKeeping() {
         work_date: todayStr,
       }) as any,
     );
-  }, [dispatch, user?.id]);
+  }, [dispatch, user?.id, todayStr]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   // console.log(user);
   const employeeType = user?.employee_type;
@@ -256,6 +266,7 @@ export default function TimeKeeping() {
     ) ||
     selectedDateRecords[0] ||
     null;
+  const isViewingToday = selectedDate === todayStr;
 
   useEffect(() => {
     console.log("selectedDate", selectedDate);
@@ -1305,7 +1316,7 @@ ${
 
                         const end = selectedRecord?.check_out_time
                           ? new Date(selectedRecord.check_out_time).getTime()
-                          : Date.now();
+                          : currentTime;
 
                         let worked = Math.floor((end - start) / 60000);
 
@@ -1409,31 +1420,31 @@ ${
               <div className="border-t border-gray-200 pt-3">
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="text-amber-600 text-sm font-medium">
-                    Tổng công hôm nay
+                    Tổng công ngày
                   </span>
 
                   <span className="font-semibold text-amber-600">
                     {(() => {
-                      if (!todayRecord?.check_in_time) return "0 công";
+                      if (!selectedRecord?.check_in_time) return "0 công";
 
                       const start = new Date(
-                        todayRecord.check_in_time,
+                        selectedRecord.check_in_time,
                       ).getTime();
 
-                      const end = todayRecord?.check_out_time
-                        ? new Date(todayRecord.check_out_time).getTime()
+                      const end = selectedRecord?.check_out_time
+                        ? new Date(selectedRecord.check_out_time).getTime()
                         : Date.now();
 
                       let workedMinutes = Math.floor((end - start) / 60000);
 
                       // Trừ giờ nghỉ trưa
-                      if (todayRecord?.break_start_time) {
+                      if (selectedRecord?.break_start_time) {
                         const breakStart = new Date(
-                          todayRecord.break_start_time,
+                          selectedRecord.break_start_time,
                         ).getTime();
 
-                        const breakEnd = todayRecord?.break_end_time
-                          ? new Date(todayRecord.break_end_time).getTime()
+                        const breakEnd = selectedRecord?.break_end_time
+                          ? new Date(selectedRecord.break_end_time).getTime()
                           : Date.now();
 
                         workedMinutes -= Math.floor(
@@ -1487,84 +1498,94 @@ ${
               </div>
             )}
 
-            {/* BUTTONS phải nằm trong cùng khối bên trái */}
-            <div className="mt-6 flex flex-wrap gap-3">
-              {canCheckIn && (
-                <button
-                  onClick={handleCheckIn}
-                  disabled={checkingLocation}
-                  className="bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
-                >
-                  {isFulltime &&
-                  todayRecord?.break_start_time &&
-                  !todayRecord?.break_end_time
-                    ? "Quay lại làm việc"
-                    : "Chấm công vào ca"}
-                </button>
-              )}
-
-              {canCheckOut && (
-                <button
-                  onClick={handleCheckOut}
-                  disabled={checkingLocation || !!todayRecord?.check_out_time}
-                  className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
-                >
-                  {todayRecord?.check_out_time
-                    ? "Đã checkout"
-                    : checkingLocation
-                      ? "Đang xác minh..."
-                      : "Chấm công ra ca"}
-                </button>
-              )}
-
-              {canStartBreak && (
-                <button
-                  onClick={() =>
-                    dispatch(startBreak(Number(todayRecord.id)) as any)
-                  }
-                  className="bg-sky-500 hover:bg-sky-600 text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
-                >
-                  Nghỉ trưa
-                </button>
-              )}
-
-              {canEndBreak && (
-                <button
-                  onClick={() =>
-                    dispatch(endBreak(Number(todayRecord.id)) as any)
-                  }
-                  className="bg-indigo-500 hover:bg-indigo-600 text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
-                >
-                  Tiếp tục làm việc
-                </button>
-              )}
-              {canRequestOT && (
-                <button
-                  onClick={() => setOpenOTModal(true)}
-                  className="bg-violet-500 hover:bg-violet-600 text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
-                >
-                  Gửi yêu cầu OT
-                </button>
-              )}
-
-              {!canCheckIn &&
-                !canCheckOut &&
-                !canRequestOT &&
-                !canStartBreak &&
-                !canEndBreak && (
-                  <div className="text-sm text-gray-500 italic py-2">
-                    {todayRecord?.status === "OFF"
-                      ? "Hôm nay bạn được nghỉ"
-                      : todayRecord?.status === "ABSENT"
-                        ? "Bạn đã vắng mặt"
-                        : isBeforeShift
-                          ? "Chưa đến thời gian chấm công"
-                          : isAfterShift
-                            ? "Ca làm hôm nay đã kết thúc"
-                            : "Hiện chưa có thao tác nào khả dụng"}
-                  </div>
+            {/* BUTTONS chỉ hiển thị khi đang xem ngày hiện tại */}
+            {isViewingToday && (
+              <div className="mt-6 flex flex-wrap gap-3">
+                {canCheckIn && (
+                  <button
+                    onClick={handleCheckIn}
+                    disabled={checkingLocation}
+                    className="bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
+                  >
+                    {isFulltime &&
+                    todayRecord?.break_start_time &&
+                    !todayRecord?.break_end_time
+                      ? "Quay lại làm việc"
+                      : "Chấm công vào ca"}
+                  </button>
                 )}
-            </div>
+
+                {canCheckOut && (
+                  <button
+                    onClick={handleCheckOut}
+                    disabled={checkingLocation || !!todayRecord?.check_out_time}
+                    className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
+                  >
+                    {todayRecord?.check_out_time
+                      ? "Đã checkout"
+                      : checkingLocation
+                        ? "Đang xác minh..."
+                        : "Chấm công ra ca"}
+                  </button>
+                )}
+
+                {canStartBreak && (
+                  <button
+                    onClick={() =>
+                      dispatch(startBreak(Number(todayRecord.id)) as any)
+                    }
+                    className="bg-sky-500 hover:bg-sky-600 text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
+                  >
+                    Nghỉ trưa
+                  </button>
+                )}
+
+                {canEndBreak && (
+                  <button
+                    onClick={() =>
+                      dispatch(endBreak(Number(todayRecord.id)) as any)
+                    }
+                    className="bg-indigo-500 hover:bg-indigo-600 text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
+                  >
+                    Tiếp tục làm việc
+                  </button>
+                )}
+
+                {canRequestOT && (
+                  <button
+                    onClick={() => setOpenOTModal(true)}
+                    className="bg-violet-500 hover:bg-violet-600 text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-xl font-semibold transition"
+                  >
+                    Gửi yêu cầu OT
+                  </button>
+                )}
+
+                {!canCheckIn &&
+                  !canCheckOut &&
+                  !canRequestOT &&
+                  !canStartBreak &&
+                  !canEndBreak && (
+                    <div className="text-sm text-gray-500 italic py-2">
+                      {todayRecord?.status === "OFF"
+                        ? "Hôm nay bạn được nghỉ"
+                        : todayRecord?.status === "ABSENT"
+                          ? "Bạn đã vắng mặt"
+                          : isBeforeShift
+                            ? "Chưa đến thời gian chấm công"
+                            : isAfterShift
+                              ? "Ca làm hôm nay đã kết thúc"
+                              : "Hiện chưa có thao tác nào khả dụng"}
+                    </div>
+                  )}
+              </div>
+            )}
+
+            {!isViewingToday && (
+              <div className="mt-6 rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600">
+                Đây là dữ liệu của ngày đã chọn. Các thao tác chấm công, nghỉ
+                trưa và yêu cầu OT chỉ khả dụng khi xem ngày hiện tại.
+              </div>
+            )}
           </div>
 
           {/* RIGHT */}
@@ -1583,12 +1604,7 @@ ${
               </p>
             </div>
           </div>
-        </div>
-
-        {/* HISTORY / EMPTY */}
-        <div className="bg-white rounded-2xl shadow-md p-10 text-center text-gray-500">
-          Chưa có dữ liệu chấm công trong tháng này.
-        </div>
+        </div> 
       </div>
 
       <OvertimeRequestModal

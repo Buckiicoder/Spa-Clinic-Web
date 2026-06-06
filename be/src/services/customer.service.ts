@@ -12,7 +12,7 @@ export const getCustomers = async ({
   const offset = (page - 1) * limit;
 
   const result = await db.query(
-  `
+    `
   SELECT
     u.id,
     u.name,
@@ -80,8 +80,8 @@ export const getCustomers = async ({
 
   LIMIT $5 OFFSET $6
   `,
-  [search, rank, status, is_active, limit, offset],
-);
+    [search, rank, status, is_active, limit, offset],
+  );
 
   // total count
   const totalResult = await db.query(
@@ -117,9 +117,9 @@ INNER JOIN users u
     `,
     [search, rank, status, is_active],
   );
-// console.log("limit:", limit);
-// console.log("rows:", result.rows.length);
-// console.log("total:", totalResult.rows[0].total);
+  // console.log("limit:", limit);
+  // console.log("rows:", result.rows.length);
+  // console.log("total:", totalResult.rows[0].total);
   return {
     data: result.rows,
     pagination: {
@@ -735,13 +735,29 @@ export const getCustomerServiceHistory = async (user_id: number) => {
     SELECT
       u.id,
       u.name,
-      u.email,
       u.phone,
+      u.email,
       u.avatar,
+      u.gender,
+      u.dob,
+      u.city,
+      u.ward,
+      u.address_detail,
+      u.is_active,
+      u.is_verified,
+      u.created_at,
+      u.updated_at,
 
       c.total_spending,
       c.rank,
-      c.loyalty_points
+      c.status,
+      c.source,
+      c.note,
+      c.total_visits,
+      c.first_visit_at,
+      c.last_visit_at,
+      c.loyalty_points,
+      c.referrer_id
 
     FROM users u
 
@@ -772,104 +788,388 @@ export const getCustomerServiceHistory = async (user_id: number) => {
   const profilesResult = await db.query(
     `
     SELECT
-      csp.id,
+  csp.id,
 
-      csp.total_sessions,
-      csp.used_sessions,
+  csp.total_sessions,
+  csp.used_sessions,
 
-      csp.status,
-      csp.started_at,
-      csp.completed_at,
+  csp.status,
+  csp.started_at,
+  csp.completed_at,
 
-      csp.created_at,
+  csp.created_at,
 
-      -- SERVICE
-      s.id AS service_id,
-      s.name AS service_name,
+  -- SERVICE
+  s.id AS service_id,
+  s.name AS service_name,
 
-      -- PACKAGE
-      sp.id AS package_id,
-      sp.name AS package_name,
-      sp.price AS package_price,
-      sp.total_sessions AS package_total_sessions,
-      sp.unit,
+  -- PACKAGE
+  sp.id AS package_id,
+  sp.name AS package_name,
+  sp.price AS package_price,
+  sp.total_sessions AS package_total_sessions,
+  sp.unit,
 
-      -- PAYMENT SUMMARY
-      COALESCE(SUM(p.paid_amount), 0) AS total_paid
+  -- DOCTOR
+  csp.doctor_id,
+  doctor_user.name AS doctor_name,
 
-    FROM customer_service_profiles csp
+  -- LATEST TECHNICIAN
+  latest_session.technician_id,
+  technician_user.name AS latest_technician_name,
 
-    LEFT JOIN services s
-      ON s.id = csp.service_id
+  -- PAYMENT SUMMARY
+  COALESCE(
+    SUM(p.paid_amount),
+    0
+  ) AS total_paid,
 
-    LEFT JOIN service_packages sp
-      ON sp.id = csp.package_id
+  COALESCE(
+    SUM(p.remaining_amount),
+    0
+  ) AS total_remaining,
 
-    LEFT JOIN payment_items pi
-      ON pi.profile_id = csp.id
+  JSON_AGG(
+    DISTINCT JSONB_BUILD_OBJECT(
+      'payment_id', p.id,
+      'payment_code', p.payment_code,
 
-    LEFT JOIN payments p
-      ON p.id = pi.payment_id
+      'status', p.status,
 
-    WHERE csp.customer_id = $1
+      'final_amount', p.final_amount,
+      'paid_amount', p.paid_amount,
+      'remaining_amount', p.remaining_amount
+    )
+  )
+  FILTER (
+    WHERE p.id IS NOT NULL
+  ) AS payments
 
-    GROUP BY
-      csp.id,
-      s.id,
-      sp.id
+FROM customer_service_profiles csp
 
-    ORDER BY csp.created_at DESC
+LEFT JOIN services s
+  ON s.id = csp.service_id
+
+LEFT JOIN service_packages sp
+  ON sp.id = csp.package_id
+
+-- DOCTOR
+LEFT JOIN users doctor_user
+  ON doctor_user.id = csp.doctor_id
+
+-- LATEST SESSION
+LEFT JOIN LATERAL (
+  SELECT
+    css.*
+  FROM customer_service_sessions css
+  WHERE css.profile_id = csp.id
+  ORDER BY css.session_no DESC
+  LIMIT 1
+) latest_session
+ON TRUE
+
+LEFT JOIN staffs tech_staff
+  ON tech_staff.id = latest_session.technician_id
+
+LEFT JOIN users technician_user
+  ON technician_user.id = tech_staff.user_id
+
+-- PAYMENT
+LEFT JOIN payment_items pi
+  ON pi.profile_id = csp.id
+
+LEFT JOIN payments p
+  ON p.id = pi.payment_id
+
+WHERE csp.customer_id = $1
+
+GROUP BY
+  csp.id,
+  s.id,
+  sp.id,
+  doctor_user.name,
+  latest_session.technician_id,
+  technician_user.name
+
+ORDER BY csp.created_at DESC
     `,
     [user_id],
   );
 
-  //
-  // =========================
-  // PAYMENTS
-  // =========================
-  //
+  const profiles = await Promise.all(
+    profilesResult.rows.map(async (profile) => {
+      const transactionsResult = await db.query(
+        `
+      SELECT
+        pt.id,
 
-  const paymentsResult = await db.query(
-    `
-    SELECT
-      p.id,
-      p.payment_code,
+        pt.transaction_code,
 
-      p.final_amount,
-      p.paid_amount,
-      p.remaining_amount,
+        pt.payment_method,
 
-      p.status,
-      p.created_at,
+        pt.gateway_provider,
 
-      JSON_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-          'item_name', pi.item_name,
-          'quantity', pi.quantity,
-          'final_amount', pi.final_amount
-        )
-      ) FILTER (
-        WHERE pi.id IS NOT NULL
-      ) AS items
+        pt.amount,
 
-    FROM payments p
+        pt.status,
 
-    LEFT JOIN payment_items pi
-      ON pi.payment_id = p.id
+        pt.paid_at,
 
-    WHERE p.customer_id = $1
+        p.id AS payment_id,
 
-    GROUP BY p.id
+        p.payment_code
 
-    ORDER BY p.created_at DESC
-    `,
-    [user_id],
+      FROM payment_transactions pt
+
+      INNER JOIN payments p
+        ON p.id = pt.payment_id
+
+      INNER JOIN payment_items pi
+        ON pi.payment_id = p.id
+
+      WHERE pi.profile_id = $1
+
+      ORDER BY pt.paid_at DESC
+      `,
+        [profile.id],
+      );
+
+      const sessionsResult = await db.query(
+        `
+  SELECT
+    css.id,
+
+    css.profile_id,
+    css.session_no,
+
+    css.service_date,
+    css.service_time,
+
+    css.status,
+
+    css.started_at,
+    css.completed_at,
+
+    css.doctor_note,
+    css.skin_reaction,
+    css.customer_feedback,
+    css.rating,
+
+    css.booking_id,
+
+    css.technician_id,
+    tech_user.name AS technician_name
+
+  FROM customer_service_sessions css
+
+  LEFT JOIN staffs tech
+    ON tech.id = css.technician_id
+
+  LEFT JOIN users tech_user
+    ON tech_user.id = tech.user_id
+
+  WHERE css.profile_id = $1
+
+  ORDER BY css.session_no ASC
+  `,
+        [profile.id],
+      );
+
+      const nextSession =
+        sessionsResult.rows.find(
+          (s) =>
+            new Date(s.service_date) >=
+            new Date(new Date().toISOString().split("T")[0]),
+        ) || null;
+
+      return {
+        ...profile,
+        transactions: transactionsResult.rows,
+        sessions: sessionsResult.rows,
+        next_session: nextSession,
+      };
+    }),
   );
 
   return {
     customer,
-    profiles: profilesResult.rows,
-    payments: paymentsResult.rows,
+    profiles,
     total_spending: customer.total_spending || 0,
   };
+};
+
+
+export const rescheduleCustomerSession = async ({
+  user_id,
+  session_id,
+  service_date,
+  service_time,
+}: {
+  user_id: number;
+  session_id: number;
+  service_date: string;
+  service_time: string;
+}) => {
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    //
+    // 1. Lấy session
+    //
+    const sessionResult = await client.query(
+      `
+      SELECT
+        css.id,
+        css.profile_id,
+        css.session_no,
+        css.service_date,
+        css.service_time,
+        css.booking_id,
+
+        csp.customer_id
+
+      FROM customer_service_sessions css
+
+      INNER JOIN customer_service_profiles csp
+        ON csp.id = css.profile_id
+
+      WHERE css.id = $1
+
+      LIMIT 1
+      `,
+      [session_id],
+    );
+
+    const session = sessionResult.rows[0];
+
+    if (!session) {
+      throw new Error("Không tìm thấy buổi điều trị");
+    }
+
+    //
+    // 2. Verify đúng khách hàng
+    //
+    if (Number(session.customer_id) !== Number(user_id)) {
+      throw new Error("Bạn không có quyền chỉnh sửa lịch này");
+    }
+
+    //
+    // 3. Validate ngày cũ
+    //
+    const oldDate = new Date(session.service_date);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    //
+    // Không cho sửa lịch đã qua
+    //
+    if (oldDate < today) {
+      throw new Error(
+        "Không thể thay đổi lịch của buổi đã diễn ra",
+      );
+    }
+
+    //
+    // 4. Validate ngày mới
+    //
+    const newDate = new Date(service_date);
+
+    if (isNaN(newDate.getTime())) {
+      throw new Error("Ngày điều trị không hợp lệ");
+    }
+
+    //
+    // Không được đổi về trước ngày cũ
+    //
+    if (newDate < oldDate) {
+      throw new Error(
+        "Chỉ được dời lịch về sau, không được đổi lịch sớm hơn",
+      );
+    }
+
+    //
+    // Tối đa +7 ngày
+    //
+    const diffDays =
+      (newDate.getTime() - oldDate.getTime()) /
+      (1000 * 60 * 60 * 24);
+
+    if (diffDays > 7) {
+      throw new Error(
+        "Chỉ được dời lịch tối đa 7 ngày kể từ lịch hiện tại",
+      );
+    }
+
+    //
+    // 5. Update SESSION
+    //
+    await client.query(
+      `
+      UPDATE customer_service_sessions
+      SET
+        service_date = $1,
+        service_time = $2
+      WHERE id = $3
+      `,
+      [
+        service_date,
+        service_time,
+        session_id,
+      ],
+    );
+
+    //
+    // 6. Update BOOKING nếu có
+    //
+    if (session.booking_id) {
+      await client.query(
+        `
+        UPDATE bookings
+        SET
+          booking_date = $1,
+          booking_time = $2,
+          updated_at = NOW()
+        WHERE id = $3
+        `,
+        [
+          service_date,
+          service_time,
+          session.booking_id,
+        ],
+      );
+    }
+
+    //
+    // 7. Lấy dữ liệu mới
+    //
+    const updatedResult = await client.query(
+      `
+      SELECT
+        css.id,
+        css.profile_id,
+        css.session_no,
+        css.service_date,
+        css.service_time,
+        css.booking_id
+      FROM customer_service_sessions css
+      WHERE css.id = $1
+      `,
+      [session_id],
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      message: "Đổi lịch thành công",
+      session: updatedResult.rows[0],
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };

@@ -61,9 +61,8 @@ export const createSessionSchema = z.object({
   profile_id: z.number(),
   session_no: z.number(),
   service_date: z.string(),
-
+  service_time: z.string(),
   technician_id: z.number().optional(),
-  booking_id: z.number().optional(),
 });
 
 /**
@@ -76,4 +75,6 @@ export const updateSessionSchema = z.object({
   customer_feedback: z.string().optional(),
   rating: z.number().optional(),
   status: z.string().optional(),
+  service_date: z.string().optional(),
+  service_time: z.string().optional(),
 });

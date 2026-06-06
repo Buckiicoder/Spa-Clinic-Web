@@ -166,6 +166,10 @@ export default function DoctorExamination() {
               throw new Error(`Chưa chọn ngày buổi 1 (${pkg.name})`);
             }
 
+            if (!pkg.session1_time) {
+              throw new Error(`Chưa chọn giờ buổi 1 (${pkg.name})`);
+            }
+
             // 🔥 1. CREATE PROFILE
             const res = await dispatch(
               createProfileFromConsultation({
@@ -181,31 +185,28 @@ export default function DoctorExamination() {
               }),
             ).unwrap();
 
-            const profileId = res.id;
+            const profileId = Number(res.id);
 
-            // 🔥 2. CREATE SESSION 1 (bắt buộc)
+            // ============================
+            // Xác định ngày hẹn tiếp theo
+            // ============================
+
+            const nextDate = pkg.session2_date || pkg.session1_date;
+            const nextTime = pkg.session2_date
+              ? pkg.session2_time
+              : pkg.session1_time;
+
             await dispatch(
               createSession({
-                profile_id: profileId,
-                session_no: 1,
-                service_date: pkg.session1_date,
-                status: "scheduled",
-                booking_id: booking.id,
-              }),
-            );
+                profile_id: Number(profileId),
 
-            // 🔥 3. CREATE SESSION 2 (optional)
-            if (pkg.session2_date) {
-              await dispatch(
-                createSession({
-                  profile_id: profileId,
-                  session_no: 2,
-                  service_date: pkg.session2_date,
-                  status: "scheduled",
-                  booking_id: booking.id,
-                }),
-              );
-            }
+                // session tiếp theo
+                session_no: pkg.session2_date ? 2 : 1,
+
+                service_date: nextDate,
+                service_time: nextTime,
+              }),
+            ).unwrap();
           }),
         );
 
@@ -576,49 +577,87 @@ export default function DoctorExamination() {
                           {/* Buổi 1 */}
                           <div>
                             <p className="text-xs mb-1">Buổi 1 (bắt buộc)</p>
-                            <input
-                              disabled={!canEdit}
-                              type="date"
-                              value={p.session1_date || ""}
-                              onChange={(e) => {
-                                const value = e.target.value;
 
-                                setSelectedPackages((prev) =>
-                                  prev.map((pkg) =>
-                                    pkg.id === p.id
-                                      ? { ...pkg, session1_date: value }
-                                      : pkg,
-                                  ),
-                                );
-                              }}
-                              className={`border rounded px-2 py-1 w-full ${
-                                !canEdit ? "bg-gray-100 cursor-not-allowed" : ""
-                              }`}
-                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <input
+                                disabled={!canEdit}
+                                type="date"
+                                value={p.session1_date || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+
+                                  setSelectedPackages((prev) =>
+                                    prev.map((pkg) =>
+                                      pkg.id === p.id
+                                        ? { ...pkg, session1_date: value }
+                                        : pkg,
+                                    ),
+                                  );
+                                }}
+                                className="border rounded px-2 py-1"
+                              />
+
+                              <input
+                                disabled={!canEdit}
+                                type="time"
+                                value={p.session1_time || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+
+                                  setSelectedPackages((prev) =>
+                                    prev.map((pkg) =>
+                                      pkg.id === p.id
+                                        ? { ...pkg, session1_time: value }
+                                        : pkg,
+                                    ),
+                                  );
+                                }}
+                                className="border rounded px-2 py-1"
+                              />
+                            </div>
                           </div>
 
                           {/* Buổi 2 */}
                           <div>
                             <p className="text-xs mb-1">Buổi 2 (tuỳ chọn)</p>
-                            <input
-                              disabled={!canEdit}
-                              type="date"
-                              value={p.session2_date || ""}
-                              onChange={(e) => {
-                                const value = e.target.value;
 
-                                setSelectedPackages((prev) =>
-                                  prev.map((pkg) =>
-                                    pkg.id === p.id
-                                      ? { ...pkg, session2_date: value }
-                                      : pkg,
-                                  ),
-                                );
-                              }}
-                              className={`border rounded px-2 py-1 w-full ${
-                                !canEdit ? "bg-gray-100 cursor-not-allowed" : ""
-                              }`}
-                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <input
+                                disabled={!canEdit}
+                                type="date"
+                                value={p.session2_date || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+
+                                  setSelectedPackages((prev) =>
+                                    prev.map((pkg) =>
+                                      pkg.id === p.id
+                                        ? { ...pkg, session2_date: value }
+                                        : pkg,
+                                    ),
+                                  );
+                                }}
+                                className="border rounded px-2 py-1"
+                              />
+
+                              <input
+                                disabled={!canEdit}
+                                type="time"
+                                value={p.session2_time || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+
+                                  setSelectedPackages((prev) =>
+                                    prev.map((pkg) =>
+                                      pkg.id === p.id
+                                        ? { ...pkg, session2_time: value }
+                                        : pkg,
+                                    ),
+                                  );
+                                }}
+                                className="border rounded px-2 py-1"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>

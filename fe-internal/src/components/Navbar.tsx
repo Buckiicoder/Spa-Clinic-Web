@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useAppDispatch } from "../app/hook";
@@ -15,13 +15,23 @@ import {
   Volume,
   ClipboardClock,
   UserStar,
-  MonitorCog
+  MonitorCog,
 } from "lucide-react";
 
 export default function Navbar({ open, setOpen }: any) {
   const navigate = useNavigate();
   const [openAccount, setOpenAccount] = useState(false);
+  const [accountHovered, setAccountHovered] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setOpenAccount(false);
+      setAccountHovered(false);
+
+      setOpenMenu(null);
+    }
+  }, [open]);
 
   // toggle đảm bảo chỉ mở 1 menu
   const toggleMenu = (key: string) => {
@@ -243,7 +253,6 @@ export default function Navbar({ open, setOpen }: any) {
                   )}
                 </li>
 
-
                 {/* Nhân viên làm dịch vụ */}
                 <li className="group relative">
                   <Link
@@ -333,8 +342,6 @@ export default function Navbar({ open, setOpen }: any) {
                   </div>
                 </li>
 
-                
-
                 <li className="relative">
                   <div
                     onClick={() => toggleMenu("product")}
@@ -395,7 +402,7 @@ export default function Navbar({ open, setOpen }: any) {
                           to="/inventory"
                           className="block px-3 py-2 rounded-lg hover:bg-amber-50"
                         >
-                          Nhập/Xuất kho
+                          Nhập kho
                         </Link>
                       </li>
 
@@ -435,7 +442,14 @@ export default function Navbar({ open, setOpen }: any) {
             </div>
 
             {/* PUSH xuống dưới */}
-            <div className="mt-auto pt-6 border-t relative">
+            <div
+              className="mt-auto pt-6 border-t relative"
+              onMouseEnter={() => setAccountHovered(true)}
+              onMouseLeave={() => {
+                setAccountHovered(false);
+                setOpenAccount(false);
+              }}
+            >
               {!user && (
                 <button
                   onClick={goLogin}
@@ -444,47 +458,49 @@ export default function Navbar({ open, setOpen }: any) {
                   Đăng nhập
                 </button>
               )}
-              {user && (
-                <div
-                  className="flex items-center gap-2 px-2 cursor-pointer"
-                  onClick={() => setOpenAccount(!openAccount)}
-                >
-                  <img
-                    src={
-                      user?.avatar
-                        ? "http://localhost:5000" + user.avatar
-                        : "https://ui-avatars.com/api/?name=" +
-                          (user?.name || "User")
-                    }
-                    className="w-10 h-10 rounded-full"
-                  />
 
-                  {open && (
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{user.name}</p>
-                      <p className="text-xs text-gray-500">{user.email}</p>
+              {user && (
+                <>
+                  <div
+                    className="flex items-center gap-2 px-2 cursor-pointer"
+                    onClick={() => setOpenAccount((prev) => !prev)}
+                  >
+                    <img
+                      src={
+                        user?.avatar
+                          ? "http://localhost:5000" + user.avatar
+                          : "https://ui-avatars.com/api/?name=" +
+                            (user?.name || "User")
+                      }
+                      className="w-10 h-10 rounded-full"
+                    />
+
+                    {open && (
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{user.name}</p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {(accountHovered || openAccount) && (
+                    <div className="absolute bottom-16 left-2 w-48 bg-white shadow-lg rounded-xl border z-50">
+                      <button
+                        onClick={goProfile}
+                        className="block w-full text-left px-4 py-3 hover:bg-gray-100"
+                      >
+                        Tài khoản
+                      </button>
+
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-3 hover:bg-gray-100"
+                      >
+                        Đăng xuất
+                      </button>
                     </div>
                   )}
-                </div>
-              )}
-
-              {/* DROPDOWN */}
-              {openAccount && (
-                <div className="absolute bottom-16 left-2 w-48 bg-white shadow-lg rounded-xl border z-50">
-                  <button
-                    onClick={goProfile}
-                    className="block w-full text-left px-4 py-3 hover:bg-gray-100"
-                  >
-                    Tài khoản
-                  </button>
-
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-3 hover:bg-gray-100"
-                  >
-                    Đăng xuất
-                  </button>
-                </div>
+                </>
               )}
             </div>
           </div>
@@ -494,7 +510,13 @@ export default function Navbar({ open, setOpen }: any) {
       {open && (
         <div
           className="fixed inset-0 bg-black/30 z-40 transition-opacity"
-          onClick={() => setOpen(false)}
+          onClick={() => {
+      setOpen(false);
+
+      setOpenMenu(null);
+      setOpenAccount(false);
+      setAccountHovered(false);
+    }}
         />
       )}
     </div>

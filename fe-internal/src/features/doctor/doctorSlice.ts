@@ -118,10 +118,18 @@ export const deleteProfile = createAsyncThunk(
 
 export const createSession = createAsyncThunk(
   "doctor/createSession",
-  async (data: any) => {
+  async (
+    data: {
+      profile_id: number;
+      session_no: number;
+      service_date: string;
+      service_time: string;
+      technician_id?: number;
+    }
+  ) => {
     const res = await createSessionAPI(data);
     return res.data;
-  },
+  }
 );
 
 export const updateSession = createAsyncThunk(

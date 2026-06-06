@@ -13,6 +13,7 @@ import { fetchUser } from "./features/auth/authSlice";
 import Register from "./pages/Register";
 import VerifyOTP from "./pages/verifyOTP";
 import SpaChatWidget from "./components/SpaChatWidget";
+import Payment from "./pages/Payment";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -36,7 +37,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-    <SpaChatWidget/>
+      <SpaChatWidget />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/booking" element={<Booking />} />
         <Route path="/profile" element={<UserProfile />} />
         <Route path="/verify" element={<VerifyOTP />} />
+        <Route path="/payment/customer/:customerId" element={<Payment />} />
       </Routes>
     </BrowserRouter>
   );

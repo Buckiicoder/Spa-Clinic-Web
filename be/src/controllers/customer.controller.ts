@@ -1,13 +1,11 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import * as customerServices from "../services/customer.service.js";
+import { rescheduleSessionSchema } from "../validators/customer.schema.js";
 
 // ================= CUSTOMER =================
 
 // GET ALL
-export const getCustomers = async (
-  req: Request,
-  res: Response,
-) => {
+export const getCustomers = async (req: Request, res: Response) => {
   try {
     const data = await customerServices.getCustomers({
       search: req.query.search,
@@ -34,15 +32,11 @@ export const getCustomers = async (
 };
 
 // GET DETAIL
-export const getCustomerDetail = async (
-  req: Request,
-  res: Response,
-) => {
+export const getCustomerDetail = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
-    const data =
-      await customerServices.getCustomerDetail(id);
+    const data = await customerServices.getCustomerDetail(id);
 
     return res.json(data);
   } catch (err: any) {
@@ -55,13 +49,9 @@ export const getCustomerDetail = async (
 };
 
 // CREATE
-export const createCustomer = async (
-  req: Request,
-  res: Response,
-) => {
+export const createCustomer = async (req: Request, res: Response) => {
   try {
-    const data =
-      await customerServices.createCustomer(req.body);
+    const data = await customerServices.createCustomer(req.body);
 
     return res.status(201).json(data);
   } catch (err: any) {
@@ -74,18 +64,11 @@ export const createCustomer = async (
 };
 
 // UPDATE
-export const updateCustomer = async (
-  req: Request,
-  res: Response,
-) => {
+export const updateCustomer = async (req: Request, res: Response) => {
   try {
     const user_id = Number(req.params.id);
 
-    const data =
-      await customerServices.updateCustomer(
-        user_id,
-        req.body,
-      );
+    const data = await customerServices.updateCustomer(user_id, req.body);
 
     return res.json(data);
   } catch (err: any) {
@@ -97,22 +80,71 @@ export const updateCustomer = async (
   }
 };
 
-export const getMyServiceHistory = async (
-  req: Request,
-  res: Response,
-) => {
+
+
+export const updateMyProfile = async (req: Request, res: Response) => {
   try {
     const user_id = req.user.id;
 
-    const data =
-      await customerServices.getCustomerServiceHistory(
-        user_id,
-      );
+    const payload = {
+      name: req.body.name,
+      phone: req.body.phone,
+      email: req.body.email,
+
+      gender: req.body.gender,
+      dob: req.body.dob,
+
+      city: req.body.city,
+      ward: req.body.ward,
+      address_detail: req.body.address_detail,
+
+      avatar: req.body.avatar,
+    };
+
+    const data = await customerServices.updateCustomer(user_id, payload);
+
+    return res.json(data);
+  } catch (err: any) {
+    console.error(err);
+
+    return res.status(500).json({
+      message: err.message || "Cập nhật thất bại",
+    });
+  }
+};
+
+export const getMyServiceHistory = async (req: Request, res: Response) => {
+  try {
+    const user_id = req.user.id;
+
+    const data = await customerServices.getCustomerServiceHistory(user_id);
 
     return res.json(data);
   } catch (err: any) {
     return res.status(400).json({
       message: err.message,
     });
+  }
+};
+
+
+export const rescheduleSession = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const data =
+      rescheduleSessionSchema.parse(req.body);
+
+    const result =
+      await customerServices.rescheduleCustomerSession({
+        user_id: req.user.id,
+        ...data,
+      });
+
+    res.json(result);
+  } catch (error) {
+    next(error);
   }
 };
