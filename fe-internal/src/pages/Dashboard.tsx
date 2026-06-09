@@ -545,7 +545,7 @@ export default function Dashboard() {
                   outerRadius="70%"
                   label
                 >
-                  {customerAnalytics.map((entry, index) => (
+                  {customerAnalytics.map((_, index) => (
                     <Cell
                       key={index}
                       fill={CUSTOMER_COLORS[index % CUSTOMER_COLORS.length]}

@@ -9,9 +9,9 @@ export type StaffInput = {
   avatar?: string;
   dob?: string;
   gender?: string;
-  city?: string;
-  ward?: string;
-  address_detail?: string;
+  city?: string | null;
+  ward?: string | null;
+  address_detail?: string | null;
   role?: string;
 
   // 🔹 STAFFS

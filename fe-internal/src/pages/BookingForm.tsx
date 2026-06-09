@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import Navbar from "../components/Navbar";
+// import Navbar from "../components/Navbar";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -190,9 +190,9 @@ export default function BookingForm() {
     setShowDropdown(false);
   };
 
-  const toISOStringLocal = (date: string, time: string) => {
-    return new Date(`${date}T${time}:00`).toISOString();
-  };
+  // const toISOStringLocal = (date: string, time: string) => {
+  //   return new Date(`${date}T${time}:00`).toISOString();
+  // };
 
   const handleToggleCheckIn = async () => {
     if (!id || !user.id) return;
