@@ -54,6 +54,23 @@ export const createPaymentAPI = (data: {
   note?: string;
 }) => api.post(`/payment`, data);
 
+
+// CREATE VNPAY PAYMENT
+export const createVNPayPaymentAPI = (data: {
+  profile_id: number;
+  discount_id?: number | null;
+  amount: number;
+}) =>
+  api.post("/payment/vnpay/create", data);
+
+// CREATE ZALOPAY PAYMENT
+export const createZaloPayPaymentAPI = (data: {
+  profile_id: number;
+  discount_id?: number | null;
+  amount: number;
+}) =>
+  api.post("/payment/zalopay/create", data);
+
 // PAYMENT BILLS MANAGEMENT
 
 export const fetchPaymentBillsAPI = (params?: {

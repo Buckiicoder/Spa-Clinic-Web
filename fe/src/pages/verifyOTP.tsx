@@ -7,6 +7,8 @@ export default function VerifyOTP() {
   const location = useLocation();
 
   const contact = location.state?.contact;
+  const contactType = location.state?.contactType;
+  const demoOtp = location.state?.demoOtp;
 
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
@@ -16,9 +18,21 @@ export default function VerifyOTP() {
   // ❗ Nếu reload mất state → redirect
   useEffect(() => {
     if (!contact) {
+      alert("Phiên xác thực đã hết. Vui lòng đăng ký lại.");
+
       navigate("/register");
     }
   }, [contact, navigate]);
+
+  useEffect(() => {
+    if (contactType === "PHONE" && demoOtp) {
+      alert(
+        `Mã OTP của bạn là: ${demoOtp}\n\n` +
+          `Mã chỉ có hiệu lực trong 5 phút.\n` +
+          `Vui lòng nhập đúng mã này để hoàn tất đăng ký.`,
+      );
+    }
+  }, [contactType, demoOtp]);
 
   // ⏳ countdown resend
   useEffect(() => {
@@ -49,7 +63,7 @@ export default function VerifyOTP() {
         },
         {
           withCredentials: true, // 🔥 QUAN TRỌNG (cookie)
-        }
+        },
       );
 
       alert("Đăng ký thành công!");
@@ -68,7 +82,7 @@ export default function VerifyOTP() {
       await axios.post(
         "http://localhost:5000/api/auth/register",
         { contact },
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
       alert("OTP mới đã được gửi!");
@@ -81,13 +95,14 @@ export default function VerifyOTP() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-stone-100 to-amber-100 px-4">
       <div className="w-full max-w-md">
         <div className="bg-white/90 backdrop-blur-xl border border-amber-200 rounded-2xl shadow-xl p-8 text-center">
-
           <h2 className="text-2xl font-bold text-brown-900 mb-2">
             Xác thực OTP
           </h2>
 
           <p className="text-gray-500 mb-6">
-            Nhập mã đã gửi tới <b>{contact}</b>
+            {contactType === "PHONE"
+              ? `Nhập mã OTP vừa được hiển thị cho số ${contact}`
+              : `Nhập mã OTP đã gửi tới ${contact}`}
           </p>
 
           {/* OTP INPUT */}
@@ -110,9 +125,7 @@ export default function VerifyOTP() {
           />
 
           {/* ERROR */}
-          {error && (
-            <p className="text-red-500 text-sm mt-2">{error}</p>
-          )}
+          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
 
           {/* BUTTON */}
           <button
@@ -145,7 +158,6 @@ export default function VerifyOTP() {
               </button>
             )}
           </div>
-
         </div>
       </div>
     </div>

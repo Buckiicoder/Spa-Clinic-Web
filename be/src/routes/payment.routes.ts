@@ -9,6 +9,10 @@ import {
   getPaymentSummaryByProfile,
   getAllPayments,
   getPaymentBillDetail,
+  createVNPayPayment,
+  vnpayReturn,
+  createZaloPayPayment,
+  zalopayCallback,
 } from "../controllers/payment.controller.js";
 
 const router = Router();
@@ -32,5 +36,14 @@ router.post("/calculate-discount", calculateDiscountAmount);
 
 // CREATE PAYMENT
 router.post("/", createPayment);
+
+// VNPay
+router.post("/vnpay/create", createVNPayPayment);
+
+router.get("/vnpay-return", vnpayReturn);
+
+router.post("/zalopay/create", createZaloPayPayment);
+
+router.post("/zalopay/callback", zalopayCallback);
 
 export default router;

@@ -29,8 +29,10 @@ import {
   selectPaymentCustomerInfo,
   selectPaymentSummary,
   fetchPaymentSummaryByProfile,
+  // createVNPayPayment,
+  createZaloPayPayment,
+  // selectZaloPayOrderUrl,
 } from "../features/payment/paymentSlice";
-
 import type { CustomerUnpaidProfile } from "../types/payment";
 
 export default function Payment() {
@@ -59,24 +61,18 @@ export default function Payment() {
     useState<CustomerUnpaidProfile | null>(null);
 
   const [paymentMethod, setPaymentMethod] = useState<
-    "CASH" | "BANK_TRANSFER" | "MOMO" | "VNPAY"
+    "CASH" | "BANK_TRANSFER" | "MOMO" | "ZALOPAY"
   >("CASH");
 
   const [paidAmount, setPaidAmount] = useState<number>(0);
 
   const [note, setNote] = useState("");
 
+  const [redirectingZaloPay, setRedirectingZaloPay] = useState(false);
+
   const [page, setPage] = useState(1);
 
   const [limit, setLimit] = useState(10);
-
-  const formatPrice = (value: number) => {
-    return (
-      Math.round(value)
-        .toString()
-        .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "đ"
-    );
-  };
 
   useEffect(() => {
     if (!customerId) return;
@@ -143,8 +139,8 @@ export default function Payment() {
     },
 
     {
-      key: "VNPAY",
-      label: "VNPay",
+      key: "ZALOPAY",
+      label: "ZaloPay",
       icon: CreditCard,
     },
   ];
@@ -202,6 +198,50 @@ export default function Payment() {
 
   const paginatedProfiles = profileList.slice((page - 1) * limit, page * limit);
 
+  const zaloPayAmount = paymentSummary.remaining;
+
+  const formatPrice = (value: number) => {
+    return (
+      Math.round(value)
+        .toString()
+        .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "đ"
+    );
+  };
+
+  const handleZaloPayPayment = async () => {
+    if (!selectedProfile) return;
+
+    if (paidAmount <= 0) {
+      alert("Số tiền thanh toán không hợp lệ");
+      return;
+    }
+
+    try {
+      setRedirectingZaloPay(true);
+
+      const result = await dispatch(
+        createZaloPayPayment({
+          profile_id: Number(selectedProfile.profile_id),
+          discount_id: selectedDiscount?.id,
+          amount: paidAmount,
+        }),
+      ).unwrap();
+
+      if (result?.paymentUrl) {
+        window.location.href = result.paymentUrl;
+        return;
+      }
+
+      throw new Error("Không tạo được link Zalopay");
+    } catch (err: any) {
+      console.log(err);
+
+      alert(err?.message || "Khởi tạo thanh toán Zalopay thất bại");
+    } finally {
+      setRedirectingZaloPay(false);
+    }
+  };
+
   const handleCreatePayment = async () => {
     if (!selectedProfile) return;
 
@@ -215,12 +255,16 @@ export default function Payment() {
       return;
     }
 
+    if (paymentMethod === "ZALOPAY") {
+      return handleZaloPayPayment();
+    }
+
     try {
       await dispatch(
         createPayment({
           customer_id: selectedProfile.customer_id,
 
-          profile_id: selectedProfile.profile_id,
+          profile_id: Number(selectedProfile.profile_id),
 
           discount_id: selectedDiscount?.id,
 
@@ -695,6 +739,7 @@ export default function Payment() {
 
                 <input
                   type="number"
+                  disabled={paymentMethod === "ZALOPAY"}
                   value={paidAmount}
                   onChange={(e) => setPaidAmount(Number(e.target.value))}
                   className="h-12 w-full rounded-2xl border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
@@ -735,6 +780,37 @@ export default function Payment() {
                       <p className="mt-1 text-sm text-gray-500">
                         Hệ thống QR động ngân hàng sẽ phát triển sau
                       </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === "ZALOPAY" && (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white shadow">
+                      <CreditCard size={42} className="text-blue-600" />
+                    </div>
+
+                    <div className="text-center">
+                      <h3 className="font-bold text-blue-700">
+                        Thanh toán qua ZaloPay
+                      </h3>
+
+                      <p className="mt-2 text-sm text-gray-600">
+                        Bạn sẽ được chuyển đến cổng thanh toán ZaloPay để hoàn
+                        tất giao dịch.
+                      </p>
+
+                      <div className="mt-4 rounded-xl bg-white p-4 border">
+                        <p className="text-xs text-gray-500">
+                          Số tiền thanh toán
+                        </p>
+
+                        <p className="mt-1 text-2xl font-bold text-red-600">
+                          {formatPrice(zaloPayAmount)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -789,9 +865,14 @@ export default function Payment() {
               {/* ACTION */}
               <button
                 onClick={handleCreatePayment}
+                disabled={loading || redirectingZaloPay}
                 className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-amber-700 text-sm font-semibold text-white transition hover:bg-black"
               >
-                Xác nhận thanh toán
+                {redirectingZaloPay
+                  ? "Đang chuyển đến Zalopay..."
+                  : paymentMethod === "ZALOPAY"
+                    ? "Thanh toán qua Zalopay"
+                    : "Xác nhận thanh toán"}
               </button>
             </div>
           </div>

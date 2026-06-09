@@ -1,7 +1,13 @@
 import { Request, Response } from "express";
 
-import * as paymentServices from "../services/payment.service.js";
+import * as paymentServices from "../services/payment/payment.service.js";
 import { getAllPaymentsSchema } from "../validators/payment.schema.js";
+import * as vnpayServices from "../services/payment/vnpay.service.js";
+import * as zalopayServices from "../services/payment/zalopay.service.js";
+import {
+  createVNPaySchema,
+  createZaloPaySchema,
+} from "../validators/payment.schema.js";
 
 export const getCustomerUnpaidProfiles = async (
   req: Request,
@@ -101,6 +107,87 @@ export const createPayment = async (req: Request, res: Response) => {
     return res.status(500).json({
       message: "Thanh toán thất bại",
       error: err.message,
+    });
+  }
+};
+
+export const createVNPayPayment = async (req: Request, res: Response) => {
+  try {
+    const data = createVNPaySchema.parse(req.body);
+
+    const ipAddr =
+      req.headers["x-forwarded-for"]?.toString() ||
+      req.socket.remoteAddress ||
+      "127.0.0.1";
+
+    const result = await vnpayServices.createVNPayPayment({
+      profile_id: data.profile_id,
+      discount_id: data.discount_id,
+      amount: data.amount,
+      ipAddr,
+    });
+
+    return res.json({
+      message: "Tạo giao dịch VNPay thành công",
+      paymentUrl: result.paymentUrl,
+      payment: result.payment,
+    });
+  } catch (err: any) {
+    return res.status(400).json({
+      message: err.message,
+    });
+  }
+};
+
+export const vnpayReturn = async (req: Request, res: Response) => {
+  try {
+    const result = await vnpayServices.vnpayReturnService(req.query);
+
+    if (result.success) {
+      return res.redirect(`${process.env.FRONTEND_URL}/payment-success`);
+    }
+
+    return res.redirect(`${process.env.FRONTEND_URL}/payment-failed`);
+  } catch (err: any) {
+    console.error(err);
+
+    return res.redirect(`${process.env.FRONTEND_URL}/payment-failed`);
+  }
+};
+
+export const createZaloPayPayment = async (req: Request, res: Response) => {
+  try {
+    const data = createZaloPaySchema.parse(req.body);
+
+    const result = await zalopayServices.createZaloPayPayment({
+      profile_id: data.profile_id,
+      discount_id: data.discount_id,
+      amount: data.amount,
+    });
+
+    return res.json({
+      message: "Tạo giao dịch ZaloPay thành công",
+      payment: result.payment,
+      paymentUrl: result.paymentUrl,
+      order_url: result.paymentUrl,
+      zaloResponse: result.zaloResponse,
+    });
+  } catch (err: any) {
+    return res.status(400).json({
+      message: err.message,
+    });
+  }
+};
+
+export const zalopayCallback = async (req: Request, res: Response) => {
+  try {
+    const result = await zalopayServices.zalopayCallbackService(req.body);
+
+    return res.json(result);
+  } catch (err) {
+    return res.json({
+      return_code: 0,
+      return_message: "failed",
     });
   }
 };

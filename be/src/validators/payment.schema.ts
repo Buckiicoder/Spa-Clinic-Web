@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-
 export const paymentProfileSchema = z.object({
   profile_id: z.number(),
 });
@@ -29,11 +28,8 @@ export const createPaymentSchema = z.object({
   payment_methods: z.array(
     z.object({
       payment_method: z.enum(["CASH", "BANK_TRANSFER", "MOMO", "VNPAY"]),
-
       amount: z.number().min(0),
-
       transaction_code: z.string().nullable().optional(),
-
       note: z.string().nullable().optional(),
     }),
   ),
@@ -58,13 +54,31 @@ export const getAllPaymentsSchema = z.object({
   //     "cancelled",
   //   ])
   //   .optional(),
-  status: z
-    .string()
-    .optional(),
+  status: z.string().optional(),
 });
 
+export const paymentBillDetailSchema = z.object({
+  payment_id: z.number(),
+});
 
-export const paymentBillDetailSchema =
+export const createVNPaySchema = z.object({
+  profile_id: z.number(),
+
+  discount_id: z.number().nullable().optional(),
+
+  amount: z.number().positive(),
+});
+
+export const createZaloPaySchema =
   z.object({
-    payment_id: z.number(),
+    profile_id:
+      z.number(),
+
+    discount_id: z
+      .number()
+      .nullable()
+      .optional(),
+
+    amount:
+      z.number().positive(),
   });

@@ -9,6 +9,8 @@ import {
   fetchPaymentSummaryByProfileAPI,
   fetchPaymentBillsAPI,
   fetchPaymentBillDetailAPI,
+  createVNPayPaymentAPI,
+  createZaloPayPaymentAPI,
 } from "./paymentAPI";
 
 interface PaymentState {
@@ -33,6 +35,10 @@ interface PaymentState {
   paymentBills: any[];
 
   paymentBillDetail: any | null;
+
+  vnpayPaymentUrl: string | null;
+
+  zalopayOrderUrl: string | null;
 }
 
 const initialState: PaymentState = {
@@ -57,6 +63,10 @@ const initialState: PaymentState = {
   paymentBills: [],
 
   paymentBillDetail: null,
+
+  vnpayPaymentUrl: null,
+
+  zalopayOrderUrl: null,
 };
 
 export const fetchCustomerUnpaidProfiles = createAsyncThunk(
@@ -188,6 +198,34 @@ export const createPayment = createAsyncThunk(
   },
 );
 
+export const createVNPayPayment = createAsyncThunk(
+  "payment/createVNPayPayment",
+
+  async (data: {
+    profile_id: number;
+    discount_id?: number | null;
+    amount: number;
+  }) => {
+    const res = await createVNPayPaymentAPI(data);
+
+    return res.data;
+  },
+);
+
+export const createZaloPayPayment = createAsyncThunk(
+  "payment/createZaloPayPayment",
+
+  async (data: {
+    profile_id: number;
+    discount_id?: number | null;
+    amount: number;
+  }) => {
+    const res = await createZaloPayPaymentAPI(data);
+
+    return res.data;
+  },
+);
+
 const paymentSlice = createSlice({
   name: "payment",
 
@@ -212,6 +250,13 @@ const paymentSlice = createSlice({
 
     clearPaymentBills: (state) => {
       state.paymentBills = [];
+    },
+
+    clearVNPayUrl: (state) => {
+      state.vnpayPaymentUrl = null;
+    },
+    clearZaloPayUrl: (state) => {
+      state.zalopayOrderUrl = null;
     },
   },
 
@@ -381,6 +426,49 @@ const paymentSlice = createSlice({
 
       state.error = action.error.message || "Fetch payment bill detail failed";
     });
+
+    // ============================================
+    // CREATE VNPAY PAYMENT
+    // ============================================
+
+    builder.addCase(createVNPayPayment.pending, (state) => {
+      state.loading = true;
+
+      state.error = null;
+    });
+
+    builder.addCase(createVNPayPayment.fulfilled, (state, action) => {
+      state.loading = false;
+
+      state.vnpayPaymentUrl = action.payload.paymentUrl;
+
+      state.paymentResult = action.payload.payment;
+    });
+
+    builder.addCase(createVNPayPayment.rejected, (state, action) => {
+      state.loading = false;
+
+      state.error = action.error.message || "Create VNPay payment failed";
+    });
+
+    builder.addCase(createZaloPayPayment.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+
+    builder.addCase(createZaloPayPayment.fulfilled, (state, action) => {
+      state.loading = false;
+
+      state.zalopayOrderUrl = action.payload.paymentUrl;
+
+      state.paymentResult = action.payload.payment;
+    });
+
+    builder.addCase(createZaloPayPayment.rejected, (state, action) => {
+      state.loading = false;
+
+      state.error = action.error.message || "Create ZaloPay payment failed";
+    });
   },
 });
 
@@ -390,6 +478,8 @@ export const {
   clearPaymentResult,
   clearPaymentBillDetail,
   clearPaymentBills,
+  clearVNPayUrl,
+  clearZaloPayUrl,
 } = paymentSlice.actions;
 
 export default paymentSlice.reducer;
@@ -426,3 +516,9 @@ export const selectPaymentBills = (state: any) => state.payment.paymentBills;
 
 export const selectPaymentBillDetail = (state: any) =>
   state.payment.paymentBillDetail;
+
+export const selectVNPayPaymentUrl = (state: any) =>
+  state.payment.vnpayPaymentUrl;
+
+export const selectZaloPayOrderUrl = (state: any) =>
+  state.payment.zalopayOrderUrl;

@@ -92,7 +92,7 @@ export default function Register() {
     if (!isValid) return;
 
     try {
-      await dispatch(
+      const result = await dispatch(
         register({
           name: form.name,
           gender: form.gender,
@@ -101,11 +101,17 @@ export default function Register() {
         }),
       ).unwrap();
 
-      alert("Mã OTP đã được gửi, vui lòng kiểm tra email");
+      if (result.contactType === "EMAIL") {
+        alert("Mã OTP đã được gửi tới email, vui lòng kiểm tra hộp thư.");
+      }
 
       navigate("/verify", {
         state: {
           contact: form.contact,
+
+          contactType: result.contactType,
+
+          demoOtp: result.demoOtp || null,
         },
       });
     } catch (err: any) {

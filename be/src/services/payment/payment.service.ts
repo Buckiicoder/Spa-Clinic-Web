@@ -1,4 +1,4 @@
-import { db } from "../config/db.js";
+import { db } from "../../config/db.js";
 
 export type PaymentMethod =
   | "CASH"
@@ -1050,3 +1050,4 @@ export const getPaymentBillDetail = async (paymentId: number) => {
 
   return result.rows[0];
 };
+

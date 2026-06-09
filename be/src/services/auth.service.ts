@@ -1,7 +1,7 @@
 import { db } from "../config/db.js";
 import { hashPassword, comparePassword } from "../utils/hash.js";
 import { UserRole } from "../types/user.js";
-
+import { signToken } from "../utils/jwt.js";
 type RegisterInput = {
   name: string;
   gender: string;
@@ -51,6 +51,14 @@ export const createOTPService = async (
   // ✅ dùng chung
   await checkUserExists(email, phone);
 
+  await db.query(
+    `
+  DELETE FROM otp_verifications
+  WHERE contact = $1
+  `,
+    [contact],
+  );
+
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   await db.query(
@@ -85,9 +93,14 @@ export const verifyOTPService = async (contact: string, otp: string) => {
   // ⚠️ đảm bảo parse nếu DB trả string
   const parsedData = typeof data === "string" ? JSON.parse(data) : data;
 
-  const token = await registerService({
+  const user = await registerService({
     ...parsedData,
-    role: "CUSTOMER",
+    role: UserRole.CUSTOMER,
+  });
+
+  const token = signToken({
+    id: user.id,
+    role: user.role,
   });
 
   await db.query("DELETE FROM otp_verifications WHERE contact=$1", [contact]);

@@ -101,10 +101,8 @@ export default function DiscountModal({
           initialData.usage_limit_per_customer?.toString() || "1",
         minimum_customer_rank: initialData.minimum_customer_rank || "",
         first_visit_only: initialData.first_visit_only || false,
-        start_date: initialData.start_date
-          ? initialData.start_date.slice(0, 16)
-          : "",
-        end_date: initialData.end_date ? initialData.end_date.slice(0, 16) : "",
+        start_date: toDateTimeLocal(initialData.start_date),
+        end_date: toDateTimeLocal(initialData.end_date),
         is_active: initialData.is_active ?? true,
         service_ids: initialData.services?.map((item: any) => item.id) || [],
 
@@ -128,6 +126,19 @@ export default function DiscountModal({
   }, [services]);
 
   if (!open) return null;
+
+  const toDateTimeLocal = (isoString: string) => {
+  if (!isoString) return "";
+
+  const date = new Date(isoString);
+
+  const offset = date.getTimezoneOffset() * 60000;
+  const localISOTime = new Date(date.getTime() - offset)
+    .toISOString()
+    .slice(0, 16);
+
+  return localISOTime;
+};
 
   const validate = () => {
     const newErrors: any = {};
