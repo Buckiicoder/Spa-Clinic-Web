@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hook";
 import Toast from "../components/Toast";
 import { socket } from "../services/socket";
@@ -72,7 +72,7 @@ export default function ManagerAssign() {
     return () => {
       socket.disconnect();
     };
-  }, [selectedBooking]);
+  }, [dispatch, selectedBooking]);
 
   const waitingBookings = useMemo(() => {
     return consultedToday.filter(
