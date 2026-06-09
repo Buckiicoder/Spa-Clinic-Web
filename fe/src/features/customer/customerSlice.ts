@@ -32,51 +32,51 @@ interface PaymentTransaction {
   payment_code: string;
 }
 
-interface PaymentItem {
-  payment_item_id: number;
+// interface PaymentItem {
+//   payment_item_id: number;
 
-  profile_id: number;
+//   profile_id: number;
 
-  item_type: string;
+//   item_type: string;
 
-  item_name: string;
+//   item_name: string;
 
-  quantity: number;
+//   quantity: number;
 
-  unit_price: number;
+//   unit_price: number;
 
-  subtotal_amount: number;
+//   subtotal_amount: number;
 
-  discount_amount: number;
+//   discount_amount: number;
 
-  final_amount: number;
-}
+//   final_amount: number;
+// }
 
-interface Payment {
-  id: number;
+// interface Payment {
+//   id: number;
 
-  payment_code: string;
+//   payment_code: string;
 
-  subtotal_amount: number;
+//   subtotal_amount: number;
 
-  discount_amount: number;
+//   discount_amount: number;
 
-  final_amount: number;
+//   final_amount: number;
 
-  paid_amount: number;
+//   paid_amount: number;
 
-  remaining_amount: number;
+//   remaining_amount: number;
 
-  status: string;
+//   status: string;
 
-  note: string;
+//   note: string;
 
-  created_at: string;
+//   created_at: string;
 
-  payment_items: PaymentItem[];
+//   payment_items: PaymentItem[];
 
-  transactions: PaymentTransaction[];
-}
+//   transactions: PaymentTransaction[];
+// }
 
 interface ServiceSession {
   id: number;
