@@ -55,7 +55,7 @@ export default function PaymentBill() {
         year: currentDate.getFullYear(),
       }),
     );
-  }, [dispatch]);
+  }, [dispatch, currentDate]);
 
   const handleFilter = () => {
     dispatch(

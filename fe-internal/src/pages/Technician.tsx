@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Toast from "../components/Toast";
 import { useAppDispatch, useAppSelector } from "../app/hook";
-
+import { socket } from "../services/socket";
 import {
   fetchMySessions,
   fetchSessionDetail,
@@ -56,9 +56,7 @@ export default function Technician() {
   }, []);
 
   useEffect(() => {
-    socketRef.current = io("http://localhost:5000");
-
-    const socket = socketRef.current;
+    socket.connect();
 
     socket.emit("join-technician");
 

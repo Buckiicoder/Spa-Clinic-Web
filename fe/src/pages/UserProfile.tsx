@@ -1,6 +1,7 @@
 import Navbar from "../components/Navbar";
 import { useSelector } from "react-redux";
 import { selectUser, fetchUser } from "../features/auth/authSlice";
+import { SERVER_URL } from "../services/env";
 import {
   fetchMyServiceHistory,
   selectCustomerInfo,
@@ -370,7 +371,7 @@ console.log("unpaidCount", unpaidCount);
           onClick={() => setPreview(false)}
         >
           <img
-            src={"http://localhost:5000" + user.avatar}
+            src={SERVER_URL + user.avatar}
             className="max-w-full max-h-full rounded-2xl"
           />
         </div>
@@ -395,7 +396,7 @@ console.log("unpaidCount", unpaidCount);
                       onClick={() => setPreview(true)}
                       src={
                         user?.avatar
-                          ? "http://localhost:5000" + user.avatar
+                          ? SERVER_URL + user.avatar
                           : "https://ui-avatars.com/api/?name=" +
                             (user?.name || "User")
                       }

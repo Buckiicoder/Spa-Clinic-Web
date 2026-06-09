@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { api } from "../services/api";
 
 export default function VerifyOTP() {
   const navigate = useNavigate();
@@ -55,16 +56,10 @@ export default function VerifyOTP() {
       setLoading(true);
       setError("");
 
-      await axios.post(
-        "http://localhost:5000/api/auth/verify-otp",
-        {
-          contact,
-          otp,
-        },
-        {
-          withCredentials: true, // 🔥 QUAN TRỌNG (cookie)
-        },
-      );
+      await axios.post("/auth/verify-otp", {
+        contact,
+        otp,
+      });
 
       alert("Đăng ký thành công!");
       navigate("/");
@@ -79,11 +74,7 @@ export default function VerifyOTP() {
     try {
       setTimeLeft(60);
 
-      await axios.post(
-        "http://localhost:5000/api/auth/register",
-        { contact },
-        { withCredentials: true },
-      );
+      await api.post("/auth/register", contact);
 
       alert("OTP mới đã được gửi!");
     } catch {

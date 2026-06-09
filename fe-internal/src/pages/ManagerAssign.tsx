@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hook";
 import Toast from "../components/Toast";
+import { socket } from "../services/socket";
 import { formatTimeForInput } from "../utils/generalFunction";
 import {
   fetchConsultedToday,
@@ -29,12 +30,10 @@ export default function ManagerAssign() {
   useEffect(() => {
     dispatch(fetchConsultedToday());
     dispatch(fetchTechnicians());
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
-    socketRef.current = io("http://localhost:5000");
-
-    const socket = socketRef.current;
+    socket.connect();
 
     // 🔥 join manager room
     socket.emit("join-manager");

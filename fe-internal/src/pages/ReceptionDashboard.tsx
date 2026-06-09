@@ -3,6 +3,7 @@ import { io } from "socket.io-client";
 import { useAppDispatch, useAppSelector } from "../app/hook";
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { socket } from "../services/socket";
 import {
   fetchBookings,
   // checkInBooking,
@@ -54,9 +55,7 @@ export default function ReceptionDashboard() {
 
   // ✅ socket realtime
   useEffect(() => {
-    socketRef.current = io("http://localhost:5000");
-
-    const socket = socketRef.current;
+    socket.connect();
 
     socket.emit("join-reception");
 
@@ -73,6 +72,9 @@ export default function ReceptionDashboard() {
     });
 
     return () => {
+      socket.off("booking:created");
+    socket.off("booking:updated");
+    socket.off("booking:deleted");
       socket.disconnect();
     };
   }, [dispatch]);

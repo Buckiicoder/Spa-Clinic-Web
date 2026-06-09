@@ -18,8 +18,8 @@ import {
   fetchOvertimeRequests,
 } from "../features/overtime/overtimeSlice";
 import { selectUser } from "../features/auth/authSlice";
-
-import { io } from "socket.io-client";
+import { socket } from "../services/socket";
+// import { io } from "socket.io-client";
 import { useRef } from "react";
 import OvertimeRequestModal from "../modal/OvertimeRequestModal";
 import { useSelector } from "react-redux";
@@ -74,9 +74,7 @@ export default function TimekeepingDaily() {
   }, [dispatch, date, status]);
 
   useEffect(() => {
-    socketRef.current = io("http://localhost:5000");
-
-    const socket = socketRef.current;
+    socket.connect();
 
     socket.emit("join-manager");
 

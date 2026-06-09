@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef, useMemo } from "react";
-import { io } from "socket.io-client";
+import { useEffect, useState, useMemo } from "react";
+// import { io } from "socket.io-client";
 import { useAppDispatch, useAppSelector } from "../app/hook";
+import { socket } from "../services/socket";
 import Toast from "../components/Toast";
 import {
   fetchWaitingConsultations,
@@ -33,7 +34,7 @@ export default function DoctorExamination() {
 
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
-  const socketRef = useRef<any>(null);
+  // const socketRef = useRef<any>(null);
 
   const [form, setForm] = useState({
     diagnosis: "",
@@ -53,16 +54,14 @@ export default function DoctorExamination() {
 
   useEffect(() => {
     dispatch(fetchWaitingConsultations());
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(fetchServices());
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
-    socketRef.current = io("http://localhost:5000");
-
-    const socket = socketRef.current;
+    socket.connect();
 
     socket.emit("join-doctor");
 
@@ -70,8 +69,8 @@ export default function DoctorExamination() {
       dispatch(fetchWaitingConsultations());
     });
 
-    return () => socket.disconnect();
-  }, []);
+    return () => {socket.disconnect();}
+  }, [dispatch]);
 
   useEffect(() => {
     if (booking) {
