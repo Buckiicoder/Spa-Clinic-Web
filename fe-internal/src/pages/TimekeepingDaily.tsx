@@ -20,7 +20,7 @@ import {
 import { selectUser } from "../features/auth/authSlice";
 import { socket } from "../services/socket";
 // import { io } from "socket.io-client";
-import { useRef } from "react";
+// import { useRef } from "react";
 import OvertimeRequestModal from "../modal/OvertimeRequestModal";
 import { useSelector } from "react-redux";
 
@@ -28,7 +28,7 @@ export default function TimekeepingDaily() {
   const dispatch = useAppDispatch();
   const user = useSelector(selectUser);
 
-  const socketRef = useRef<any>(null);
+  // const socketRef = useRef<any>(null);
 
   const data = useAppSelector(selectTimekeepingDaily);
   const loading = useAppSelector(selectTimekeepingDailyLoading);

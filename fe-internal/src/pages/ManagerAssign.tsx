@@ -10,7 +10,7 @@ import {
   selectConsultedToday,
   selectTechnicians,
 } from "../features/technician/technicianSlice";
-import { io } from "socket.io-client";
+// import { io } from "socket.io-client";
 
 export default function ManagerAssign() {
   const dispatch = useAppDispatch();
@@ -21,7 +21,7 @@ export default function ManagerAssign() {
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
 
   const [toast, setToast] = useState<any>(null);
-  const socketRef = useRef<any>(null);
+  // const socketRef = useRef<any>(null);
 
   const [tab, setTab] = useState<
     "waiting_assign" | "assigned" | "working" | "completed"

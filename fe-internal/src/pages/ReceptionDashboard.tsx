@@ -32,7 +32,7 @@ export default function ReceptionDashboard() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const socketRef = useRef<any>(null);
+  // const socketRef = useRef<any>(null);
 
   const [filters, setFilters] = useState({
     keyword: "", // gộp name + phone

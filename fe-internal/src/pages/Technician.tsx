@@ -17,7 +17,7 @@ import {
   resumeTrackingSession,
 } from "../features/tracking/trackingSlice";
 
-import { io } from "socket.io-client";
+// import { io } from "socket.io-client";
 import { motion } from "framer-motion";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 
@@ -25,7 +25,7 @@ import "react-circular-progressbar/dist/styles.css";
 
 export default function Technician() {
   const dispatch = useAppDispatch();
-  const socketRef = useRef<any>(null);
+  // const socketRef = useRef<any>(null);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
