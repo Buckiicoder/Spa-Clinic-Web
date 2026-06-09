@@ -5,4 +5,4 @@ export const SERVER_URL =
 
 export const API_URL = `${SERVER_URL}/api`;
 
-export const SOCKET_URL = SERVER_URL;
+// export const SOCKET_URL = SERVER_URL;
