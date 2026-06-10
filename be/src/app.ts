@@ -30,7 +30,7 @@ import dashboardRoutes from "./routes/dashboard.routes.js"
 import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
-
+import fs from "fs";
 const app = express();
 
 //demo
@@ -107,5 +107,16 @@ app.use("/api/dashboard", dashboardRoutes);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
+console.log(
+  path.join(__dirname, "../uploads")
+);
+
+console.log(
+  "Uploads exists:",
+  fs.existsSync(
+    path.join(__dirname, "../uploads")
+  )
+);
 
 export default app;
