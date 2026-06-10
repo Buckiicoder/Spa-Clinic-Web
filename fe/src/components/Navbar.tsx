@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useAppDispatch } from "../app/hook";
 import { selectUser, logoutAsync } from "../features/auth/authSlice";
+import { SERVER_URL } from "../services/env";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -131,7 +132,7 @@ export default function Navbar() {
                 <img
                   src={
                     user?.avatar
-                      ? "http://localhost:5000" + user.avatar
+                      ? SERVER_URL + + user.avatar
                       : "https://ui-avatars.com/api/?name=" +
                         (user?.name || "User")
                   }
@@ -214,7 +215,7 @@ export default function Navbar() {
                 <img
                   src={
                     user?.avatar
-                      ? "http://localhost:5000" + user.avatar
+                      ? SERVER_URL + user.avatar
                       : "https://ui-avatars.com/api/?name=" +
                         (user?.name || "User")
                   }

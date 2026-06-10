@@ -13,7 +13,7 @@ dist
 build
 
 # uploads
-be/uploads
+# be/uploads
 
 # logs
 *.log
