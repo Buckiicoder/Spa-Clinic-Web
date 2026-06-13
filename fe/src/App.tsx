@@ -14,6 +14,8 @@ import Register from "./pages/Register";
 import VerifyOTP from "./pages/verifyOTP";
 import SpaChatWidget from "./components/SpaChatWidget";
 import Payment from "./pages/Payment";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -50,6 +52,11 @@ export default function App() {
         <Route path="/profile" element={<UserProfile />} />
         <Route path="/verify" element={<VerifyOTP />} />
         <Route path="/payment/customer/:customerId" element={<Payment />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+
+        <Route path="/verify-otp" element={<VerifyOTP />} />
+
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
     </BrowserRouter>
   );

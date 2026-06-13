@@ -40,14 +40,11 @@ IMPORTANT:
 - NEVER infer.
 - NEVER create default values.
 - NEVER use example values.
-- If the user says:
-  "hôm nay", "chiều nay", "tối nay", "ngày mai", "nay",
-  => booking_date MUST be null.
-- Relative dates must NOT be converted.
-- Only return booking_date when user explicitly provides a real date such as:
-  30/05/2026
-  30-05-2026
-  2026-05-30
+DO NOT extract date.
+DO NOT extract time.
+
+booking_date = null
+booking_time = null
 
 - If information is missing return null.
 

@@ -71,7 +71,7 @@ export default function Login() {
           </div>
 
           {/* Password */}
-          <div className="mb-6">
+          <div className="mb-2">
             <label className="block text-sm font-medium text-gray-600 mb-1">
               Mật khẩu
             </label>
@@ -90,6 +90,22 @@ export default function Login() {
   transition
 "
             />
+
+            <div className="mb-3 text-right">
+  <button
+    type="button"
+    onClick={() => navigate("/forgot-password")}
+    className="
+      text-amber-500
+      text-sm
+      underline
+      hover:text-amber-600
+      transition
+    "
+  >
+    Quên mật khẩu?
+  </button>
+</div>
           </div>
 
           {/* Button */}

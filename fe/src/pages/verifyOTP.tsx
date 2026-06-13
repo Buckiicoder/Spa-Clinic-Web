@@ -1,11 +1,17 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import axios from "axios";
+// import axios from "axios";
 import { api } from "../services/api";
+import { verifyForgotOTP } from "../features/auth/authSlice";
+import { useAppDispatch } from "../app/hook";
+import { forgotPassword } from "../features/auth/authSlice";
 
 export default function VerifyOTP() {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useAppDispatch();
+
+  const mode = location.state?.mode || "register";
 
   const contact = location.state?.contact;
   const contactType = location.state?.contactType;
@@ -21,19 +27,21 @@ export default function VerifyOTP() {
     if (!contact) {
       alert("Phiên xác thực đã hết. Vui lòng đăng ký lại.");
 
-      navigate("/register");
+      navigate(mode === "register" ? "/register" : "/forgot-password");
     }
-  }, [contact, navigate]);
+  }, [contact, navigate, mode]);
 
   useEffect(() => {
     if (contactType === "PHONE" && demoOtp) {
       alert(
         `Mã OTP của bạn là: ${demoOtp}\n\n` +
           `Mã chỉ có hiệu lực trong 5 phút.\n` +
-          `Vui lòng nhập đúng mã này để hoàn tất đăng ký.`,
+          `Vui lòng nhập đúng mã này để ${
+            mode === "register" ? "đăng ký" : "khôi phục mật khẩu"
+          }.`,
       );
     }
-  }, [contactType, demoOtp]);
+  }, [contactType, demoOtp, mode]);
 
   // ⏳ countdown resend
   useEffect(() => {
@@ -56,13 +64,34 @@ export default function VerifyOTP() {
       setLoading(true);
       setError("");
 
-      await axios.post("/auth/verify-otp", {
-        contact,
-        otp,
+      if (mode === "forgot-password") {
+      await dispatch(
+        verifyForgotOTP({
+          contact,
+          otp,
+        }),
+      ).unwrap();
+
+      navigate("/reset-password", {
+        state: {
+          contact,
+        },
       });
 
-      alert("Đăng ký thành công!");
-      navigate("/");
+      return;
+    }
+
+    await api.post(
+      "/auth/customer/verify-otp",
+      {
+        contact,
+        otp,
+      },
+    );
+
+    alert("Đăng ký thành công!");
+
+    navigate("/");
     } catch (err: any) {
       setError(err.response?.data?.message || "OTP không hợp lệ");
     } finally {
@@ -74,7 +103,19 @@ export default function VerifyOTP() {
     try {
       setTimeLeft(60);
 
-      await api.post("/auth/register", contact);
+      if (mode === "register") {
+        alert("Vui lòng quay lại màn hình đăng ký");
+      }
+
+      if (mode === "forgot-password") {
+        const result = await dispatch(forgotPassword(contact)).unwrap();
+
+        if (result.contactType === "PHONE" && result.demoOtp) {
+          alert(`OTP mới: ${result.demoOtp}`);
+        }
+
+        alert("OTP mới đã được gửi");
+      }
 
       alert("OTP mới đã được gửi!");
     } catch {

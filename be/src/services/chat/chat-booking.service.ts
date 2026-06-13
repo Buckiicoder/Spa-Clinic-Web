@@ -7,13 +7,11 @@ import {
   createBooking,
   getBookingById,
 } from "../booking.service.js";
+import { ChatConsultService } from "./chat-consult.service.js";
+import { ChatCapacityService } from "./chat-capacity.service.js";
 
 export class ChatBookingService {
-  static async createBooking({
-    userId,
-    conversationId,
-    draft,
-  }: any) {
+  static async createBooking({ userId, conversationId, draft }: any) {
     if (!draft.booking_date) {
       throw new Error("Thiếu ngày");
     }
@@ -91,6 +89,33 @@ export class ChatBookingService {
     // =========================
     // create booking
     // =========================
+
+    if (
+      ChatConsultService.isPastDateTime(draft.booking_date, draft.booking_time)
+    ) {
+      throw new Error("Không thể đặt lịch trong quá khứ");
+    }
+
+    if (!ChatConsultService.isValidBookingTime(draft.booking_time)) {
+      throw new Error("Spa chỉ nhận lịch từ 08:00 đến 19:30");
+    }
+
+    const slot = await ChatCapacityService.isSlotAvailable(
+      draft.booking_date,
+      draft.booking_time,
+    );
+
+    if (!slot.available) {
+      const suggestions = await ChatCapacityService.suggestSlots(
+        draft.booking_date,
+      );
+
+      throw new Error(
+        `Khung giờ đã đầy.
+Các giờ khác:
+${suggestions.map((x) => x.time).join(", ")}`,
+      );
+      }
 
     const bookingRaw = await createBooking({
       customer_id: customerId,

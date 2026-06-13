@@ -54,4 +54,19 @@ router.post(
   controller.rateSession,
 );
 
+router.post(
+  "/customer/forgot-password",
+  controller.forgotPassword,
+);
+
+router.post(
+  "/customer/verify-forgot-otp",
+  controller.verifyForgotOTP,
+);
+
+router.post(
+  "/customer/reset-password",
+  controller.resetPassword,
+);
+
 export default router;

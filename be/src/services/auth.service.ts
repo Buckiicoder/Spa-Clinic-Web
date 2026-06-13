@@ -410,3 +410,127 @@ WHERE
     client.release();
   }
 };
+
+export const findUserByContact = async (
+  contact: string,
+) => {
+  const result = await db.query(
+    `
+    SELECT id, email, phone
+    FROM users
+    WHERE email = $1 OR phone = $1
+    LIMIT 1
+    `,
+    [contact],
+  );
+
+  return result.rows[0] || null;
+};
+
+export const createForgotPasswordOTP = async (
+  contact: string,
+) => {
+  const user = await findUserByContact(contact);
+
+  if (!user) {
+    throw new Error(
+      "Số điện thoại chưa được đăng ký",
+    );
+  }
+
+  await db.query(
+    `
+    DELETE FROM otp_verifications
+    WHERE contact = $1
+    `,
+    [contact],
+  );
+
+  const otp = Math.floor(
+    100000 + Math.random() * 900000,
+  ).toString();
+
+  await db.query(
+    `
+    INSERT INTO otp_verifications(
+      contact,
+      otp_code,
+      expires_at,
+      temp_data
+    )
+    VALUES(
+      $1,
+      $2,
+      NOW() + INTERVAL '5 minutes',
+      $3
+    )
+    `,
+    [
+      contact,
+      otp,
+      JSON.stringify({
+        type: "FORGOT_PASSWORD",
+      }),
+    ],
+  );
+
+  return otp;
+};
+
+export const verifyForgotPasswordOTP =
+  async (
+    contact: string,
+    otp: string,
+  ) => {
+    const result = await db.query(
+      `
+      SELECT *
+      FROM otp_verifications
+      WHERE contact=$1
+      AND otp_code=$2
+      ORDER BY id DESC
+      LIMIT 1
+      `,
+      [contact, otp],
+    );
+
+    if (!result.rowCount) {
+      throw new Error("OTP không đúng");
+    }
+
+    const row = result.rows[0];
+
+    if (
+      new Date(row.expires_at) < new Date()
+    ) {
+      throw new Error("OTP đã hết hạn");
+    }
+
+    return true;
+  };
+
+  export const resetPassword = async (
+  contact: string,
+  password: string,
+) => {
+  const hashed =
+    await hashPassword(password);
+
+  await db.query(
+    `
+    UPDATE users
+    SET password_hash = $1
+    WHERE email = $2
+       OR phone = $2
+    `,
+    [hashed, contact],
+  );
+
+  await db.query(
+    `
+    DELETE FROM otp_verifications
+    WHERE contact = $1
+    `,
+    [contact],
+  );
+};

@@ -7,10 +7,10 @@ export class ChatIntentService {
     // =========================
     if (
       lower.includes("giá") ||
-  lower.includes("bao nhiêu tiền") ||
-  lower.includes("chi phí") ||
-  lower.includes("bảng giá") ||
-  lower.includes("combo")
+      lower.includes("bao nhiêu tiền") ||
+      lower.includes("chi phí") ||
+      lower.includes("bảng giá") ||
+      lower.includes("combo")
     ) {
       return "service_price";
     }
@@ -18,10 +18,15 @@ export class ChatIntentService {
     if (
       lower.includes("đặt lịch") ||
       lower.includes("book") ||
-      lower.includes("hẹn") || 
-      lower.includes("ngày") || 
-      lower.includes("đặt") || 
-      lower.includes("lúc")
+      lower.includes("lịch hẹn") ||
+      lower.includes("hẹn lịch") ||
+      lower.includes("đặt hẹn") ||
+      lower.includes("đặt giúp") ||
+      lower.includes("đặt cho") ||
+      lower.includes("muốn hẹn") ||
+      lower.includes("muốn đặt") ||
+      lower.includes("chốt lịch") ||
+      lower.includes("lên lịch")
     ) {
       return "booking";
     }
@@ -51,8 +56,34 @@ export class ChatIntentService {
       return "price";
     }
 
-    if (lower.includes("dịch vụ")) {
-      return "service_info";
+    // if (lower.includes("dịch vụ")) {
+    //   return "service_info";
+    // }
+
+    if (
+      lower.includes("dịch vụ") ||
+      lower.includes("dịch vụ nào") ||
+      lower.includes("spa có gì") ||
+      lower.includes("clinic có gì") ||
+      lower.includes("có gì") ||
+      lower.includes("làm gì") ||
+      lower.includes("gói nào") ||
+      lower.includes("liệu trình") ||
+      lower.includes("điều trị gì") ||
+      lower.includes("cung cấp gì") ||
+      lower.includes("thực hiện gì")
+    ) {
+      return "service_list";
+    }
+
+    if (
+      lower.includes("mở cửa") ||
+      lower.includes("đóng cửa") ||
+      lower.includes("mấy giờ") ||
+      lower.includes("làm việc") ||
+      lower.includes("hoạt động")
+    ) {
+      return "business_hours";
     }
 
     if (lower.includes("spa ở đâu")) {

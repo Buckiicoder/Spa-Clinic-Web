@@ -69,14 +69,14 @@ export const verifyOTP = async (req: Request, res: Response) => {
     const token = await authService.verifyOTPService(contact, otp);
 
     //demo local
-    // res.cookie("customerAccessToken", token, {
-    //   httpOnly: true,
-    //   secure: false,
-    //   sameSite: "lax",
-    // });
+    res.cookie("customerAccessToken", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+    });
 
     //production
-    res.cookie("customerAccessToken", token, customerCookieOptions);
+    // res.cookie("customerAccessToken", token, customerCookieOptions);
 
     return res.json({
       message: "Xác thực OTP thành công",
@@ -102,15 +102,15 @@ export const customerLogin = async (req: Request, res: Response) => {
     });
 
     // // demo local
-    // res.cookie("customerAccessToken", token, {
-    //   httpOnly: true,
-    //   secure: false,
-    //   sameSite: "lax",
-    //   maxAge: 1000 * 60 * 60 * 24,
-    // });
+    res.cookie("customerAccessToken", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24,
+    });
 
     //production
-    res.cookie("customerAccessToken", token, customerCookieOptions);
+    // res.cookie("customerAccessToken", token, customerCookieOptions);
 
     return res.json({ message: "Login success" });
   } catch (err: any) {
@@ -120,10 +120,10 @@ export const customerLogin = async (req: Request, res: Response) => {
 
 export const customerLogout = async (_req: Request, res: Response) => {
   //demo
-  // res.clearCookie("customerAccessToken");
+  res.clearCookie("customerAccessToken");
 
   //production
-  res.clearCookie("customerAccessToken", customerCookieOptions);
+  // res.clearCookie("customerAccessToken", customerCookieOptions);
   return res.json({
     message: "Logout success",
   });
@@ -146,15 +146,15 @@ export const staffLogin = async (req: Request, res: Response) => {
     });
 
     //demo local
-    // res.cookie("staffAccessToken", token, {
-    //   httpOnly: true,
-    //   secure: false,
-    //   sameSite: "lax",
-    //   maxAge: 1000 * 60 * 60 * 24,
-    // });
+    res.cookie("staffAccessToken", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24,
+    });
 
     //production
-    res.cookie("staffAccessToken", token, staffCookieOptions);
+    // res.cookie("staffAccessToken", token, staffCookieOptions);
 
     return res.json({ message: "Login success" });
   } catch (err: any) {
@@ -164,10 +164,10 @@ export const staffLogin = async (req: Request, res: Response) => {
 
 export const staffLogout = async (_req: Request, res: Response) => {
   // demo local
-  // res.clearCookie("staffAccessToken");
+  res.clearCookie("staffAccessToken");
 
   //production
-  res.clearCookie("staffAccessToken", staffCookieOptions);
+  // res.clearCookie("staffAccessToken", staffCookieOptions);
   return res.json({
     message: "Logout success",
   });
@@ -299,3 +299,96 @@ export const rateSession = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const forgotPassword =
+  async (
+    req: Request,
+    res: Response,
+  ) => {
+    try {
+      const { contact } = req.body;
+
+      console.log("body: ", req.body);
+
+      console.log("contact: ", contact);
+
+      const otp =
+        await authService.createForgotPasswordOTP(
+          contact,
+        );
+
+      const emailRegex =
+        /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+
+      if (emailRegex.test(contact)) {
+        await sendOTPEmail(contact, otp);
+
+        return res.json({
+          message:
+            "OTP đã được gửi tới email",
+        });
+      }
+
+      return res.json({
+        message:
+          "OTP đã được gửi tới số điện thoại",
+        contactType: "PHONE",
+        demoOtp: otp,
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        message: err.message,
+      });
+    }
+  };
+
+export const verifyForgotOTP =
+  async (
+    req: Request,
+    res: Response,
+  ) => {
+    try {
+      const { contact, otp } = req.body;
+
+      await authService.verifyForgotPasswordOTP(
+        contact,
+        otp,
+      );
+
+      return res.json({
+        success: true,
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        message: err.message,
+      });
+    }
+  };
+
+export const resetPassword =
+  async (
+    req: Request,
+    res: Response,
+  ) => {
+    try {
+      const {
+        contact,
+        password,
+      } = req.body;
+
+      await authService.resetPassword(
+        contact,
+        password,
+      );
+
+      return res.json({
+        success: true,
+        message:
+          "Đổi mật khẩu thành công",
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        message: err.message,
+      });
+    }
+  };

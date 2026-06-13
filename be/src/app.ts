@@ -34,44 +34,44 @@ import fs from "fs";
 const app = express();
 
 //demo
-// app.use(cors({
-//   origin: ["http://localhost:5173", "http://localhost:5174"],
-//   credentials: true
-// }))
+app.use(cors({
+  origin: ["http://localhost:5173", "http://localhost:5174"],
+  credentials: true
+}))
 
 //reality
-const allowedOrigins = [
-  "https://www.spaclinic.online",
-  "https://spaclinic.online",
-  "https://staff.spaclinic.online",
+// const allowedOrigins = [
+//   "https://www.spaclinic.online",
+//   "https://spaclinic.online",
+//   "https://staff.spaclinic.online",
 
-  "http://localhost:5173",
-  "http://localhost:5174",
-].filter(Boolean);
+//   "http://localhost:5173",
+//   "http://localhost:5174",
+// ].filter(Boolean);
 
-const corsOptions = {
-  origin: (origin: any, callback: any) => {
-    // Postman / server-to-server
-    if (!origin) {
-      return callback(null, true);
-    }
+// const corsOptions = {
+//   origin: (origin: any, callback: any) => {
+//     // Postman / server-to-server
+//     if (!origin) {
+//       return callback(null, true);
+//     }
 
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+//     if (allowedOrigins.includes(origin)) {
+//       return callback(null, true);
+//     }
 
-    console.log("❌ Blocked CORS Origin:", origin);
+//     console.log("❌ Blocked CORS Origin:", origin);
 
-    return callback(
-      new Error(`CORS blocked for origin: ${origin}`),
-    );
-  },
+//     return callback(
+//       new Error(`CORS blocked for origin: ${origin}`),
+//     );
+//   },
 
-  credentials: true,
-};
+//   credentials: true,
+// };
 
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+// app.use(cors(corsOptions));
+// app.options("*", cors(corsOptions));
 
 app.options("*", cors());
 app.use(express.json());

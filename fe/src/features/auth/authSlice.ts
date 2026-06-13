@@ -7,6 +7,9 @@ import {
   getPendingRatingsAPI,
   getCustomerRatingsAPI,
   rateSessionAPI,
+  forgotPasswordAPI,
+  verifyForgotOTPAPI,
+  resetPasswordAPI,
 } from "./authAPI";
 
 interface CustomerUser {
@@ -34,6 +37,10 @@ interface AuthState {
   pendingRatings: PendingRating[];
 
   ratings: PendingRating[];
+
+  forgotPasswordOtp: string | null;
+
+  forgotPasswordVerified: boolean;
 }
 
 interface PendingRating {
@@ -58,6 +65,12 @@ interface SubmitRatingResponse {
   message: string;
 }
 
+interface ForgotPasswordResponse {
+  message: string;
+  contactType: "PHONE" | "EMAIL";
+  demoOtp?: string;
+}
+
 const initialState: AuthState = {
   user: null,
   loading: false,
@@ -65,6 +78,8 @@ const initialState: AuthState = {
   isAuthenticated: false,
   pendingRatings: [],
   ratings: [],
+  forgotPasswordOtp: null,
+  forgotPasswordVerified: false,
 };
 
 export const login = createAsyncThunk("auth/login", async (data: any) => {
@@ -165,6 +180,55 @@ export const submitRating = createAsyncThunk<
   },
 );
 
+export const forgotPassword = createAsyncThunk<ForgotPasswordResponse, string>(
+  "auth/forgotPassword",
+  async (contact, { rejectWithValue }) => {
+    try {
+      console.log("Sending forgot password:", contact);
+
+      const res = await forgotPasswordAPI(contact);
+
+      console.log("Forgot password response:", res.data);
+
+      return res.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || "Có lỗi xảy ra");
+    }
+  },
+);
+
+export const verifyForgotOTP = createAsyncThunk<
+  any,
+  {
+    contact: string;
+    otp: string;
+  }
+>("auth/verifyForgotOTP", async (data, { rejectWithValue }) => {
+  try {
+    const res = await verifyForgotOTPAPI(data);
+
+    return res.data;
+  } catch (err: any) {
+    return rejectWithValue(err.response?.data);
+  }
+});
+
+export const resetPassword = createAsyncThunk<
+  any,
+  {
+    contact: string;
+    password: string;
+  }
+>("auth/resetPassword", async (data, { rejectWithValue }) => {
+  try {
+    const res = await resetPasswordAPI(data);
+
+    return res.data;
+  } catch (err: any) {
+    return rejectWithValue(err.response?.data);
+  }
+});
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -233,6 +297,29 @@ const authSlice = createSlice({
           (state.user.loyalty_points || 0) + action.payload.rewardPoints;
       }
     });
+    builder.addCase(forgotPassword.fulfilled, (state, action) => {
+      state.error = null;
+
+      state.forgotPasswordOtp = action.payload.demoOtp || null;
+    });
+
+    builder.addCase(forgotPassword.rejected, (state, action: any) => {
+      state.error = action.payload?.message || "Không gửi được OTP";
+    });
+
+    builder.addCase(verifyForgotOTP.fulfilled, (state) => {
+      state.forgotPasswordVerified = true;
+    });
+
+    builder.addCase(verifyForgotOTP.rejected, (state, action: any) => {
+      state.error = action.payload?.message || "OTP không hợp lệ";
+    });
+
+    builder.addCase(resetPassword.fulfilled, (state) => {
+      state.forgotPasswordOtp = null;
+
+      state.forgotPasswordVerified = false;
+    });
   },
 });
 
@@ -242,3 +329,8 @@ export const selectAuth = (state: any) => state.auth.isAuthenticated;
 export const selectLoading = (state: any) => state.auth.loading;
 export const selectPendingRatings = (state: any) => state.auth.pendingRatings;
 export const selectRatings = (state: any) => state.auth.ratings;
+export const selectForgotPasswordOtp = (state: any) =>
+  state.auth.forgotPasswordOtp;
+
+export const selectForgotPasswordVerified = (state: any) =>
+  state.auth.forgotPasswordVerified;
