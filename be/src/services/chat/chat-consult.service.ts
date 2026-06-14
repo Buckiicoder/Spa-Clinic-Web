@@ -110,6 +110,23 @@ Sau 19:30 hệ thống sẽ không nhận lịch mới để đảm bảo thời
     return result.rows;
   }
 
+  static async findActiveMiddleServiceName(serviceName: string) {
+    const result = await db.query(
+      `
+      SELECT name
+      FROM services
+      WHERE is_active = true
+        AND parent_id IS NOT NULL
+        AND area IS NULL
+        AND LOWER(TRIM(name)) = LOWER(TRIM($1))
+      LIMIT 1
+      `,
+      [serviceName],
+    );
+
+    return result.rows[0]?.name || null;
+  }
+
   static async getAllServices() {
     const result = await db.query(`
     SELECT
@@ -146,13 +163,19 @@ Sau 19:30 hệ thống sẽ không nhận lịch mới để đảm bảo thời
   }
 
   static async getServiceListText() {
-    const services = await this.getAllServices();
+    const services = await this.getMiddleServices();
 
     if (!services.length) {
       return "Hiện tại chưa có dịch vụ nào.";
     }
 
-    return services.map((s) => `• ${s.name}`).join("\n");
+    return services
+      .map((s) => {
+        const description = s.description ? `: ${s.description}` : "";
+
+        return `• ${s.name}${description}`;
+      })
+      .join("\n");
   }
 
   static async recommendByAI(symptom: string) {
@@ -182,7 +205,17 @@ Trả về đúng tên dịch vụ.
       ],
     });
 
-    return completion.choices[0].message.content?.trim();
+    const raw = completion.choices[0].message.content?.trim();
+
+    if (!raw) {
+      return null;
+    }
+
+    const matched = services.find(
+      (s) => s.name.toLowerCase().trim() === raw.toLowerCase().trim(),
+    );
+
+    return matched?.name || null;
   }
 
   // =========================
@@ -190,48 +223,51 @@ Trả về đúng tên dịch vụ.
   // =========================
 
   static async recommendService(symptom: string) {
-    const services = await this.getMiddleServices();
-
     const lower = symptom.toLowerCase();
+    let serviceName: string | null = null;
 
     if (lower.includes("mụn")) {
-      return "Trị mụn";
+      serviceName = "Trị mụn";
     }
 
-    if (lower.includes("sẹo")) {
-      return "Trị sẹo";
+    if (!serviceName && lower.includes("sẹo")) {
+      serviceName = "Trị sẹo";
     }
 
-    if (lower.includes("nám")) {
-      return "Trị nám da";
+    if (!serviceName && lower.includes("nám")) {
+      serviceName = "Trị nám da";
     }
 
-    if (lower.includes("tàn nhang")) {
-      return "Trị tàn nhang";
+    if (!serviceName && lower.includes("tàn nhang")) {
+      serviceName = "Trị tàn nhang";
     }
 
-    if (lower.includes("đồi mồi")) {
-      return "Trị đồi mồi";
+    if (!serviceName && lower.includes("đồi mồi")) {
+      serviceName = "Trị đồi mồi";
     }
 
-    if (lower.includes("thâm")) {
-      return "Trị thâm";
+    if (!serviceName && lower.includes("thâm")) {
+      serviceName = "Trị thâm";
     }
 
-    if (lower.includes("lão hóa")) {
-      return "Trẻ hóa da";
+    if (!serviceName && lower.includes("lão hóa")) {
+      serviceName = "Trẻ hóa da";
     }
 
-    if (lower.includes("lỗ chân lông")) {
-      return "Se khít lỗ chân lông";
+    if (!serviceName && lower.includes("lỗ chân lông")) {
+      serviceName = "Se khít lỗ chân lông";
     }
 
-    if (lower.includes("viêm nang lông")) {
-      return "Trị viêm nang lông";
+    if (!serviceName && lower.includes("viêm nang lông")) {
+      serviceName = "Trị viêm nang lông";
     }
 
-    if (lower.includes("triệt")) {
-      return "Triệt lông";
+    if (!serviceName && lower.includes("triệt")) {
+      serviceName = "Triệt lông";
+    }
+
+    if (serviceName) {
+      return await this.findActiveMiddleServiceName(serviceName);
     }
 
     return await this.recommendByAI(symptom);

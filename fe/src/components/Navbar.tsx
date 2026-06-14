@@ -46,7 +46,7 @@ export default function Navbar() {
   return (
     <div className="">
       {/* ================= NAVBAR ================= */}
-      <header className="fixed top-0 left-0 w-full z-50 bg-transparent">
+      <header className="fixed top-0 left-0 w-full z-50 bg-[#6F5C4B]/5 backdrop-blur-xl shadow-sm">
         <nav className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
           {/* Hamburger */}
           <button
@@ -58,14 +58,14 @@ export default function Navbar() {
           </button>
 
           {/* Logo */}
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-black">
             <Link to="/">
               Spa<span className="text-amber-400">Clinic</span>
             </Link>
           </h1>
 
           {/* ================= DESKTOP MENU ================= */}
-          <ul className={`hidden md:flex items-center gap-8 font-medium`}>
+          <ul className={`hidden md:flex items-center gap-8 font-medium text-black`}>
             <li>
               <Link to="/" className="hover:text-amber-400 transition">
                 Trang chủ
@@ -139,7 +139,7 @@ export default function Navbar() {
                   alt="avatar"
                   className="w-9 h-9 rounded-full object-cover border"
                 />
-                <span className="text-sm text-black">{user.name}</span>
+                <span className="text-sm text-white">{user.name}</span>
 
                 {/* ✅ LUÔN render */}
                 <div

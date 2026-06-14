@@ -30,6 +30,23 @@ export class ChatIntentService {
     ) {
       return "booking";
     }
+
+    if (
+      lower.includes("dịch vụ") ||
+      lower.includes("dịch vụ nào") ||
+      lower.includes("spa có gì") ||
+      lower.includes("clinic có gì") ||
+      lower.includes("có gì") ||
+      lower.includes("làm gì") ||
+      lower.includes("gói nào") ||
+      lower.includes("liệu trình") ||
+      lower.includes("điều trị gì") ||
+      lower.includes("cung cấp gì") ||
+      lower.includes("thực hiện gì")
+    ) {
+      return "service_list";
+    }
+
     // =========================
     // consult
     // =========================
@@ -59,22 +76,6 @@ export class ChatIntentService {
     // if (lower.includes("dịch vụ")) {
     //   return "service_info";
     // }
-
-    if (
-      lower.includes("dịch vụ") ||
-      lower.includes("dịch vụ nào") ||
-      lower.includes("spa có gì") ||
-      lower.includes("clinic có gì") ||
-      lower.includes("có gì") ||
-      lower.includes("làm gì") ||
-      lower.includes("gói nào") ||
-      lower.includes("liệu trình") ||
-      lower.includes("điều trị gì") ||
-      lower.includes("cung cấp gì") ||
-      lower.includes("thực hiện gì")
-    ) {
-      return "service_list";
-    }
 
     if (
       lower.includes("mở cửa") ||
