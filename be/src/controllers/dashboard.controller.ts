@@ -170,6 +170,7 @@ export const getMostBookedServices = async (req: Request, res: Response) => {
 
     const data = await dashboardServices.getTopBookedServices(limit);
 
+    console.log(data);
     return res.json(data);
   } catch (err: any) {
     console.error("GET MOST BOOKED SERVICES ERROR:", err);
@@ -254,12 +255,13 @@ export const getRevenueStatistics = async (req: Request, res: Response) => {
 
 export const getrevenueByDateRange = async (req: Request, res: Response) => {
   try {
-    const { start_date, end_date } = req.query;
+    const { startDate, endDate } = req.query;
 
     const data = await dashboardServices.getRevenueByDateRange(
-      start_date as string,
-      end_date as string,
+      startDate as string,
+      endDate as string,
     );
+    
 
     return res.json(data);
   } catch (error: any) {

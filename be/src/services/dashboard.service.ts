@@ -45,7 +45,9 @@ export const getTopAttendanceStaffs = async (
       s.employee_type,
       p.name AS position_name,
 
-      COUNT(td.id) AS total_work_days,
+      COUNT(
+        DISTINCT td.id
+      ) AS total_work_days,
 
       COALESCE(
         SUM(tkd.work_minutes),
@@ -357,27 +359,30 @@ export const getTopBookedServices = async (
   const result = await db.query(
     `
     SELECT
-      s.id,
-      s.name,
+    parent.id,
+    parent.name,
 
-      COUNT(csp.id) AS total_bookings
+    COUNT(csp.id) AS total_bookings
 
-    FROM customer_service_profiles csp
+FROM customer_service_profiles csp
 
-    INNER JOIN services s
-      ON s.id = csp.service_id
+INNER JOIN services child
+    ON child.id = csp.service_id
 
-    WHERE
-      s.parent_id IS NOT NULL
-      AND s.area IS NULL
+INNER JOIN services parent
+    ON parent.id = child.parent_id
 
-    GROUP BY
-      s.id,
-      s.name
+WHERE
+    parent.parent_id IS NOT NULL
+    AND parent.area IS NULL
 
-    ORDER BY total_bookings DESC
+GROUP BY
+    parent.id,
+    parent.name
 
-    LIMIT $1
+ORDER BY total_bookings DESC
+
+LIMIT $1
     `,
     [limit]
   );
@@ -495,7 +500,9 @@ export const getRevenueStatistics =
         COALESCE(
           SUM(
             CASE
-              WHEN DATE(created_at) = CURRENT_DATE
+              WHEN DATE(
+                created_at AT TIME ZONE 'Asia/Ho_Chi_Minh'
+              ) = CURRENT_DATE
               THEN paid_amount
               ELSE 0
             END
