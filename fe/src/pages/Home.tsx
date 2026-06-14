@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -72,6 +73,7 @@ export default function Home() {
   const isAuthenticated = useAppSelector(selectAuth);
   const [openReminderModal, setOpenReminderModal] = useState(false);
   const [openRatingModal, setOpenRatingModal] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -98,6 +100,19 @@ export default function Home() {
     }
   }, [pendingRatings, isAuthenticated, reminderKey]);
 
+  useEffect(() => {
+  const sectionId = location.state?.scrollTo;
+
+  if (!sectionId) return;
+
+  setTimeout(() => {
+    document.getElementById(sectionId)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, 100);
+}, [location]);
+
   return (
     <div className="font-sans text-slate-900 bg-white">
       <Navbar />
@@ -117,7 +132,7 @@ export default function Home() {
                 Spa & Clinic
               </span>
 
-              <span className="block text-[52px] md:text-[64px] text-[#F4A621]">
+              <span className="block text-[52px] md:text-[64px] text-yellow-400">
                 Chuẩn Y Khoa
               </span>
             </h1>
