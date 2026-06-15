@@ -23,27 +23,27 @@ export default function ResetPassword() {
 
   const [error, setError] = useState("");
 
-  const validatePassword = (password: string): string | null => {
-    if (password.length < 6) {
-      return "Mật khẩu phải có ít nhất 6 ký tự";
-    }
+  // const validatePassword = (password: string): string | null => {
+  //   if (password.length < 6) {
+  //     return "Mật khẩu phải có ít nhất 6 ký tự";
+  //   }
 
-    const hasLetter = /[a-zA-Z]/.test(password);
+  //   const hasLetter = /[a-zA-Z]/.test(password);
 
-    const hasNumber = /\d/.test(password);
+  //   const hasNumber = /\d/.test(password);
 
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\;/']/g.test(password);
+  //   const hasSpecial = /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\;/']/g.test(password);
 
-    if (!hasSpecial) {
-      return "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt";
-    }
+  //   if (!hasSpecial) {
+  //     return "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt";
+  //   }
 
-    if (!hasLetter && !hasNumber) {
-      return "Mật khẩu phải chứa chữ hoặc số";
-    }
+  //   if (!hasLetter && !hasNumber) {
+  //     return "Mật khẩu phải chứa chữ hoặc số";
+  //   }
 
-    return null;
-  };
+  //   return null;
+  // };
 
   useEffect(() => {
     if (!contact) {
@@ -56,29 +56,29 @@ export default function ResetPassword() {
 
     setError("");
 
-    const validatePassword = (password: string): string | null => {
-      if (password.length < 6) {
-        return "Mật khẩu phải có ít nhất 6 ký tự";
-      }
+    // const validatePassword = (password: string): string | null => {
+    //   if (password.length < 6) {
+    //     return "Mật khẩu phải có ít nhất 6 ký tự";
+    //   }
 
-      const hasLetter = /[a-zA-Z]/.test(password);
+    //   const hasLetter = /[a-zA-Z]/.test(password);
 
-      const hasNumber = /\d/.test(password);
+    //   const hasNumber = /\d/.test(password);
 
-      const hasSpecial = /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\;/']/g.test(
-        password,
-      );
+    //   const hasSpecial = /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\;/']/g.test(
+    //     password,
+    //   );
 
-      if (!hasSpecial) {
-        return "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt";
-      }
+    //   if (!hasSpecial) {
+    //     return "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt";
+    //   }
 
-      if (!hasLetter && !hasNumber) {
-        return "Mật khẩu phải chứa chữ hoặc số";
-      }
+    //   if (!hasLetter && !hasNumber) {
+    //     return "Mật khẩu phải chứa chữ hoặc số";
+    //   }
 
-      return null;
-    };
+    //   return null;
+    // };
 
     if (password !== confirmPassword) {
       setError("Mật khẩu xác nhận không khớp");
