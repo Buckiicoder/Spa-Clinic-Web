@@ -30,31 +30,7 @@ import { useAppDispatch, useAppSelector } from "../app/hook";
 
 import {
   fetchDashboardOverview,
-  fetchLowStockProducts,
-  fetchTopAttendanceStaffs,
-  fetchLateStaffs,
-  fetchTopDoctorRevenue,
-  fetchTopTechnicianRevenue,
-  fetchTopVipCustomers,
-  fetchTopLoyalCustomers,
-  fetchMostBookedServices,
-  fetchLeastBookedServices,
-  fetchMostBookedPackages,
-  fetchLeastBookedPackages,
-  fetchRevenueStatistics,
   selectDashboardOverview,
-  selectLowStockProducts,
-  // selectTopAttendanceStaffs,
-  // selectLateStaffs,
-  selectTopDoctorRevenue,
-  selectTopTechnicianRevenue,
-  selectTopVipCustomers,
-  selectTopLoyalCustomers,
-  selectMostBookedServices,
-  selectLeastBookedServices,
-  selectMostBookedPackages,
-  selectLeastBookedPackages,
-  // selectRevenueStatistics,
   selectDashboardLoading,
   fetchRevenueByDateRange,
   selectWeeklyRevenue,
@@ -96,29 +72,51 @@ export default function Dashboard() {
 
   const overview = useAppSelector(selectDashboardOverview);
 
-  // const revenueStatistics = useAppSelector(selectRevenueStatistics);
+  const customers = useMemo(
+    () => overview?.customers?.vip_customers ?? [],
+    [overview],
+  );
 
-  const customers = useAppSelector(selectTopVipCustomers);
+  const mostBookedServices = useMemo(
+    () => overview?.services?.top_booked_services ?? [],
+    [overview],
+  );
+  console.log(overview?.services?.top_booked_services);
 
-  const lowStockProducts = useAppSelector(selectLowStockProducts);
+  const mostBookedPackages = useMemo(
+    () => overview?.services?.top_booked_packages ?? [],
+    [overview],
+  );
 
-  // const topAttendanceStaffs = useAppSelector(selectTopAttendanceStaffs);
+  const topAttendanceStaffs = useMemo(
+    () => overview?.staffs?.top_attendance_staffs ?? [],
+    [overview],
+  );
 
-  // const lateStaffs = useAppSelector(selectLateStaffs);
+  const topDoctorRevenue = useMemo(
+    () => overview?.staffs?.top_doctor_revenue ?? [],
+    [overview],
+  );
 
-  const topDoctorRevenue = useAppSelector(selectTopDoctorRevenue);
+  const topTechnicianRevenue = useMemo(
+    () => overview?.staffs?.top_technician_revenue ?? [],
+    [overview],
+  );
 
-  const topTechnicianRevenue = useAppSelector(selectTopTechnicianRevenue);
+  const lowStockProducts = useMemo(
+    () => overview?.products?.low_stock_products ?? [],
+    [overview],
+  );
 
-  const topLoyalCustomers = useAppSelector(selectTopLoyalCustomers);
-
-  const leastBookedServices = useAppSelector(selectLeastBookedServices);
-
-  const mostBookedPackages = useAppSelector(selectMostBookedPackages);
-
-  const leastBookedPackages = useAppSelector(selectLeastBookedPackages);
-
-  const mostBookedServices = useAppSelector(selectMostBookedServices);
+  const revenueStatistics = useMemo(
+    () =>
+      overview?.revenues ?? {
+        today_revenue: 0,
+        month_revenue: 0,
+        year_revenue: 0,
+      },
+    [overview],
+  );
 
   const loading = useAppSelector(selectDashboardLoading);
 
@@ -148,25 +146,6 @@ export default function Dashboard() {
     document.title = "Spa Clinic Dashboard";
 
     dispatch(fetchDashboardOverview());
-
-    dispatch(fetchRevenueStatistics());
-
-    dispatch(fetchLowStockProducts(10));
-
-    dispatch(fetchTopAttendanceStaffs(10));
-    dispatch(fetchLateStaffs(10));
-
-    dispatch(fetchTopDoctorRevenue(10));
-    dispatch(fetchTopTechnicianRevenue(10));
-
-    dispatch(fetchTopVipCustomers(10));
-    dispatch(fetchTopLoyalCustomers(10));
-
-    dispatch(fetchMostBookedServices(10));
-    dispatch(fetchLeastBookedServices(10));
-
-    dispatch(fetchMostBookedPackages(10));
-    dispatch(fetchLeastBookedPackages(10));
   }, [dispatch]);
 
   // ================= FILTER =================
@@ -175,7 +154,7 @@ export default function Dashboard() {
       const keyword = search.toLowerCase();
 
       return (
-        item.customer_name?.toLowerCase().includes(keyword) ||
+        item.name?.toLowerCase().includes(keyword) ||
         item.phone?.toLowerCase().includes(keyword)
       );
     });
@@ -190,28 +169,31 @@ export default function Dashboard() {
   );
 
   // ================= STATS =================
-  const stats = useMemo(() => [
-    {
-      title: "Lịch hẹn hôm nay",
-      value: overview?.today_bookings || 0,
-      icon: <Calendar size={22} />,
-    },
-    {
-      title: "Khách hàng",
-      value: overview?.total_customers || 0,
-      icon: <Users size={22} />,
-    },
-    {
-      title: "Doanh thu",
-      value: formatCurrency(overview?.total_revenue || 0),
-      icon: <DollarSign size={22} />,
-    },
-    {
-      title: "Dịch vụ",
-      value: overview?.total_services || 0,
-      icon: <BarChart3 size={22} />,
-    },
-  ], [overview]);
+  const stats = useMemo(
+    () => [
+      {
+        title: "Doanh thu hôm nay",
+        value: formatCurrency(revenueStatistics.today_revenue),
+        icon: <DollarSign size={22} />,
+      },
+      {
+        title: "Doanh thu tháng",
+        value: formatCurrency(revenueStatistics.month_revenue),
+        icon: <Calendar size={22} />,
+      },
+      {
+        title: "Doanh thu năm",
+        value: formatCurrency(revenueStatistics.year_revenue),
+        icon: <BarChart3 size={22} />,
+      },
+      {
+        title: "Khách VIP",
+        value: customers.length,
+        icon: <Users size={22} />,
+      },
+    ],
+    [revenueStatistics, customers],
+  );
 
   const weeklyRevenueData = useMemo(() => {
     const { startDate } = getWeekRange(selectedDate);
@@ -225,7 +207,9 @@ export default function Dashboard() {
 
       const key = current.toISOString().split("T")[0];
 
-      const found = weeklyRevenue.find((x: any) => x.date === key) || {};
+      const found =
+        weeklyRevenue.find((x: any) => x.revenue_date?.split("T")[0] === key) ||
+        {};
 
       days.push({
         date: key,
@@ -234,7 +218,7 @@ export default function Dashboard() {
           weekday: "short",
         }),
 
-        revenue: found.total_revenue || 0,
+        revenue: Number(found.revenue || 0),
       });
     }
 
@@ -247,42 +231,15 @@ export default function Dashboard() {
         name: "VIP",
         value: customers.length,
       },
-      {
-        name: "Loyal",
-        value: topLoyalCustomers.length,
-      },
     ];
-  }, [customers, topLoyalCustomers]);
-
+  }, [customers]);
 
   return (
     <div className="min-h-screen bg-[#f7f7f7] p-6">
       <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
         {/* HEADER */}
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <h1 className="text-2xl font-bold text-black">Dashboard Tổng Quan</h1>
-
-          <div className="flex items-center gap-3">
-            {/* Search */}
-            <div className="relative w-full max-w-md">
-              <Search
-                size={18}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-
-              <input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Tìm kiếm khách hàng..."
-                className="h-12 w-full rounded-2xl border border-gray-200 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-black"
-              />
-            </div>
-
-            <div className="h-11 w-11 rounded-full bg-amber-200" />
-          </div>
+          <h1 className="text-2xl font-bold text-black">Dashboard</h1>
         </div>
 
         {/* STATS */}
@@ -329,9 +286,9 @@ export default function Dashboard() {
 
             <div className="h-80 rounded-2xl bg-[#faf7f2] p-4">
               <ResponsiveContainer
-  width="100%"
-  height={window.innerWidth < 640 ? 250 : 320}
->
+                width="100%"
+                height={window.innerWidth < 640 ? 250 : 320}
+              >
                 <BarChart data={weeklyRevenueData}>
                   <CartesianGrid strokeDasharray="3 3" />
 
@@ -362,9 +319,9 @@ export default function Dashboard() {
 
             <div className="h-80 rounded-2xl bg-[#faf7f2] p-4">
               <ResponsiveContainer
-  width="100%"
-  height={window.innerWidth < 640 ? 250 : 320}
->
+                width="100%"
+                height={window.innerWidth < 640 ? 250 : 320}
+              >
                 <LineChart data={weeklyRevenueData}>
                   <CartesianGrid strokeDasharray="3 3" />
 
@@ -390,44 +347,44 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
           </div>
-          </div>
+        </div>
 
-          {/* RECENT BOOKINGS */}
-          <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-5 text-lg font-semibold text-amber-700">
-              Dịch vụ được đặt nhiều
-            </h3>
+        {/* RECENT BOOKINGS */}
+        {/* <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-5 text-lg font-semibold text-amber-700">
+            Dịch vụ được đặt nhiều
+          </h3>
 
-            <div className="space-y-4">
-              {mostBookedServices.length === 0 && (
-                <div className="py-10 text-center text-sm text-gray-400">
-                  Không có dữ liệu
+          <div className="space-y-4">
+            {mostBookedServices.length === 0 && (
+              <div className="py-10 text-center text-sm text-gray-400">
+                Không có dữ liệu
+              </div>
+            )}
+
+            {mostBookedServices.map((item: any, index: number) => (
+              <div
+                key={index}
+                className="flex items-center justify-between border-b pb-3"
+              >
+                <div>
+                  <p className="font-medium text-black">{item.name}</p>
+
+                  <p className="mt-1 text-xs text-gray-400">
+                    {item.total_payments || 0} lượt đặt
+                  </p>
                 </div>
-              )}
 
-              {mostBookedServices.map((item: any, index: number) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between border-b pb-3"
-                >
-                  <div>
-                    <p className="font-medium text-black">{item.name}</p>
-
-                    <p className="mt-1 text-xs text-gray-400">
-                      {item.total_bookings || 0} lượt đặt
-                    </p>
-                  </div>
-
-                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-                    Top
-                  </span>
-                </div>
-              ))}
-            </div>
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                  Top
+                </span>
+              </div>
+            ))}
           </div>
+        </div> */}
 
         {/* DOCTOR PERFORMANCE */}
-        <div className="mt-6 grid gap-5 lg:grid-cols-2">
+        <div className="mt-6 grid gap-5 lg:grid-cols-3">
           {/* DOCTOR */}
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <h3 className="mb-5 text-lg font-semibold text-amber-700">
@@ -524,6 +481,112 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-5 text-lg font-semibold text-amber-700">
+              Nhân viên chuyên cần
+            </h3>
+
+            <div className="space-y-3">
+              {topAttendanceStaffs.map((item: any) => (
+                <div
+                  key={item.user_id}
+                  className="flex items-center justify-between border-b pb-3"
+                >
+                  <div>
+                    <p className="font-medium">{item.name}</p>
+
+                    <p className="text-xs text-gray-400">
+                      {item.position_name}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="font-bold text-amber-700">
+                      {item.total_work_days}
+                    </p>
+
+                    <p className="text-xs text-gray-400">ngày công</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* SERVICE ANALYTICS */}
+        <div className="mt-6 grid lg:grid-cols-2 gap-6">
+          {/* MOST BOOKED */}
+          <div className="grid rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-5 text-lg font-semibold text-amber-700">
+              Dịch vụ được đặt nhiều nhất
+            </h3>
+
+            <div className="h-80">
+              <ResponsiveContainer
+                width="100%"
+                height={window.innerWidth < 640 ? 250 : 320}
+              >
+                <BarChart data={mostBookedServices}>
+                  <CartesianGrid strokeDasharray="3 3" />
+
+                  <XAxis
+                    dataKey="name"
+                    interval={0}
+                    angle={-25}
+                    textAnchor="end"
+                    height={80}
+                  />
+
+                  <YAxis />
+
+                  <Tooltip />
+
+                  <Bar
+                    dataKey="total_bookings"
+                    fill="#d97706"
+                    radius={[8, 8, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* PACKAGE ANALYTICS */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-5 text-lg font-semibold text-amber-700">
+              Gói liệu trình bán chạy
+            </h3>
+
+            <div className="h-80">
+              <ResponsiveContainer
+                width="100%"
+                height={window.innerWidth < 640 ? 250 : 320}
+              >
+                <BarChart data={mostBookedPackages}>
+                  <CartesianGrid strokeDasharray="3 3" />
+
+                  <XAxis
+                    dataKey="name"
+                    interval={0}
+                    angle={-25}
+                    textAnchor="end"
+                    height={80}
+                  />
+
+                  <YAxis />
+
+                  <Tooltip />
+
+                  <Bar
+                    dataKey="total_bookings"
+                    fill="#d97706"
+                    radius={[8, 8, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
 
         {/* CUSTOMER ANALYTICS */}
@@ -534,9 +597,9 @@ export default function Dashboard() {
 
           <div className="h-80">
             <ResponsiveContainer
-  width="100%"
-  height={window.innerWidth < 640 ? 250 : 320}
->
+              width="100%"
+              height={window.innerWidth < 640 ? 250 : 320}
+            >
               <PieChart>
                 <Pie
                   data={customerAnalytics}
@@ -559,156 +622,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* SERVICE ANALYTICS */}
-        <div className="mt-6 grid gap-5 lg:grid-cols-2">
-          {/* MOST BOOKED */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-5 text-lg font-semibold text-amber-700">
-              Dịch vụ được đặt nhiều nhất
-            </h3>
-
-            <div className="h-80">
-              <ResponsiveContainer
-  width="100%"
-  height={window.innerWidth < 640 ? 250 : 320}
->
-                <BarChart data={mostBookedServices}>
-                  <CartesianGrid strokeDasharray="3 3" />
-
-                  <XAxis
-  dataKey="name"
-  interval={0}
-  angle={-25}
-  textAnchor="end"
-  height={80}
-/>
-
-                  <YAxis />
-
-                  <Tooltip />
-
-                  <Bar
-                    dataKey="total_bookings"
-                    fill="#d97706"
-                    radius={[8, 8, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* LEAST BOOKED */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-5 text-lg font-semibold text-red-500">
-              Dịch vụ ít đặt nhất
-            </h3>
-
-            <div className="h-80">
-              <ResponsiveContainer
-  width="100%"
-  height={window.innerWidth < 640 ? 250 : 320}
->
-                <BarChart data={leastBookedServices}>
-                  <CartesianGrid strokeDasharray="3 3" />
-
-                  <XAxis
-  dataKey="name"
-  interval={0}
-  angle={-25}
-  textAnchor="end"
-  height={80}
-/>
-
-                  <YAxis />
-
-                  <Tooltip />
-
-                  <Bar
-                    dataKey="total_bookings"
-                    fill="#f97316"
-                    radius={[8, 8, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* PACKAGE ANALYTICS */}
-        <div className="mt-6 grid gap-5 lg:grid-cols-2">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-5 text-lg font-semibold text-amber-700">
-              Gói liệu trình bán chạy
-            </h3>
-
-            <div className="h-80">
-              <ResponsiveContainer
-  width="100%"
-  height={window.innerWidth < 640 ? 250 : 320}
->
-                <BarChart data={mostBookedPackages}>
-                  <CartesianGrid strokeDasharray="3 3" />
-
-                  <XAxis
-  dataKey="name"
-  interval={0}
-  angle={-25}
-  textAnchor="end"
-  height={80}
-/>
-
-                  <YAxis />
-
-                  <Tooltip />
-
-                  <Bar
-                    dataKey="total_bookings"
-                    fill="#d97706"
-                    radius={[8, 8, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-5 text-lg font-semibold text-red-500">
-              Gói liệu trình ít được đặt
-            </h3>
-
-            <div className="h-80">
-              <ResponsiveContainer
-  width="100%"
-  height={window.innerWidth < 640 ? 250 : 320}
->
-                <BarChart data={leastBookedPackages}>
-                  <CartesianGrid strokeDasharray="3 3" />
-
-                  <XAxis
-  dataKey="name"
-  interval={0}
-  angle={-25}
-  textAnchor="end"
-  height={80}
-/>
-
-                  <YAxis />
-
-                  <Tooltip />
-
-                  <Bar
-                    dataKey="total_bookings"
-                    fill="#f97316"
-                    radius={[8, 8, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
         {/* LOW STOCK PRODUCTS */}
-        <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        {/* <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <h3 className="mb-5 text-lg font-semibold text-red-500">
             Sản phẩm sắp hết hàng
           </h3>
@@ -745,7 +660,7 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* TABLE */}
         <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -754,6 +669,27 @@ export default function Dashboard() {
             <h3 className="text-lg font-semibold text-amber-700">
               Danh sách khách hàng
             </h3>
+            <div className="flex items-center gap-3">
+              {/* Search */}
+              <div className="relative w-full max-w-md">
+                <Search
+                  size={18}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+
+                <input
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Tìm kiếm khách hàng..."
+                  className="h-12 w-full rounded-2xl border border-gray-200 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-black"
+                />
+              </div>
+
+              {/* <div className="h-11 w-11 rounded-full bg-amber-200" /> */}
+            </div>
           </div>
 
           {/* TABLE */}
@@ -790,7 +726,7 @@ export default function Dashboard() {
 
                         <td className="p-3">{item.phone || "—"}</td>
 
-                        <td className="p-3">{item.total_bookings || 0}</td>
+                        <td className="p-3">{item.total_payments || 0}</td>
 
                         <td className="p-3">
                           {formatCurrency(item.total_spent || 0)}
@@ -893,33 +829,6 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-
-        {/* <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm mt-6">
-          <h3 className="mb-5 text-lg font-semibold text-amber-700">
-            Khách hàng trung thành
-          </h3>
-
-          <div className="space-y-4">
-            {topLoyalCustomers.map((item: any) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between border-b pb-3"
-              >
-                <div>
-                  <p className="font-medium">{item.customer_name}</p>
-
-                  <p className="text-xs text-gray-400">
-                    {item.total_bookings} lượt đặt
-                  </p>
-                </div>
-
-                <span className="font-semibold text-green-600">
-                  {formatCurrency(item.total_spent)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div> */}
       </div>
     </div>
   );

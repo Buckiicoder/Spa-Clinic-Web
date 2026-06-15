@@ -11,6 +11,9 @@ import {
   updateSessionAPI,
   deleteSessionAPI,
   createProfileFromConsultationAPI,
+  getNextSessionInfoAPI,
+  getNextSessionInfoByBookingAPI,
+  getReExaminationInfoAPI,
 } from "./doctorAPI";
 
 interface ConsultationState {
@@ -20,6 +23,11 @@ interface ConsultationState {
 
   profiles: any[];
   sessions: any[];
+  nextSessionInfo: null;
+
+  reExaminationInfo: any | null;
+
+  nextSessionInfoByBooking: any | null;
 }
 
 const initialState: ConsultationState = {
@@ -29,6 +37,11 @@ const initialState: ConsultationState = {
 
   profiles: [],
   sessions: [],
+  nextSessionInfo: null,
+
+  reExaminationInfo: null,
+
+  nextSessionInfoByBooking: null,
 };
 
 //
@@ -116,20 +129,47 @@ export const deleteProfile = createAsyncThunk(
   },
 );
 
+export const fetchNextSessionInfo = createAsyncThunk(
+  "doctor/nextSessionInfo",
+  async (profileId: number) => {
+    const res = await getNextSessionInfoAPI(profileId);
+
+    return res.data;
+  },
+);
+
+export const fetchNextSessionInfoByBooking = createAsyncThunk(
+  "doctor/nextSessionInfoByBooking",
+
+  async (bookingId: number) => {
+    const res = await getNextSessionInfoByBookingAPI(bookingId);
+
+    return res.data;
+  },
+);
+
+export const fetchReExaminationInfo = createAsyncThunk(
+  "doctor/reExaminationInfo",
+
+  async (bookingId: number) => {
+    const res = await getReExaminationInfoAPI(bookingId);
+
+    return res.data;
+  },
+);
+
 export const createSession = createAsyncThunk(
   "doctor/createSession",
-  async (
-    data: {
-      profile_id: number;
-      session_no: number;
-      service_date: string;
-      service_time: string;
-      technician_id?: number;
-    }
-  ) => {
+  async (data: {
+    profile_id: number;
+    session_no: number;
+    service_date: string;
+    service_time: string;
+    technician_id?: number;
+  }) => {
     const res = await createSessionAPI(data);
     return res.data;
-  }
+  },
 );
 
 export const updateSession = createAsyncThunk(
@@ -152,8 +192,13 @@ const consultationSlice = createSlice({
   name: "consultation",
   initialState,
   reducers: {
-    clearSelectedBooking: (state) => {
+    clearSelectedBooking(state) {
       state.selectedBooking = null;
+    },
+
+    clearFollowUpInfo(state) {
+      state.reExaminationInfo = null;
+      state.nextSessionInfoByBooking = null;
     },
   },
   extraReducers: (builder) => {
@@ -187,7 +232,11 @@ const consultationSlice = createSlice({
       const updated = action.payload;
 
       // 🔥 remove khỏi waiting list
-      state.waitingList = state.waitingList.filter((b) => b.id !== updated.id);
+      const index = state.waitingList.findIndex((b) => b.id === updated.id);
+
+      if (index !== -1) {
+        state.waitingList[index] = updated;
+      }
 
       // 🔥 set vào detail
       state.selectedBooking = updated;
@@ -212,14 +261,17 @@ const consultationSlice = createSlice({
     // ================= PROFILE =================
 
     // create
-    builder.addCase(createProfileFromConsultation.fulfilled, (state, action) => {
-      state.profiles.unshift(action.payload);
+    builder.addCase(
+      createProfileFromConsultation.fulfilled,
+      (state, action) => {
+        state.profiles.unshift(action.payload);
 
-      // 🔥 gắn vào booking hiện tại
-      if (state.selectedBooking) {
-        state.selectedBooking.profile_id = action.payload.id;
-      }
-    });
+        // 🔥 gắn vào booking hiện tại
+        if (state.selectedBooking) {
+          state.selectedBooking.profile_id = action.payload.id;
+        }
+      },
+    );
 
     // update
     builder.addCase(updateProfile.fulfilled, (state, action) => {
@@ -236,6 +288,22 @@ const consultationSlice = createSlice({
     });
 
     // ================= SESSION =================
+
+    builder.addCase(fetchNextSessionInfo.fulfilled, (state, action) => {
+      state.nextSessionInfo = action.payload;
+    });
+
+    builder.addCase(
+      fetchNextSessionInfoByBooking.fulfilled,
+      (state, action) => {
+        state.nextSessionInfoByBooking = action.payload;
+      },
+    );
+
+    builder.addCase(fetchReExaminationInfo.fulfilled, (state, action) => {
+      state.reExaminationInfo = action.payload;
+      console.log(state.reExaminationInfo);
+    });
 
     // create
     builder.addCase(createSession.fulfilled, (state, action) => {
@@ -274,8 +342,15 @@ export const selectConsultationDetail = (state: any) =>
 export const selectConsultationLoading = (state: any) =>
   state.doctor?.loading || false;
 
-export const selectProfiles = (state: any) =>
-  state.doctor?.profiles || [];
+export const selectProfiles = (state: any) => state.doctor?.profiles || [];
 
-export const selectSessions = (state: any) =>
-  state.doctor?.sessions || [];
+export const selectSessions = (state: any) => state.doctor?.sessions || [];
+
+export const selectNextSessionInfo = (state: any) =>
+  state.doctor?.nextSessionInfo || null;
+
+export const selectNextSessionInfoByBooking = (state: any) =>
+  state.doctor?.nextSessionInfoByBooking || null;
+
+export const selectReExaminationInfo = (state: any) =>
+  state.doctor?.reExaminationInfo || null;

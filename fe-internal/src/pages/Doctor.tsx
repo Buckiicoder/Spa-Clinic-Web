@@ -13,7 +13,13 @@ import {
   selectConsultationDetail,
   createProfileFromConsultation,
   createSession,
+  // fetchNextSessionInfo,
+  selectNextSessionInfoByBooking,
+  fetchNextSessionInfoByBooking,
+  fetchReExaminationInfo,
+  selectReExaminationInfo,
 } from "../features/doctor/doctorSlice";
+
 import {
   fetchServices,
   selectServices,
@@ -28,6 +34,9 @@ export default function DoctorExamination() {
   const booking = useAppSelector(selectConsultationDetail);
   const canEdit = booking?.status === "IN_CONSULTATION";
   const user = useAppSelector(selectUser);
+  const isFollowUp = !!booking?.profile_id;
+  const nextSessionInfo = useAppSelector(selectNextSessionInfoByBooking);
+  const reExamInfo = useAppSelector(selectReExaminationInfo);
   const [packageSearch, setPackageSearch] = useState("");
   const [tab, setTab] = useState<"waiting" | "done">("waiting");
   const [selectedPackages, setSelectedPackages] = useState<any[]>([]);
@@ -65,11 +74,13 @@ export default function DoctorExamination() {
 
     socket.emit("join-doctor");
 
-    socket.on("consultation:updated", () => {
+    socket.on("booking:updated", () => {
       dispatch(fetchWaitingConsultations());
     });
 
-    return () => {socket.disconnect();}
+    return () => {
+      socket.off("booking:updated");
+    };
   }, [dispatch]);
 
   useEffect(() => {
@@ -82,21 +93,62 @@ export default function DoctorExamination() {
     }
   }, [booking]);
 
+  useEffect(() => {
+    if (!reExamInfo?.profile || !reExamInfo?.sessionInfo) {
+      return;
+    }
+
+    setSelectedPackages([
+      {
+        id: Number(reExamInfo.profile.package_id),
+
+        profile_id: Number(reExamInfo.profile.profile_id),
+
+        name: reExamInfo.profile.package_name,
+
+        service_id: reExamInfo.profile.service_id,
+
+        service_name: reExamInfo.profile.service_name,
+
+        total_sessions: reExamInfo.profile.total_sessions,
+
+        price: reExamInfo.profile.price,
+
+        next_session_no: reExamInfo.sessionInfo.next_session_no,
+
+        current_session_no: reExamInfo.sessionInfo.current_session_no,
+
+        remaining_sessions: reExamInfo.sessionInfo.remaining_sessions,
+      },
+    ]);
+  }, [reExamInfo]);
+
   const waitingBookings = useMemo(() => {
     return consultations.filter((b: any) => b.status === "CHECKED_IN");
   }, [consultations]);
 
   const completedBookings = useMemo(() => {
     return consultations.filter((b: any) =>
-      ["IN_CONSULTATION", "CONSULTED"].includes(b.status),
+      ["IN_CONSULTATION", "CONSULTED", "IN_TREATMENT", "COMPLETED"].includes(
+        b.status,
+      ),
     );
   }, [consultations]);
 
   const displayBookings =
     tab === "waiting" ? waitingBookings : completedBookings;
 
-  const handleSelect = (id: number) => {
-    dispatch(fetchConsultationDetail(id));
+  const handleSelect = async (bookingId: number) => {
+    setSelectedPackages([]);
+
+    const detail = await dispatch(fetchConsultationDetail(bookingId)).unwrap();
+
+    // khách tái khám
+    if (detail?.profile_id) {
+      await dispatch(fetchNextSessionInfoByBooking(bookingId));
+
+      await dispatch(fetchReExaminationInfo(bookingId));
+    }
   };
 
   const handleStart = () => {
@@ -160,6 +212,31 @@ export default function DoctorExamination() {
       if (selectedPackages.length > 0) {
         await Promise.all(
           selectedPackages.map(async (pkg) => {
+            if (nextSessionInfo?.remaining_sessions <= 0) {
+              throw new Error("Liệu trình đã hoàn tất");
+            }
+
+            if (pkg.profile_id) {
+              if (!pkg.next_session_date) {
+                throw new Error(`Chưa chọn ngày buổi ${pkg.next_session_no}`);
+              }
+
+              if (!pkg.next_session_time) {
+                throw new Error(`Chưa chọn giờ buổi ${pkg.next_session_no}`);
+              }
+
+              await dispatch(
+                createSession({
+                  profile_id: pkg.profile_id,
+                  session_no: nextSessionInfo?.next_session_no,
+                  service_date: pkg.next_session_date,
+                  service_time: pkg.next_session_time,
+                }),
+              ).unwrap();
+
+              return;
+            }
+
             // 🔥 validate chỉ buổi 1
             if (!pkg.session1_date) {
               throw new Error(`Chưa chọn ngày buổi 1 (${pkg.name})`);
@@ -190,22 +267,25 @@ export default function DoctorExamination() {
             // Xác định ngày hẹn tiếp theo
             // ============================
 
-            const nextDate = pkg.session2_date || pkg.session1_date;
-            const nextTime = pkg.session2_date
-              ? pkg.session2_time
-              : pkg.session1_time;
-
             await dispatch(
               createSession({
                 profile_id: Number(profileId),
-
-                // session tiếp theo
-                session_no: pkg.session2_date ? 2 : 1,
-
-                service_date: nextDate,
-                service_time: nextTime,
+                session_no: 1,
+                service_date: pkg.session1_date,
+                service_time: pkg.session1_time,
               }),
             ).unwrap();
+
+            if (pkg.session2_date && pkg.session2_time) {
+              await dispatch(
+                createSession({
+                  profile_id: Number(profileId),
+                  session_no: 2,
+                  service_date: pkg.session2_date,
+                  service_time: pkg.session2_time,
+                }),
+              ).unwrap();
+            }
           }),
         );
 
@@ -358,6 +438,53 @@ export default function DoctorExamination() {
                 </div>
               </div>
 
+              {isFollowUp && reExamInfo && (
+                <div className="mb-6 border rounded-xl p-4 bg-purple-50">
+                  <h3 className="font-semibold mb-3">Thông tin tái khám</h3>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-500">Chẩn đoán trước đó</p>
+
+                      <p className="font-medium">
+                        {reExamInfo.diagnosis || "Chưa có"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-gray-500">Ghi chú bác sĩ</p>
+
+                      <p className="font-medium">
+                        {reExamInfo.consultation_note || "Chưa có"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-gray-500">Gói liệu trình</p>
+
+                      <p className="font-medium">{reExamInfo.package_name}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-gray-500">Tiến độ điều trị</p>
+
+                      <p className="font-medium">
+                        {reExamInfo.used_sessions}/{reExamInfo.total_sessions}
+                        buổi
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-gray-500">Còn lại</p>
+
+                      <p className="font-medium">
+                        {nextSessionInfo?.remaining_sessions} buổi
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {booking.status === "CHECKED_IN" && (
                 <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3">
                   <p className="text-sm text-blue-700">
@@ -446,85 +573,91 @@ export default function DoctorExamination() {
                     )}
                   </div>
                 </div>
+                {!isFollowUp && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium">
+                        Tìm gói liệu trình
+                      </label>
 
-                <div>
-                  <label className="text-sm font-medium">
-                    Tìm gói liệu trình
-                  </label>
+                      <input
+                        disabled={!canEdit}
+                        value={packageSearch}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setPackageSearch(value);
 
-                  <input
-                    disabled={!canEdit}
-                    value={packageSearch}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setPackageSearch(value);
+                          const results: any[] = [];
 
-                      const results: any[] = [];
-
-                      services.forEach((s: any) => {
-                        s.packages?.forEach((p: any) => {
-                          if (
-                            p.name.toLowerCase().includes(value.toLowerCase())
-                          ) {
-                            results.push({
-                              ...p,
-                              service_id: s.id,
-                              service_name: s.name,
+                          services.forEach((s: any) => {
+                            s.packages?.forEach((p: any) => {
+                              if (
+                                p.name
+                                  .toLowerCase()
+                                  .includes(value.toLowerCase())
+                              ) {
+                                results.push({
+                                  ...p,
+                                  service_id: s.id,
+                                  service_name: s.name,
+                                });
+                              }
                             });
-                          }
-                        });
-                      });
-
-                      setSearchResults(results.slice(0, 5));
-                    }}
-                    className={`w-full border rounded-xl p-3" ${
-                      !canEdit
-                        ? "bg-gray-100 cursor-not-allowed opacity-70"
-                        : ""
-                    }`}
-                    placeholder="Tìm gói..."
-                  />
-                </div>
-
-                {searchResults.length > 0 && (
-                  <div className="mt-3 border rounded-xl overflow-hidden">
-                    {searchResults.map((p) => (
-                      <div
-                        key={p.id}
-                        onClick={() => {
-                          if (!canEdit) return;
-
-                          setSelectedPackages((prev) => {
-                            if (prev.find((x) => x.id === p.id)) return prev;
-
-                            return [
-                              ...prev,
-                              {
-                                ...p,
-                                session1_date: "",
-                                session2_date: "",
-                              },
-                            ];
                           });
-                        }}
-                        className="flex justify-between p-3 hover:bg-gray-50 cursor-pointer border-b"
-                      >
-                        <div>
-                          <p className="font-medium">{p.name}</p>
-                          <p className="text-xs text-gray-500">
-                            {p.service_name}
-                          </p>
-                        </div>
 
-                        <div className="text-right">
-                          <p className="text-sm">{p.price}đ</p>
-                          <p className="text-xs text-gray-500">
-                            {p.total_sessions} buổi
-                          </p>
-                        </div>
+                          setSearchResults(results.slice(0, 5));
+                        }}
+                        className={`w-full border rounded-xl p-3" ${
+                          !canEdit
+                            ? "bg-gray-100 cursor-not-allowed opacity-70"
+                            : ""
+                        }`}
+                        placeholder="Tìm gói..."
+                      />
+                    </div>
+
+                    {searchResults.length > 0 && (
+                      <div className="mt-3 border rounded-xl overflow-hidden">
+                        {searchResults.map((p) => (
+                          <div
+                            key={p.id}
+                            onClick={() => {
+                              if (!canEdit) return;
+
+                              setSelectedPackages((prev) => {
+                                if (prev.find((x) => x.id === p.id))
+                                  return prev;
+
+                                return [
+                                  ...prev,
+                                  {
+                                    ...p,
+                                    session1_date: "",
+                                    session2_date: "",
+                                  },
+                                ];
+                              });
+                            }}
+                            className="flex justify-between p-3 hover:bg-gray-50 cursor-pointer border-b"
+                          >
+                            <div>
+                              <p className="font-medium">{p.name}</p>
+                              <p className="text-xs text-gray-500">
+                                {p.service_name}
+                              </p>
+                            </div>
+
+                            <div className="text-right">
+                              <p className="text-sm">{p.price}đ</p>
+                              <p className="text-xs text-gray-500">
+                                {p.total_sessions} buổi
+                              </p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
 
                 <div className="mt-6">
@@ -556,7 +689,7 @@ export default function DoctorExamination() {
                           </div>
 
                           <button
-                            disabled={!canEdit}
+                            disabled={!canEdit || isFollowUp}
                             onClick={() =>
                               setSelectedPackages((prev) =>
                                 prev.filter((x) => x.id !== p.id),
@@ -572,93 +705,160 @@ export default function DoctorExamination() {
                           </button>
                         </div>
 
-                        <div className="mt-3 grid grid-cols-2 gap-4">
-                          {/* Buổi 1 */}
-                          <div>
-                            <p className="text-xs mb-1">Buổi 1 (bắt buộc)</p>
+                        {!isFollowUp ? (
+                          <div className="mt-3 grid grid-cols-2 gap-4">
+                            {/* Buổi 1 */}
+                            <div>
+                              <p className="text-xs mb-1">Buổi 1 (bắt buộc)</p>
 
-                            <div className="grid grid-cols-2 gap-2">
-                              <input
-                                disabled={!canEdit}
-                                type="date"
-                                value={p.session1_date || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value;
+                              <div className="grid grid-cols-2 gap-2">
+                                <input
+                                  disabled={!canEdit}
+                                  type="date"
+                                  value={p.session1_date || ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
 
-                                  setSelectedPackages((prev) =>
-                                    prev.map((pkg) =>
-                                      pkg.id === p.id
-                                        ? { ...pkg, session1_date: value }
-                                        : pkg,
-                                    ),
-                                  );
-                                }}
-                                className="border rounded px-2 py-1"
-                              />
+                                    setSelectedPackages((prev) =>
+                                      prev.map((pkg) =>
+                                        pkg.id === p.id
+                                          ? { ...pkg, session1_date: value }
+                                          : pkg,
+                                      ),
+                                    );
+                                  }}
+                                  className="border rounded px-2 py-1"
+                                />
 
-                              <input
-                                disabled={!canEdit}
-                                type="time"
-                                value={p.session1_time || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value;
+                                <input
+                                  disabled={!canEdit}
+                                  type="time"
+                                  value={p.session1_time || ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
 
-                                  setSelectedPackages((prev) =>
-                                    prev.map((pkg) =>
-                                      pkg.id === p.id
-                                        ? { ...pkg, session1_time: value }
-                                        : pkg,
-                                    ),
-                                  );
-                                }}
-                                className="border rounded px-2 py-1"
-                              />
+                                    setSelectedPackages((prev) =>
+                                      prev.map((pkg) =>
+                                        pkg.id === p.id
+                                          ? { ...pkg, session1_time: value }
+                                          : pkg,
+                                      ),
+                                    );
+                                  }}
+                                  className="border rounded px-2 py-1"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Buổi 2 */}
+                            <div>
+                              <p className="text-xs mb-1">Buổi 2 (tuỳ chọn)</p>
+
+                              <div className="grid grid-cols-2 gap-2">
+                                <input
+                                  disabled={!canEdit}
+                                  type="date"
+                                  value={p.session2_date || ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+
+                                    setSelectedPackages((prev) =>
+                                      prev.map((pkg) =>
+                                        pkg.id === p.id
+                                          ? { ...pkg, session2_date: value }
+                                          : pkg,
+                                      ),
+                                    );
+                                  }}
+                                  className="border rounded px-2 py-1"
+                                />
+
+                                <input
+                                  disabled={!canEdit}
+                                  type="time"
+                                  value={p.session2_time || ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+
+                                    setSelectedPackages((prev) =>
+                                      prev.map((pkg) =>
+                                        pkg.id === p.id
+                                          ? { ...pkg, session2_time: value }
+                                          : pkg,
+                                      ),
+                                    );
+                                  }}
+                                  className="border rounded px-2 py-1"
+                                />
+                              </div>
                             </div>
                           </div>
+                        ) : (
+                          <>
+                            {(nextSessionInfo?.remaining_sessions ?? 0) <= 0 ? (
+                              <div className="text-green-600 text-sm">
+                                Đã hoàn thành toàn bộ liệu trình
+                              </div>
+                            ) : (
+                              <div className="mt-3">
+                                <p className="text-xs mb-1">
+                                  Buổi {nextSessionInfo?.next_session_no}
+                                </p>
 
-                          {/* Buổi 2 */}
-                          <div>
-                            <p className="text-xs mb-1">Buổi 2 (tuỳ chọn)</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <input
+                                    type="date"
+                                    disabled={!canEdit}
+                                    value={p.next_session_date || ""}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
 
-                            <div className="grid grid-cols-2 gap-2">
-                              <input
-                                disabled={!canEdit}
-                                type="date"
-                                value={p.session2_date || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value;
+                                      setSelectedPackages((prev) =>
+                                        prev.map((pkg) =>
+                                          pkg.id === p.id
+                                            ? {
+                                                ...pkg,
+                                                next_session_date: value,
+                                              }
+                                            : pkg,
+                                        ),
+                                      );
+                                    }}
+                                    className="border rounded px-2 py-1"
+                                  />
 
-                                  setSelectedPackages((prev) =>
-                                    prev.map((pkg) =>
-                                      pkg.id === p.id
-                                        ? { ...pkg, session2_date: value }
-                                        : pkg,
-                                    ),
-                                  );
-                                }}
-                                className="border rounded px-2 py-1"
-                              />
+                                  <input
+                                    type="time"
+                                    disabled={!canEdit}
+                                    value={p.next_session_time || ""}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
 
-                              <input
-                                disabled={!canEdit}
-                                type="time"
-                                value={p.session2_time || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value;
+                                      setSelectedPackages((prev) =>
+                                        prev.map((pkg) =>
+                                          pkg.id === p.id
+                                            ? {
+                                                ...pkg,
+                                                next_session_time: value,
+                                              }
+                                            : pkg,
+                                        ),
+                                      );
+                                    }}
+                                    className="border rounded px-2 py-1"
+                                  />
+                                </div>
 
-                                  setSelectedPackages((prev) =>
-                                    prev.map((pkg) =>
-                                      pkg.id === p.id
-                                        ? { ...pkg, session2_time: value }
-                                        : pkg,
-                                    ),
-                                  );
-                                }}
-                                className="border rounded px-2 py-1"
-                              />
-                            </div>
-                          </div>
-                        </div>
+                                <p className="text-xs text-gray-500 mt-2">
+                                  Đã điều trị:
+                                  {nextSessionInfo?.current_session_no}/
+                                  {nextSessionInfo?.total_sessions}
+                                  buổi
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>

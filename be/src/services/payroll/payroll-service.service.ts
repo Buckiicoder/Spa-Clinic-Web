@@ -115,7 +115,7 @@ export const generatePayrollTransaction = async (
 
     standard_work_days: standardWorkDays,
 
-    actual_work_days: Number(attendanceSummary.full_work_days || 0),
+    actual_work_days: Number(attendanceSummary.actual_work_days || 0),
 
     standard_work_hours: Number(attendanceSummary.standard_work_hours || 208),
 
@@ -370,12 +370,12 @@ export const generatePayrollTransaction = async (
     attendance: attendanceSummary,
 
     salary_calculation: {
-    ...salaryCalculation,
+      ...salaryCalculation,
 
-    ot_hours: salaryCalculation.actual_ot_hours,
+      ot_hours: salaryCalculation.actual_ot_hours,
 
-    ot_salary: salaryCalculation.ot_salary,
-  },
+      ot_salary: salaryCalculation.ot_salary,
+    },
 
     allowances: allowanceCalculation,
 

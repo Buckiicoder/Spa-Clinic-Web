@@ -40,6 +40,8 @@ IMPORTANT:
 - NEVER infer.
 - NEVER create default values.
 - NEVER use example values.
+- Do not treat a service name, skin condition, symptom, or short answer as the customer's name.
+- Extract name only when the user clearly says their name, for example "tên: ...", "tôi là ...", "mình là ...", "em là ...".
 DO NOT extract date.
 DO NOT extract time.
 

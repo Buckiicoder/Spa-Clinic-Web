@@ -1,10 +1,5 @@
 import { PoolClient } from "pg";
-
 import { db } from "../../config/db.js";
-
-// ======================================================
-// TYPES
-// ======================================================
 
 export interface CreatePayrollInput {
   staff_id: number;
@@ -122,17 +117,9 @@ export interface CreatePayrollCommissionInput {
   metadata?: any;
 }
 
-// ======================================================
-// HELPERS
-// ======================================================
-
 const getExecutor = (client?: PoolClient) => {
   return client || db;
 };
-
-// ======================================================
-// CREATE PAYROLL
-// ======================================================
 
 export const createPayroll = async (
   data: CreatePayrollInput,

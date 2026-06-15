@@ -5,7 +5,8 @@ export function extractName(text: string): string | null {
   const cleaned = text.trim();
 
   const patterns = [
-    /tên\s*[:\-]?\s*([a-zA-ZÀ-ỹ\s]+)/i,
+    /tên\s*[:\-]\s*([a-zA-ZÀ-ỹ\s]+)/i,
+    /tên\s+(?:là|của\s+(?:tôi|em|mình)\s+là)\s*([a-zA-ZÀ-ỹ\s]+)/i,
     /em là\s*([a-zA-ZÀ-ỹ\s]+)/i,
     /mình là\s*([a-zA-ZÀ-ỹ\s]+)/i,
     /tôi là\s*([a-zA-ZÀ-ỹ\s]+)/i,
@@ -15,7 +16,13 @@ export function extractName(text: string): string | null {
     const match = cleaned.match(pattern);
 
     if (match?.[1]) {
-      return match[1].trim();
+      const name = match[1]
+        .split(/[,.;!?]|\b(?:sđt|số điện thoại|phone|điện thoại|đặt lịch)\b/i)[0]
+        .trim();
+
+      if (name.length >= 2 && name.length <= 40) {
+        return name;
+      }
     }
   }
 

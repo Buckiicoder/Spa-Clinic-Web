@@ -19,6 +19,8 @@ export const getWaitingConsultations = async () => {
     WHERE b.status IN (
       'CHECKED_IN',
       'IN_CONSULTATION',
+      'CONSULTED',
+      'IN_TREATMENT',
       'COMPLETED'
     )
     AND b.booking_date = CURRENT_DATE
@@ -73,7 +75,56 @@ export const getConsultationDetail = async (bookingId: string) => {
     [bookingId],
   );
 
-  return result.rows[0];
+  const booking = result.rows[0];
+
+  if (!booking) return null;
+
+  const profile = await getProfileByBooking(Number(bookingId));
+
+  if (!profile) {
+    return booking;
+  }
+
+  const consultation = await getConsultationByProfile(profile.profile_id);
+
+  const sessionResult = await db.query(
+    `
+  SELECT
+    session_no
+  FROM customer_service_sessions
+  WHERE booking_id = $1
+  `,
+    [bookingId],
+  );
+
+  const currentSession = sessionResult.rows[0];
+
+  const nextInfo = await getNextSessionInfoByBooking(Number(bookingId));
+
+  return {
+    ...booking,
+
+    profile_id: profile.profile_id,
+
+    package_id: profile.package_id,
+
+    package_name: profile.package_name,
+
+    package_price: profile.price,
+
+    total_sessions: profile.total_sessions,
+
+    diagnosis: consultation?.diagnosis ?? booking.diagnosis,
+
+    consultation_note:
+      consultation?.consultation_note ?? booking.consultation_note,
+
+    current_session_no: currentSession?.session_no ?? null,
+
+    next_session_no: nextInfo?.next_session_no ?? null,
+
+    remaining_sessions: nextInfo?.remaining_sessions ?? null,
+  };
 };
 
 /**
@@ -252,7 +303,20 @@ export const createCustomerServiceProfile = async (data: any) => {
     ],
   );
 
-  return result.rows[0];
+  const profile = result.rows[0];
+
+  if (booking_id) {
+    await db.query(
+      `
+    UPDATE booking_consultations
+    SET profile_id = $1
+    WHERE booking_id = $2
+    `,
+      [profile.id, booking_id],
+    );
+  }
+
+  return profile;
 };
 
 export const updateCustomerServiceProfile = async (id: number, data: any) => {
@@ -450,24 +514,17 @@ service_time = COALESCE($8, service_time)
     if (service_date || service_time) {
       await client.query(
         `
-  UPDATE bookings
-  SET
-    booking_date =
-      COALESCE($1, booking_date),
-
-    booking_time =
-      COALESCE($2, booking_time),
-
-    updated_at = NOW()
-
-  WHERE id = $3
-  `,
+    UPDATE bookings
+    SET
+      booking_date = COALESCE($1, booking_date),
+      booking_time = COALESCE($2, booking_time),
+      updated_at = NOW()
+    WHERE id = $3
+    `,
         [service_date ?? null, service_time ?? null, session.booking_id],
       );
-
-      
-      return session;
     }
+
     await client.query("COMMIT");
 
     return session;
@@ -516,4 +573,172 @@ WHERE id = $1
   } finally {
     client.release();
   }
+};
+
+/**
+ * Lấy session cuối cùng của profile
+ */
+export const getNextSessionInfo = async (profileId: number) => {
+  const result = await db.query(
+    `
+    SELECT
+      p.id,
+      p.total_sessions,
+      p.used_sessions,
+
+      COALESCE(
+        MAX(ss.session_no),
+        0
+      ) as last_session_no
+
+    FROM customer_service_profiles p
+
+    LEFT JOIN customer_service_sessions ss
+      ON ss.profile_id = p.id
+
+    WHERE p.id = $1
+
+    GROUP BY
+      p.id,
+      p.total_sessions,
+      p.used_sessions
+    `,
+    [profileId],
+  );
+
+  const row = result.rows[0];
+
+  return {
+    profile_id: row.id,
+    total_sessions: row.total_sessions,
+    used_sessions: row.used_sessions,
+    last_session_no: Number(row.last_session_no),
+
+    next_session_no: Number(row.last_session_no) + 1,
+
+    remaining_sessions: row.total_sessions - Number(row.last_session_no),
+  };
+};
+
+export const getNextSessionInfoByBooking = async (bookingId: number) => {
+  const result = await db.query(
+    `
+SELECT
+  css.profile_id,
+  css.session_no,
+
+  p.total_sessions
+
+FROM customer_service_sessions css
+
+JOIN customer_service_profiles p
+  ON p.id = css.profile_id
+
+WHERE css.booking_id = $1
+`,
+    [bookingId],
+  );
+  const row = result.rows[0];
+
+  if (!result.rows.length) {
+    return null;
+  }
+
+  return {
+    profile_id: row.profile_id,
+
+    current_session_no: row.session_no,
+
+    next_session_no: row.session_no + 1,
+
+    total_sessions: row.total_sessions,
+
+    remaining_sessions: row.total_sessions - row.session_no,
+  };
+};
+
+export const getProfileByBooking = async (bookingId: number) => {
+  const result = await db.query(
+    `
+    SELECT
+      p.id as profile_id,
+      p.package_id,
+      p.total_sessions,
+      p.used_sessions,
+
+      sp.name as package_name,
+      sp.price,
+      sp.total_sessions as package_total_sessions,
+
+      s.id as service_id,
+      s.name as service_name
+
+    FROM customer_service_sessions css
+
+    JOIN customer_service_profiles p
+      ON p.id = css.profile_id
+
+    JOIN service_packages sp
+      ON sp.id = p.package_id
+
+    JOIN services s
+      ON s.id = p.service_id
+
+    WHERE css.booking_id = $1
+    `,
+    [bookingId],
+  );
+
+  return result.rows[0];
+};
+
+export const getConsultationByProfile = async (profileId: number) => {
+  const result = await db.query(
+    `
+    SELECT
+      bc.id,
+      bc.booking_id,
+
+      bc.diagnosis,
+      bc.consultation_note,
+
+      p.id as profile_id,
+      p.package_id,
+
+      sp.name as package_name,
+      sp.price,
+      sp.total_sessions
+
+    FROM customer_service_profiles p
+
+    JOIN booking_consultations bc
+      ON bc.booking_id = p.booking_id
+
+    JOIN service_packages sp
+      ON sp.id = p.package_id
+
+    WHERE p.id = $1
+    `,
+    [profileId],
+  );
+
+  return result.rows[0];
+};
+
+export const getReExaminationInfo = async (bookingId: number) => {
+  const profile = await getProfileByBooking(bookingId);
+
+  if (!profile) {
+    return null;
+  }
+
+  const consultation = await getConsultationByProfile(profile.profile_id);
+
+  const sessionInfo = await getNextSessionInfoByBooking(bookingId);
+
+  return {
+    profile,
+    consultation,
+    sessionInfo,
+  };
 };

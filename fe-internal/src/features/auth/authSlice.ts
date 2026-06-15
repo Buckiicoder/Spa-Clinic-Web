@@ -8,6 +8,11 @@ interface StaffUser {
   phone: string
   avatar?: string
   role: 'STAFF' | 'MANAGER' | 'RECEPTION'
+  position:
+    | "Lễ tân"
+    | "Bác sĩ"
+    | "Kỹ thuật viên"
+    | "Quản lý"
 }
 
 interface AuthState {
