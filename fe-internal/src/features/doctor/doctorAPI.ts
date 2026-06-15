@@ -54,3 +54,24 @@ export const updateSessionAPI = (id: number, data: any) =>
 // 🔹 delete session
 export const deleteSessionAPI = (id: number) =>
   api.delete(`/doctor/session/${id}`);
+
+export const getNextSessionInfoAPI = (
+  profileId: number,
+) =>
+  api.get(
+    `/doctor/profile/${profileId}/next-session`,
+  );
+
+export const getReExaminationInfoAPI = (
+  bookingId: number,
+) =>
+  api.get(
+    `/doctor/booking/${bookingId}/re-examination`,
+  );
+
+  export const getNextSessionInfoByBookingAPI = (
+  bookingId: number,
+) =>
+  api.get(
+    `/doctor/booking/${bookingId}/next-session`,
+  );

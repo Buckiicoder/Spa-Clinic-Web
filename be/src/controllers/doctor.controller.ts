@@ -125,10 +125,10 @@ export const createProfile = async (req: Request, res: Response) => {
       doctor_id: doctorId,
     });
 
-    // 🔥 update lại consultation (gắn profile_id)
-    await consultationService.updateConsultation(req.body.booking_id, {
-      profile_id: profile.id,
-    });
+    // // 🔥 update lại consultation (gắn profile_id)
+    // await consultationService.updateConsultation(req.body.booking_id, {
+    //   profile_id: profile.id,
+    // });
 
     const full = await consultationService.getConsultationDetail(
       req.body.booking_id,
@@ -187,7 +187,7 @@ export const createSession = async (req: Request, res: Response) => {
  */
 export const updateSession = async (req: Request, res: Response) => {
   try {
-    const payload = updateConsultationSchema.parse(req.body);
+    const payload = updateSessionSchema.parse(req.body);
     const session = await consultationService.updateServiceSession(
       Number(req.params.id),
       payload,
@@ -207,3 +207,64 @@ export const deleteSession = async (req: Request, res: Response) => {
 
   res.json({ success: true });
 };
+
+export const getNextSessionInfo = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const data =
+      await consultationService.getNextSessionInfo(
+        Number(req.params.profileId),
+      );
+
+    res.json(data);
+  } catch (err: any) {
+    res.status(400).json({
+      message: err.message,
+    });
+  }
+};
+
+export const getReExaminationInfo = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const data =
+      await consultationService.getReExaminationInfo(
+        Number(req.params.bookingId),
+      );
+
+    if (!data) {
+      return res.status(404).json({
+        message: "Profile not found",
+      });
+    }
+
+    res.json(data);
+  } catch (err: any) {
+    res.status(400).json({
+      message: err.message,
+    });
+  }
+};
+
+export const getNextSessionInfoByBooking =
+  async (
+    req: Request,
+    res: Response,
+  ) => {
+    try {
+      const data =
+        await consultationService.getNextSessionInfoByBooking(
+          Number(req.params.bookingId),
+        );
+
+      res.json(data);
+    } catch (err: any) {
+      res.status(400).json({
+        message: err.message,
+      });
+    }
+  };

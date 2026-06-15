@@ -73,9 +73,9 @@ export default function ReceptionDashboard() {
 
     return () => {
       socket.off("booking:created");
-    socket.off("booking:updated");
-    socket.off("booking:deleted");
-      socket.disconnect();
+      socket.off("booking:updated");
+      socket.off("booking:deleted");
+      // socket.disconnect();
     };
   }, [dispatch]);
 

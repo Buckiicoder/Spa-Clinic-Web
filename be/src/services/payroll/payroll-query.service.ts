@@ -77,45 +77,132 @@ export const getStaffTimekeepingSummary = async (
 
   const result = await executor.query(
     `
-    SELECT
+   SELECT
   COUNT(DISTINCT tk.work_date)
     AS attendance_days,
 
-  COUNT(DISTINCT tk.work_date)
-    FILTER (
-      WHERE td.is_full_work = true
-    ) AS full_work_days,
+  COALESCE(
+    SUM(
+      td.work_minutes::numeric
+      /
+      CASE
+        WHEN (
+          EXTRACT(
+            EPOCH FROM (
+              sh.end_time - sh.start_time
+            )
+          ) / 60
+        ) > 480
+        THEN (
+          EXTRACT(
+            EPOCH FROM (
+              sh.end_time - sh.start_time
+            )
+          ) / 60
+        ) - 60
 
-  COALESCE(SUM(td.work_minutes), 0)
-    AS total_work_minutes,
+        WHEN (
+          EXTRACT(
+            EPOCH FROM (
+              sh.end_time - sh.start_time
+            )
+          ) / 60
+        ) > 360
+        THEN (
+          EXTRACT(
+            EPOCH FROM (
+              sh.end_time - sh.start_time
+            )
+          ) / 60
+        ) - 30
 
-  COALESCE(SUM(td.ot_minutes), 0)
-    AS total_ot_minutes,
+        ELSE
+          (
+            EXTRACT(
+              EPOCH FROM (
+                sh.end_time - sh.start_time
+              )
+            ) / 60
+          )
+      END
+    ),
+    0
+  ) AS actual_work_days,
+
+  COALESCE(
+    SUM(td.work_minutes),
+    0
+  ) AS total_work_minutes,
+
+  COALESCE(
+    SUM(td.ot_minutes),
+    0
+  ) AS total_ot_minutes,
 
   ROUND(
-    COALESCE(SUM(td.work_minutes), 0) / 60.0,
+    COALESCE(
+      SUM(td.work_minutes),
+      0
+    ) / 60.0,
     2
   ) AS total_work_hours,
 
   ROUND(
-    COALESCE(SUM(td.ot_minutes), 0) / 60.0,
+    COALESCE(
+      SUM(td.ot_minutes),
+      0
+    ) / 60.0,
     2
   ) AS total_ot_hours,
 
-      ROUND(
-        COALESCE(
-          SUM(
+  ROUND(
+    COALESCE(
+      SUM(
+        CASE
+          WHEN (
             EXTRACT(
               EPOCH FROM (
-                sh.end_time::time
-                - sh.start_time::time
+                sh.end_time - sh.start_time
               )
-            ) / 3600
-          ),
-          0
-        ),
-        2
-      ) AS standard_work_hours
+            ) / 60
+          ) > 480
+          THEN (
+            EXTRACT(
+              EPOCH FROM (
+                sh.end_time - sh.start_time
+              )
+            ) / 60
+          ) - 60
+
+          WHEN (
+            EXTRACT(
+              EPOCH FROM (
+                sh.end_time - sh.start_time
+              )
+            ) / 60
+          ) > 360
+          THEN (
+            EXTRACT(
+              EPOCH FROM (
+                sh.end_time - sh.start_time
+              )
+            ) / 60
+          ) - 30
+
+          ELSE
+            (
+              EXTRACT(
+                EPOCH FROM (
+                  sh.end_time - sh.start_time
+                )
+              ) / 60
+            )
+        END
+      ),
+      0
+    ) / 60.0,
+    2
+  ) AS standard_work_hours
     
     FROM staffs s
 
@@ -317,7 +404,9 @@ export const getStaffAttendanceSummary = async (
   return {
     attendance_days: Number(data?.attendance_days || 0),
 
-    full_work_days: Number(data?.full_work_days || 0),
+    actual_work_days: Number(
+  data?.actual_work_days || 0
+),
 
     actual_work_hours: Number(data?.total_work_hours || 0),
 

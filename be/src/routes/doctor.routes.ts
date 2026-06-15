@@ -22,6 +22,24 @@ router.get(
   consultationController.getMyConsultations,
 );
 
+router.get(
+  "/profile/:profileId/next-session",
+  authStaffMiddleware,
+  consultationController.getNextSessionInfo,
+);
+
+router.get(
+  "/booking/:bookingId/re-examination",
+  authStaffMiddleware,
+  consultationController.getReExaminationInfo,
+);
+
+router.get(
+  "/booking/:bookingId/next-session",
+  authStaffMiddleware,
+  consultationController.getNextSessionInfoByBooking,
+);
+
 // chi tiết
 router.get(
   "/:id",

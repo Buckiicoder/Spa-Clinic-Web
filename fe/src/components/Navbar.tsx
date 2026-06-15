@@ -62,7 +62,7 @@ export default function Navbar() {
   return (
     <div className="">
       {/* ================= NAVBAR ================= */}
-      <header className="fixed top-0 left-0 w-full z-50 bg-[#6F5C4B]/5 backdrop-blur-xl shadow-sm">
+      <header className="fixed top-0 left-0 w-full z-50 bg-[#6F5C4B]/95 backdrop-blur-3xl shadow-sm">
         <nav className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
           {/* Hamburger */}
           <button
@@ -108,24 +108,24 @@ export default function Navbar() {
 
                 <ul
                   className="
-        absolute
-        top-full
-        left-0
-        mt-2
-        w-48
-        bg-white
-        text-gray-700
-        rounded-xl
-        shadow-lg
-        opacity-0
-        invisible
-        translate-y-2
-        group-hover:opacity-100
-        group-hover:visible
-        group-hover:translate-y-0
-        transition-all
-        duration-200
-      "
+                    absolute
+                    top-full
+                    left-0
+                    mt-2
+                    w-48
+                    bg-white
+                    text-gray-700
+                    rounded-xl
+                    shadow-lg
+                    opacity-0
+                    invisible
+                    translate-y-2
+                    group-hover:opacity-100
+                    group-hover:visible
+                    group-hover:translate-y-0
+                    transition-all
+                    duration-200
+                  "
                 >
                   <li className="px-4 py-3 hover:bg-amber-50">
                     <Link to="/beauty">Làm đẹp</Link>
