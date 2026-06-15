@@ -62,7 +62,7 @@ export default function Navbar() {
   return (
     <div className="">
       {/* ================= NAVBAR ================= */}
-      <header className="fixed top-0 left-0 w-full z-50 bg-[#6F5C4B]/95 backdrop-blur-3xl shadow-sm">
+      <header className="fixed top-0 left-0 w-full z-50 bg-[#6F5C4B]/5 backdrop-blur-3xl shadow-sm">
         <nav className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
           {/* Hamburger */}
           <button
