@@ -51,11 +51,11 @@ export default function Navbar({ open, setOpen }: any) {
   const goLogin = useCallback(() => {
     setOpen(false);
     navigate("/login");
-  }, [navigate]);
+  }, [navigate, setOpen]);
 
-  const goProfile = useCallback(() => {
-    navigate("/profile");
-  }, [navigate]);
+  // const goProfile = useCallback(() => {
+  //   navigate("/profile");
+  // }, [navigate]);
 
   /* ================= RENDER ================= */
 

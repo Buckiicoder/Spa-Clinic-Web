@@ -103,10 +103,10 @@ export default function Dashboard() {
     [overview],
   );
 
-  const lowStockProducts = useMemo(
-    () => overview?.products?.low_stock_products ?? [],
-    [overview],
-  );
+  // const lowStockProducts = useMemo(
+  //   () => overview?.products?.low_stock_products ?? [],
+  //   [overview],
+  // );
 
   const revenueStatistics = useMemo(
     () =>
