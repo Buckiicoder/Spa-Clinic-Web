@@ -69,14 +69,14 @@ export const verifyOTP = async (req: Request, res: Response) => {
     const token = await authService.verifyOTPService(contact, otp);
 
     //demo local
-    res.cookie("customerAccessToken", token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-    });
+    // res.cookie("customerAccessToken", token, {
+    //   httpOnly: true,
+    //   secure: false,
+    //   sameSite: "lax",
+    // });
 
     //production
-    // res.cookie("customerAccessToken", token, customerCookieOptions);
+    res.cookie("customerAccessToken", token, customerCookieOptions);
 
     return res.json({
       message: "Xác thực OTP thành công",
@@ -102,15 +102,15 @@ export const customerLogin = async (req: Request, res: Response) => {
     });
 
     // // demo local
-    res.cookie("customerAccessToken", token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 24,
-    });
+    // res.cookie("customerAccessToken", token, {
+    //   httpOnly: true,
+    //   secure: false,
+    //   sameSite: "lax",
+    //   maxAge: 1000 * 60 * 60 * 24,
+    // });
 
     //production
-    // res.cookie("customerAccessToken", token, customerCookieOptions);
+    res.cookie("customerAccessToken", token, customerCookieOptions);
 
     return res.json({ message: "Login success" });
   } catch (err: any) {
@@ -120,10 +120,10 @@ export const customerLogin = async (req: Request, res: Response) => {
 
 export const customerLogout = async (_req: Request, res: Response) => {
   //demo
-  res.clearCookie("customerAccessToken");
+  // res.clearCookie("customerAccessToken");
 
   //production
-  // res.clearCookie("customerAccessToken", customerCookieOptions);
+  res.clearCookie("customerAccessToken", customerCookieOptions);
   return res.json({
     message: "Logout success",
   });
@@ -146,15 +146,15 @@ export const staffLogin = async (req: Request, res: Response) => {
     });
 
     //demo local
-    res.cookie("staffAccessToken", token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 24,
-    });
+    // res.cookie("staffAccessToken", token, {
+    //   httpOnly: true,
+    //   secure: false,
+    //   sameSite: "lax",
+    //   maxAge: 1000 * 60 * 60 * 24,
+    // });
 
     //production
-    // res.cookie("staffAccessToken", token, staffCookieOptions);
+    res.cookie("staffAccessToken", token, staffCookieOptions);
 
     return res.json({ message: "Login success" });
   } catch (err: any) {
@@ -164,10 +164,10 @@ export const staffLogin = async (req: Request, res: Response) => {
 
 export const staffLogout = async (_req: Request, res: Response) => {
   // demo local
-  res.clearCookie("staffAccessToken");
+  // res.clearCookie("staffAccessToken");
 
   //production
-  // res.clearCookie("staffAccessToken", staffCookieOptions);
+  res.clearCookie("staffAccessToken", staffCookieOptions);
   return res.json({
     message: "Logout success",
   });
