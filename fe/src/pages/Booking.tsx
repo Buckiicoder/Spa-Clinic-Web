@@ -63,11 +63,11 @@ export default function Booking() {
     );
   }, [form.date, form.time, form.quantity, dispatch]);
 
-  useEffect(() => {
-    if (!form.date) return;
+  // useEffect(() => {
+  //   if (!form.date) return;
 
-    dispatch(getDayCapacity(form.date));
-  }, [form.date, dispatch]);
+  //   dispatch(getDayCapacity(form.date));
+  // }, [form.date, dispatch]);
 
   useEffect(() => {
     if (!form.date || !form.time) return;
