@@ -109,7 +109,7 @@ export default function Navbar({ open, setOpen }: any) {
             <div className="flex-1 overflow-y-auto scrollbar-hide">
               <ul className="flex flex-col gap-2 text-gray-700 font-medium">
                 {/* Dashboard */}
-                {/* {hasPermission(position, ["Quản lý"]) && ( */}
+                {hasPermission(position, ["Quản lý"]) && (
                 <li className="group relative">
                   <Link
                     to="/trangchu"
@@ -129,7 +129,7 @@ export default function Navbar({ open, setOpen }: any) {
                     </span>
                   )}
                 </li>
-                {/* )} */}
+                )}
 
                 {/* Chấm công */}
                 <li className="group relative">
@@ -153,9 +153,9 @@ export default function Navbar({ open, setOpen }: any) {
                 </li>
 
                 {/* Chấm công */}
-                {/* {hasPermission(position, [
+                {hasPermission(position, [
   "Quản lý",
-]) && ( */}
+]) && (
                 <li className="group relative">
                   <Link
                     to="/timekeepingdaily"
@@ -175,10 +175,10 @@ export default function Navbar({ open, setOpen }: any) {
                     </span>
                   )}
                 </li>
-                {/* )} */}
+                )} 
 
                 {/* Check lịch */}
-                {/* {hasPermission(position, ["Lễ tân", "Quản lý"]) && ( */}
+                {hasPermission(position, ["Lễ tân", "Quản lý"]) && (
                 <li className="group relative">
                   <Link
                     to="/checklich"
@@ -198,10 +198,10 @@ export default function Navbar({ open, setOpen }: any) {
                     </span>
                   )}
                 </li>
-                {/* )} */}
+                )}
 
                 {/* Bác sĩ */}
-                {/* {hasPermission(position, ["Bác sĩ"]) && ( */}
+                {hasPermission(position, ["Bác sĩ"]) && (
                 <li className="group relative">
                   <Link
                     to="/doctor"
@@ -221,12 +221,12 @@ export default function Navbar({ open, setOpen }: any) {
                     </span>
                   )}
                 </li>
-                {/* )} */}
+                )}
 
                 {/* Giảm giá */}
-                {/* {hasPermission(position, [
+                {hasPermission(position, [
   "Quản lý",
-]) && ( */}
+]) && (
                 <li className="group relative">
                   <Link
                     to="/discount"
@@ -246,12 +246,12 @@ export default function Navbar({ open, setOpen }: any) {
                     </span>
                   )}
                 </li>
-                {/* )} */}
+                )} 
 
                 {/* Khách hàng */}
-                {/* {hasPermission(position, [
+                {hasPermission(position, [
   "Quản lý",
-]) && ( */}
+]) && (
                 <li className="group relative">
                   <Link
                     to="/customer"
@@ -271,10 +271,10 @@ export default function Navbar({ open, setOpen }: any) {
                     </span>
                   )}
                 </li>
-                {/* )} */}
+                )} 
 
                 {/* Nhân viên làm dịch vụ */}
-                {/* {hasPermission(position, ["Kỹ thuật viên", "Quản lý"]) && ( */}
+                {hasPermission(position, ["Kỹ thuật viên", "Quản lý"]) && (
                 <li className="group relative">
                   <Link
                     to="/technician"
@@ -294,10 +294,10 @@ export default function Navbar({ open, setOpen }: any) {
                     </span>
                   )}
                 </li>
-                {/* )} */}
+                )} 
 
                 {/* Nhân viên (dropdown) */}
-                {/* {hasPermission(position, ["Quản lý"]) && ( */}
+                {hasPermission(position, ["Quản lý"]) && (
                 <li className="relative">
                   <div
                     onClick={() => toggleMenu("staff")}
@@ -364,9 +364,9 @@ export default function Navbar({ open, setOpen }: any) {
                     </ul>
                   </div>
                 </li>
-                {/* )} */}
+                )} 
 
-                {/* {hasPermission(position, ["Quản lý"]) && ( */}
+                {hasPermission(position, ["Quản lý"]) && (
                 <li className="relative">
                   <div
                     onClick={() => toggleMenu("product")}
@@ -442,10 +442,10 @@ export default function Navbar({ open, setOpen }: any) {
                     </ul>
                   </div>
                 </li>
-                {/* )} */}
+                )} 
 
                 {/* Giảm giá */}
-                {/* {hasPermission(position, ["Quản lý"]) && ( */}
+                {hasPermission(position, ["Quản lý"]) && (
                 <li className="group relative">
                   <Link
                     to="/payment/bill"
@@ -465,7 +465,7 @@ export default function Navbar({ open, setOpen }: any) {
                     </span>
                   )}
                 </li>
-                {/* )} */}
+                )} 
               </ul>
             </div>
 
