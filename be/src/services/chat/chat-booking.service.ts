@@ -103,11 +103,13 @@ export class ChatBookingService {
     const slot = await ChatCapacityService.isSlotAvailable(
       draft.booking_date,
       draft.booking_time,
+      draft.quantity || 1,
     );
 
     if (!slot.available) {
       const suggestions = await ChatCapacityService.suggestSlots(
         draft.booking_date,
+        draft.quantity || 1,
       );
 
       throw new Error(

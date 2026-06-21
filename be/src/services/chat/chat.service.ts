@@ -585,11 +585,13 @@ Nếu thuận tiện mình có thể hỗ trợ đặt lịch soi da và tư v�
           const slotInfo = await ChatCapacityService.isSlotAvailable(
             memory.booking_date,
             memory.booking_time,
+            1
           );
 
           if (!slotInfo.available) {
             const suggestions = await ChatCapacityService.suggestSlots(
               memory.booking_date,
+              1,
             );
 
             return {
