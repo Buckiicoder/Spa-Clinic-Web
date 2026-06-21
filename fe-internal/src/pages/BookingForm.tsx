@@ -11,7 +11,7 @@ import {
   getDayCapacity,
   selectBookingCapacity,
   selectDayCapacity,
-  selectCheckingCapacity,
+  // selectCheckingCapacity,
 } from "../features/internalBooking/bookingSlice";
 import { useSelector } from "react-redux";
 import { useAppDispatch } from "../app/hook";

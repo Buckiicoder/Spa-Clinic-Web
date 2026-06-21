@@ -7,7 +7,7 @@ import {
   createBooking,
   checkBookingCapacity,
   selectBookingCapacity,
-  // getDayCapacity,
+  getDayCapacity,
   selectDayCapacity,
 } from "../features/booking/bookingSlice";
 import {
@@ -63,11 +63,16 @@ export default function Booking() {
     );
   }, [form.date, form.time, form.quantity, dispatch]);
 
-  // useEffect(() => {
-  //   if (!form.date) return;
+  useEffect(() => {
+    if (!form.date) return;
 
-  //   dispatch(getDayCapacity(form.date));
-  // }, [form.date, dispatch]);
+    dispatch(
+      getDayCapacity({
+        bookingDate: form.date,
+        quantity: form.quantity,
+      }),
+    );
+  }, [form.date, form.quantity, dispatch]);
 
   useEffect(() => {
     if (!form.date || !form.time) return;
