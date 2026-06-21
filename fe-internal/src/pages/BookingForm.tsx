@@ -38,7 +38,7 @@ export default function BookingForm() {
   const services = useSelector(selectMiddleServices);
   const capacity = useSelector(selectBookingCapacity);
   const dayCapacity = useSelector(selectDayCapacity);
-  const checkingCapacity = useSelector(selectCheckingCapacity);
+  // const checkingCapacity = useSelector(selectCheckingCapacity);
   const user = useSelector(selectUser);
 
   const [loading, setLoading] = useState(false);

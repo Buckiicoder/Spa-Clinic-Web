@@ -7,7 +7,7 @@ import {
   createBooking,
   checkBookingCapacity,
   selectBookingCapacity,
-  getDayCapacity,
+  // getDayCapacity,
   selectDayCapacity,
 } from "../features/booking/bookingSlice";
 import {
