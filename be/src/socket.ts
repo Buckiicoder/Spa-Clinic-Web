@@ -48,6 +48,10 @@ export const initSocket = (server: http.Server) => {
     socket.on("join-manager", () => {
       socket.join("manager");
     });
+
+    socket.on("join-technician", () => {
+    socket.join("technician");
+  });
   });
 
   return io;

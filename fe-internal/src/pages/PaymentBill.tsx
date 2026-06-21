@@ -50,25 +50,26 @@ export default function PaymentBill() {
   useEffect(() => {
     dispatch(
       fetchPaymentBills({
-        month: currentDate.getMonth() + 1,
-
-        year: currentDate.getFullYear(),
-      }),
-    );
-  }, [dispatch, currentDate]);
-
-  const handleFilter = () => {
-    dispatch(
-      fetchPaymentBills({
         day: selectedDay || undefined,
         month: selectedMonth,
         year: selectedYear,
         status: status || undefined,
       }),
     );
+  }, [dispatch, selectedDay, selectedMonth, selectedYear, status]);
 
-    setPage(1);
-  };
+  // const handleFilter = () => {
+  //   dispatch(
+  //     fetchPaymentBills({
+  //       day: selectedDay || undefined,
+  //       month: selectedMonth,
+  //       year: selectedYear,
+  //       status: status || undefined,
+  //     }),
+  //   );
+
+  //   setPage(1);
+  // };
 
   const filteredPayments = useMemo(() => {
     const keyword = search.toLowerCase();
@@ -182,12 +183,12 @@ export default function PaymentBill() {
               <option value="pending">Chờ thanh toán</option>
             </select>
 
-            <button
+            {/* <button
               onClick={handleFilter}
               className="rounded-xl bg-amber-600 px-5 text-white hover:bg-amber-700"
             >
               Lọc
-            </button>
+            </button> */}
           </div>
         </div>
 

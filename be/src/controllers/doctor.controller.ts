@@ -100,12 +100,13 @@ export const updateConsultation = async (req: Request, res: Response) => {
  */
 export const finishConsultation = async (req: Request, res: Response) => {
   try {
-    const booking = await consultationService.finishConsultation(req.params.id);
+    await consultationService.finishConsultation(req.params.id);
 
     const full = await consultationService.getConsultationDetail(req.params.id);
 
     getIO().to("reception").emit("booking:updated", full);
     getIO().to("doctor").emit("booking:updated", full);
+    getIO().to("manager").emit("booking:updated", full);
 
     res.json(full);
   } catch (err: any) {

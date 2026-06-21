@@ -13,4 +13,5 @@ export const assignTechnicianSchema = z.object({
  */
 export const completeSessionSchema = z.object({
   skin_reaction: z.string().optional(),
+  after_image_url: z.string().optional(),
 });

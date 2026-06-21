@@ -6,8 +6,9 @@ import http from "http";
 import { initSocket } from "./socket.js";
 import "./utils/payroll.cron.js";
 import { startBookingCron } from "./utils/bookingCron.js";
-import { startAutoCheckoutCron } from "./utils/autoCheckoutCron.js";
+import { startAutoCheckoutCron } from "./utils/autoCheckout.cron.js";
 import { startCronJobs } from "./utils/autoCompleteZalo.js";
+import { startAutoAssignFulltimeOffCron } from "./utils/autoAssignFtOff.cron.js";
 // import { start } from "repl";
 
 const server = http.createServer(app);
@@ -23,6 +24,7 @@ const startServer = async () => {
       startBookingCron();
       startAutoCheckoutCron();
       startCronJobs();
+      startAutoAssignFulltimeOffCron();
     });
   } catch (err) {
     console.error("❌ Server aborted due to DB error");

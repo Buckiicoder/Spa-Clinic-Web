@@ -13,6 +13,7 @@ import {
   vnpayReturn,
   createZaloPayPayment,
   zalopayCallback,
+  // queryZaloPayStatus
 } from "../controllers/payment.controller.js";
 
 const router = Router();
@@ -45,5 +46,10 @@ router.get("/vnpay-return", vnpayReturn);
 router.post("/zalopay/create", createZaloPayPayment);
 
 router.post("/zalopay/callback", zalopayCallback);
+
+// router.get(
+//  "/zalopay/query/:appTransId",
+//  queryZaloPayStatus,
+// );
 
 export default router;

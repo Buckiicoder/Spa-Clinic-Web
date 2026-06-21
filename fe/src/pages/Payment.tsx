@@ -29,7 +29,8 @@ import {
   selectPaymentCustomerInfo,
   selectPaymentSummary,
   fetchPaymentSummaryByProfile,
-  // createVNPayPayment,
+  createVNPayPayment,
+  // selectVNPayPaymentUrl,
   createZaloPayPayment,
   // selectZaloPayOrderUrl,
 } from "../features/payment/paymentSlice";
@@ -61,7 +62,7 @@ export default function Payment() {
     useState<CustomerUnpaidProfile | null>(null);
 
   const [paymentMethod, setPaymentMethod] = useState<
-    "CASH" | "BANK_TRANSFER" | "MOMO" | "ZALOPAY"
+    "CASH" | "BANK_TRANSFER" | "VNPAY" | "ZALOPAY"
   >("CASH");
 
   const [paidAmount, setPaidAmount] = useState<number>(0);
@@ -107,18 +108,24 @@ export default function Payment() {
     if (!selectedProfile) return;
 
     dispatch(fetchAvailableDiscounts(Number(selectedProfile.profile_id)));
-
     dispatch(fetchPaymentSummaryByProfile(Number(selectedProfile.profile_id)));
 
-    dispatch(
-      calculatePaymentDiscount({
-        profile_id: selectedProfile.profile_id,
-
-        discount_id: selectedDiscount?.id,
-      }),
-    );
-  }, [dispatch, selectedProfile, selectedDiscount]);
-
+    if (!paymentSummaryData?.id && selectedProfile) {
+  dispatch(
+    calculatePaymentDiscount({
+      profile_id: selectedProfile.profile_id,
+      discount_id: selectedDiscount?.id,
+    }),
+  );
+}
+  }, [
+    dispatch,
+    selectedProfile,
+    selectedDiscount,
+    paymentSummaryData?.final_amount,
+    paymentSummaryData?.id
+  ]);
+  
   const paymentMethods = [
     {
       key: "CASH",
@@ -133,8 +140,8 @@ export default function Payment() {
     },
 
     {
-      key: "MOMO",
-      label: "MoMo",
+      key: "VNPAY",
+      label: "VNPay",
       icon: Wallet,
     },
 
@@ -145,50 +152,64 @@ export default function Payment() {
     },
   ];
 
-  const paymentSummary = useMemo<{
-    subtotal: number;
-    discount: number;
-    final: number;
-    paid: number;
-    remaining: number;
-  }>(() => {
-    return {
-      subtotal:
-        calculation?.subtotal_amount ||
-        Number(
-          paymentSummaryData?.subtotal_amount ||
-            selectedProfile?.package_price ||
-            0,
-        ),
+  const paymentSummary = useMemo(() => {
+    // ===============================
+    // CASE 1: ĐÃ CÓ PAYMENT TRONG DB
+    // => TUYỆT ĐỐI TRUST BACKEND
+    // ===============================
+    if (paymentSummaryData?.id) {
+      const subtotal = Number(paymentSummaryData.subtotal_amount || 0);
+      const discount = Number(paymentSummaryData.discount_amount || 0);
+      const final = Number(paymentSummaryData.final_amount || 0);
 
-      discount:
-        calculation?.discount_amount ||
-        Number(paymentSummaryData?.discount_amount || 0),
-
-      final:
-        calculation?.final_amount ||
-        Number(
-          paymentSummaryData?.final_amount ||
-            selectedProfile?.package_price ||
-            0,
-        ),
-
-      paid: Number(paymentSummaryData?.paid_amount || 0),
-
-      remaining: Number(
-        paymentSummaryData?.remaining_amount ||
-          calculation?.final_amount ||
-          selectedProfile?.package_price ||
+      const paid =
+        paymentSummaryData.transactions?.reduce(
+          (sum: number, t: any) => sum + Number(t.amount || 0),
           0,
-      ),
+        ) || Number(paymentSummaryData.paid_amount || 0);
+
+      return {
+        subtotal,
+        discount,
+        final,
+        paid,
+        remaining: Math.max(final - paid, 0),
+      };
+    }
+
+    // ===============================
+    // CASE 2: CHƯA PAYMENT (MỚI TẠO)
+    // ===============================
+    const subtotal =
+      Number(calculation?.subtotal_amount) ||
+      Number(selectedProfile?.package_price) ||
+      0;
+
+    const discount = Number(calculation?.discount_amount || 0);
+
+    const final = subtotal - discount;
+
+    return {
+      subtotal,
+      discount,
+      final,
+      paid: 0,
+      remaining: final,
     };
-  }, [calculation, selectedProfile, paymentSummaryData]);
+  }, [paymentSummaryData, calculation, selectedProfile]);
 
   useEffect(() => {
-    if (paymentSummary.remaining > 0) {
-      setPaidAmount(paymentSummary.remaining);
-    }
-  }, [paymentSummary.remaining]);
+  if (!selectedProfile) return;
+
+  const remaining = paymentSummary.remaining;
+
+  // chỉ set default 1 lần khi đổi profile
+  setPaidAmount((prev) => {
+    // nếu user đã sửa tay thì KHÔNG override nữa
+    if (prev > 0 && prev !== remaining) return prev;
+    return remaining;
+  });
+}, [selectedProfile?.profile_id, paymentSummary.remaining]);
 
   useEffect(() => {
     setPage(1);
@@ -198,7 +219,11 @@ export default function Payment() {
 
   const paginatedProfiles = profileList.slice((page - 1) * limit, page * limit);
 
-  const zaloPayAmount = paymentSummary.remaining;
+  // const zaloPayAmount = paymentSummary.remaining;
+
+  const gatewayAmount = useMemo(() => {
+  return Number(paidAmount || 0);
+}, [paidAmount]);
 
   const formatPrice = (value: number) => {
     return (
@@ -242,6 +267,32 @@ export default function Payment() {
     }
   };
 
+  const handleVNPayPayment = async () => {
+    if (!selectedProfile) return;
+
+    try {
+      const result = await dispatch(
+        createVNPayPayment({
+          profile_id: Number(selectedProfile.profile_id),
+          discount_id: selectedDiscount?.id,
+          amount: paidAmount,
+          source: "customer",
+        }),
+      ).unwrap();
+
+      if (result?.paymentUrl) {
+        window.location.href = result.paymentUrl;
+        return;
+      }
+
+      throw new Error("Không tạo được link VNPay");
+    } catch (err: any) {
+      console.error(err);
+
+      alert(err?.message || "Khởi tạo thanh toán VNPay thất bại");
+    }
+  };
+
   const handleCreatePayment = async () => {
     if (!selectedProfile) return;
 
@@ -257,6 +308,10 @@ export default function Payment() {
 
     if (paymentMethod === "ZALOPAY") {
       return handleZaloPayPayment();
+    }
+
+    if (paymentMethod === "VNPAY") {
+      return handleVNPayPayment();
     }
 
     try {
@@ -457,8 +512,8 @@ export default function Payment() {
                             <td className="p-3 font-semibold text-amber-700">
                               {formatPrice(
                                 Number(
-                                  item.remaining_amount || item.package_price,
-                                ),
+                                  item.final_amount || item.package_price,
+                                ) - Number(item.paid_amount || 0),
                               )}
                             </td>
                           </tr>
@@ -739,7 +794,6 @@ export default function Payment() {
 
                 <input
                   type="number"
-                  disabled={paymentMethod === "ZALOPAY"}
                   value={paidAmount}
                   onChange={(e) => setPaidAmount(Number(e.target.value))}
                   className="h-12 w-full rounded-2xl border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
@@ -767,7 +821,7 @@ export default function Payment() {
                   <div className="flex flex-col items-center gap-4">
                     <div className="flex h-52 w-52 items-center justify-center rounded-2xl border border-gray-200 bg-white">
                       <img
-                        src="../public/z7890128759983_fed34790b398a5823c444e4bf5f8ed7e.jpg"
+                        src="../../public/z7890128759983_fed34790b398a5823c444e4bf5f8ed7e.jpg"
                         alt=""
                       />
                     </div>
@@ -808,9 +862,33 @@ export default function Payment() {
                         </p>
 
                         <p className="mt-1 text-2xl font-bold text-red-600">
-                          {formatPrice(zaloPayAmount)}
+                          {formatPrice(gatewayAmount)}
                         </p>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === "VNPAY" && (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+                  <div className="text-center">
+                    <h3 className="font-bold text-blue-700">
+                      Thanh toán qua VNPay
+                    </h3>
+
+                    <p className="mt-2 text-sm text-gray-600">
+                      Bạn sẽ được chuyển đến cổng thanh toán VNPay.
+                    </p>
+
+                    <div className="mt-4 rounded-xl bg-white p-4 border">
+                      <p className="text-xs text-gray-500">
+                        Số tiền thanh toán
+                      </p>
+
+                      <p className="mt-1 text-2xl font-bold text-red-600">
+                        {formatPrice(gatewayAmount)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -869,10 +947,12 @@ export default function Payment() {
                 className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-amber-700 text-sm font-semibold text-white transition hover:bg-black"
               >
                 {redirectingZaloPay
-                  ? "Đang chuyển đến Zalopay..."
+                  ? "Đang chuyển..."
                   : paymentMethod === "ZALOPAY"
                     ? "Thanh toán qua Zalopay"
-                    : "Xác nhận thanh toán"}
+                    : paymentMethod === "VNPAY"
+                      ? "Thanh toán qua VNPay"
+                      : "Xác nhận thanh toán"}
               </button>
             </div>
           </div>

@@ -28,6 +28,9 @@ export interface InventoryTransactionPayload {
   total_extra_cost?: number;
   transaction_date?: string;
 
+  issued_by?: number;
+  received_by?: number;
+
   items: {
     product_id: number;
     quantity: number;

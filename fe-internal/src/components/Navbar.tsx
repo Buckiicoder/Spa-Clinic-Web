@@ -109,27 +109,28 @@ export default function Navbar({ open, setOpen }: any) {
             <div className="flex-1 overflow-y-auto scrollbar-hide">
               <ul className="flex flex-col gap-2 text-gray-700 font-medium">
                 {/* Dashboard */}
-                {hasPermission(position, ["Quản lý"]) && (
-                  <li className="group relative">
-                    <Link
-                      to="/trangchu"
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
-                    >
-                      <LayoutDashboard size={18} />
-                      {open && <span>Dashboard</span>}
-                    </Link>
+                {/* {hasPermission(position, ["Quản lý"]) && ( */}
+                <li className="group relative">
+                  <Link
+                    to="/trangchu"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
+                  >
+                    <LayoutDashboard size={18} />
+                    {open && <span>Dashboard</span>}
+                  </Link>
 
-                    {!open && (
-                      <span
-                        className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
+                  {!open && (
+                    <span
+                      className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
       bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 
       group-hover:opacity-100 transition whitespace-nowrap"
-                      >
-                        Dashboard
-                      </span>
-                    )}
-                  </li>
-                )}
+                    >
+                      Dashboard
+                    </span>
+                  )}
+                </li>
+                {/* )} */}
+
                 {/* Chấm công */}
                 <li className="group relative">
                   <Link
@@ -152,9 +153,9 @@ export default function Navbar({ open, setOpen }: any) {
                 </li>
 
                 {/* Chấm công */}
-                {hasPermission(position, [
+                {/* {hasPermission(position, [
   "Quản lý",
-]) && (
+]) && ( */}
                 <li className="group relative">
                   <Link
                     to="/timekeepingdaily"
@@ -174,57 +175,58 @@ export default function Navbar({ open, setOpen }: any) {
                     </span>
                   )}
                 </li>
-)}
-                {/* Check lịch */}
-                {hasPermission(position, ["Lễ tân", "Quản lý"]) && (
-                  <li className="group relative">
-                    <Link
-                      to="/checklich"
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
-                    >
-                      <CalendarCheck size={18} />
-                      {open && <span>Quản lý đặt lịch</span>}
-                    </Link>
+                {/* )} */}
 
-                    {!open && (
-                      <span
-                        className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
+                {/* Check lịch */}
+                {/* {hasPermission(position, ["Lễ tân", "Quản lý"]) && ( */}
+                <li className="group relative">
+                  <Link
+                    to="/checklich"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
+                  >
+                    <CalendarCheck size={18} />
+                    {open && <span>Quản lý đặt lịch</span>}
+                  </Link>
+
+                  {!open && (
+                    <span
+                      className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
       bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 
       group-hover:opacity-100 transition whitespace-nowrap"
-                      >
-                        Check lịch
-                      </span>
-                    )}
-                  </li>
-                )}
+                    >
+                      Check lịch
+                    </span>
+                  )}
+                </li>
+                {/* )} */}
 
                 {/* Bác sĩ */}
-                {hasPermission(position, ["Bác sĩ"]) && (
-                  <li className="group relative">
-                    <Link
-                      to="/doctor"
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
-                    >
-                      <BriefcaseMedical size={18} />
-                      {open && <span>Bác sĩ</span>}
-                    </Link>
+                {/* {hasPermission(position, ["Bác sĩ"]) && ( */}
+                <li className="group relative">
+                  <Link
+                    to="/doctor"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
+                  >
+                    <BriefcaseMedical size={18} />
+                    {open && <span>Bác sĩ</span>}
+                  </Link>
 
-                    {!open && (
-                      <span
-                        className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
+                  {!open && (
+                    <span
+                      className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
       bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 
       group-hover:opacity-100 transition whitespace-nowrap"
-                      >
-                        Bác sĩ
-                      </span>
-                    )}
-                  </li>
-                )}
+                    >
+                      Bác sĩ
+                    </span>
+                  )}
+                </li>
+                {/* )} */}
 
                 {/* Giảm giá */}
-                {hasPermission(position, [
+                {/* {hasPermission(position, [
   "Quản lý",
-]) && (
+]) && ( */}
                 <li className="group relative">
                   <Link
                     to="/discount"
@@ -244,12 +246,12 @@ export default function Navbar({ open, setOpen }: any) {
                     </span>
                   )}
                 </li>
-)}
+                {/* )} */}
 
                 {/* Khách hàng */}
-                {hasPermission(position, [
+                {/* {hasPermission(position, [
   "Quản lý",
-]) && (
+]) && ( */}
                 <li className="group relative">
                   <Link
                     to="/customer"
@@ -269,167 +271,167 @@ export default function Navbar({ open, setOpen }: any) {
                     </span>
                   )}
                 </li>
-)}
+                {/* )} */}
 
                 {/* Nhân viên làm dịch vụ */}
-                {hasPermission(position, ["Kỹ thuật viên", "Quản lý"]) && (
-                  <li className="group relative">
-                    <Link
-                      to="/technician"
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
-                    >
-                      <MonitorCog size={18} />
-                      {open && <span>Nhân viên làm dịch vụ</span>}
-                    </Link>
+                {/* {hasPermission(position, ["Kỹ thuật viên", "Quản lý"]) && ( */}
+                <li className="group relative">
+                  <Link
+                    to="/technician"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
+                  >
+                    <MonitorCog size={18} />
+                    {open && <span>Nhân viên làm dịch vụ</span>}
+                  </Link>
 
-                    {!open && (
-                      <span
-                        className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
+                  {!open && (
+                    <span
+                      className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
       bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 
       group-hover:opacity-100 transition whitespace-nowrap"
-                      >
-                        Khách hàng
-                      </span>
-                    )}
-                  </li>
-                )}
+                    >
+                      Khách hàng
+                    </span>
+                  )}
+                </li>
+                {/* )} */}
 
                 {/* Nhân viên (dropdown) */}
-                {hasPermission(position, ["Quản lý"]) && (
-                  <li className="relative">
-                    <div
-                      onClick={() => toggleMenu("staff")}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-amber-50 cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Users size={18} />
-                        {open && <span>Nhân viên</span>}
-                      </div>
-
-                      {open && (
-                        <ChevronDown
-                          size={16}
-                          className={`transition-transform duration-300 ${
-                            openMenu === "staff" ? "rotate-180" : ""
-                          }`}
-                        />
-                      )}
+                {/* {hasPermission(position, ["Quản lý"]) && ( */}
+                <li className="relative">
+                  <div
+                    onClick={() => toggleMenu("staff")}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-amber-50 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Users size={18} />
+                      {open && <span>Nhân viên</span>}
                     </div>
 
-                    {/* SUB MENU */}
-                    <div
-                      className={`
+                    {open && (
+                      <ChevronDown
+                        size={16}
+                        className={`transition-transform duration-300 ${
+                          openMenu === "staff" ? "rotate-180" : ""
+                        }`}
+                      />
+                    )}
+                  </div>
+
+                  {/* SUB MENU */}
+                  <div
+                    className={`
       overflow-hidden transition-all duration-300
       ${openMenu === "staff" ? "max-h-40 mt-1" : "max-h-0"}
     `}
-                    >
-                      <ul className="ml-8 flex flex-col gap-1 text-sm">
-                        <li>
-                          <Link
-                            to="/qlynhanvien"
-                            className="block px-3 py-2 rounded-lg hover:bg-amber-50"
-                          >
-                            Thông tin
-                          </Link>
-                        </li>
+                  >
+                    <ul className="ml-8 flex flex-col gap-1 text-sm">
+                      <li>
+                        <Link
+                          to="/qlynhanvien"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Thông tin
+                        </Link>
+                      </li>
 
-                        <li>
-                          <Link
-                            to="/qlychamcong"
-                            className="block px-3 py-2 rounded-lg hover:bg-amber-50"
-                          >
-                            Chấm công
-                          </Link>
-                        </li>
+                      <li>
+                        <Link
+                          to="/qlychamcong"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Chấm công
+                        </Link>
+                      </li>
 
-                        <li>
-                          <Link
-                            to="/manager-assign"
-                            className="block px-3 py-2 rounded-lg hover:bg-amber-50"
-                          >
-                            Gán ca làm khách
-                          </Link>
-                        </li>
+                      <li>
+                        <Link
+                          to="/manager-assign"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Gán ca làm khách
+                        </Link>
+                      </li>
 
-                        <li>
-                          <Link
-                            to="/payroll"
-                            className="block px-3 py-2 rounded-lg hover:bg-amber-50"
-                          >
-                            Bảng lương
-                          </Link>
-                        </li>
-                      </ul>
-                    </div>
-                  </li>
-                )}
+                      <li>
+                        <Link
+                          to="/payroll"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Bảng lương
+                        </Link>
+                      </li>
+                    </ul>
+                  </div>
+                </li>
+                {/* )} */}
 
-                {hasPermission(position, ["Quản lý"]) && (
-                  <li className="relative">
-                    <div
-                      onClick={() => toggleMenu("product")}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-amber-50 cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <ShoppingBasket size={18} />
-                        {open && <span>Sản phẩm & Dịch vụ</span>}
-                      </div>
-
-                      {open && (
-                        <ChevronDown
-                          size={16}
-                          className={`transition-transform duration-300 ${
-                            openMenu === "product" ? "rotate-180" : ""
-                          }`}
-                        />
-                      )}
+                {/* {hasPermission(position, ["Quản lý"]) && ( */}
+                <li className="relative">
+                  <div
+                    onClick={() => toggleMenu("product")}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-amber-50 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <ShoppingBasket size={18} />
+                      {open && <span>Sản phẩm & Dịch vụ</span>}
                     </div>
 
-                    {/* SUB MENU */}
-                    <div
-                      className={`
+                    {open && (
+                      <ChevronDown
+                        size={16}
+                        className={`transition-transform duration-300 ${
+                          openMenu === "product" ? "rotate-180" : ""
+                        }`}
+                      />
+                    )}
+                  </div>
+
+                  {/* SUB MENU */}
+                  <div
+                    className={`
       overflow-hidden transition-all duration-300
       ${openMenu === "product" ? "max-h-40 mt-1" : "max-h-0"}
     `}
-                    >
-                      <ul className="ml-8 flex flex-col gap-1 text-sm font-medium">
-                        <li>
-                          <Link
-                            to="/product"
-                            className="block px-3 py-2 rounded-lg hover:bg-amber-50"
-                          >
-                            Sản phẩm
-                          </Link>
-                        </li>
+                  >
+                    <ul className="ml-8 flex flex-col gap-1 text-sm font-medium">
+                      <li>
+                        <Link
+                          to="/product"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Sản phẩm
+                        </Link>
+                      </li>
 
-                        <li>
-                          <Link
-                            to="/service"
-                            className="block px-3 py-2 rounded-lg hover:bg-amber-50"
-                          >
-                            Dịch vụ
-                          </Link>
-                        </li>
+                      <li>
+                        <Link
+                          to="/service"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Dịch vụ
+                        </Link>
+                      </li>
 
-                        <li>
-                          <Link
-                            to="/treatment"
-                            className="block px-3 py-2 rounded-lg hover:bg-amber-50"
-                          >
-                            Quy trình liệu trình
-                          </Link>
-                        </li>
+                      <li>
+                        <Link
+                          to="/treatment"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Quy trình liệu trình
+                        </Link>
+                      </li>
 
-                        <li>
-                          <Link
-                            to="/inventory"
-                            className="block px-3 py-2 rounded-lg hover:bg-amber-50"
-                          >
-                            Nhập kho
-                          </Link>
-                        </li>
+                      <li>
+                        <Link
+                          to="/inventory"
+                          className="block px-3 py-2 rounded-lg hover:bg-amber-50"
+                        >
+                          Nhập kho
+                        </Link>
+                      </li>
 
-                        {/* <li>
+                      {/* <li>
                         <Link
                           to="/staff/payroll"
                           className="block px-3 py-2 rounded-lg hover:bg-amber-50"
@@ -437,33 +439,33 @@ export default function Navbar({ open, setOpen }: any) {
                           ???
                         </Link>
                       </li> */}
-                      </ul>
-                    </div>
-                  </li>
-                )}
+                    </ul>
+                  </div>
+                </li>
+                {/* )} */}
 
                 {/* Giảm giá */}
-                {hasPermission(position, ["Quản lý"]) && (
-                  <li className="group relative">
-                    <Link
-                      to="/payment/bill"
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
-                    >
-                      <PaperclipIcon size={18} />
-                      {open && <span>Quản lý hóa đơn</span>}
-                    </Link>
+                {/* {hasPermission(position, ["Quản lý"]) && ( */}
+                <li className="group relative">
+                  <Link
+                    to="/payment/bill"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-amber-50"
+                  >
+                    <PaperclipIcon size={18} />
+                    {open && <span>Quản lý hóa đơn</span>}
+                  </Link>
 
-                    {!open && (
-                      <span
-                        className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
+                  {!open && (
+                    <span
+                      className="absolute left-full ml-2 top-1/2 -translate-y-1/2 
       bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 
       group-hover:opacity-100 transition whitespace-nowrap"
-                      >
-                        Quản lý hóa đơn
-                      </span>
-                    )}
-                  </li>
-                )}
+                    >
+                      Quản lý hóa đơn
+                    </span>
+                  )}
+                </li>
+                {/* )} */}
               </ul>
             </div>
 

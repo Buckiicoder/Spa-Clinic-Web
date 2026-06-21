@@ -10,6 +10,8 @@ export const startSessionTracking = async (req: Request, res: Response) => {
   try {
     const sessionId = Number(req.params.id);
 
+    const { before_image_url } = req.body;
+
     const technicianId = req.user.id;
 
     const session = await trackingService.getSessionById(sessionId);
@@ -41,7 +43,10 @@ export const startSessionTracking = async (req: Request, res: Response) => {
       return res.json(existingTracking);
     }
 
-    await trackingService.updateSessionToInProgress(sessionId);
+    await trackingService.updateSessionToInProgress(
+      sessionId,
+      before_image_url,
+    );
 
     const tracking = await trackingService.createTrackingStep(
       sessionId,
@@ -247,6 +252,57 @@ export const pauseSessionTracking = async (req: Request, res: Response) => {
   }
 };
 
+export const checkPauseTimeout = async (req: Request, res: Response) => {
+  try {
+    const sessionId = Number(req.params.id);
+
+    const session = await trackingService.isPauseExpired(sessionId);
+
+    return res.json({
+      expired: session.expired,
+      pause_expired_at: session.pause_expired_at,
+    });
+  } catch (err: any) {
+    return res.status(400).json({
+      message: err.message,
+    });
+  }
+};
+
+export const stopAfterPauseTimeout = async (req: Request, res: Response) => {
+  try {
+    const sessionId = Number(req.params.id);
+
+    await trackingService.completeCurrentTrackingForSession(sessionId);
+
+    const totalDuration =
+      await trackingService.getSessionTotalDuration(sessionId);
+
+    const session = await trackingService.closeSessionAfterPauseTimeout(
+      sessionId,
+      totalDuration,
+    );
+
+    getIO().to("manager").emit("tracking:session_completed", session);
+
+    getIO().to("technician").emit("tracking:session_completed", session);
+
+    getIO().to("manager").emit(
+  "session:updated",
+);
+
+getIO().to("technician").emit(
+  "session:updated",
+);
+
+    return res.json(session);
+  } catch (err: any) {
+    return res.status(400).json({
+      message: err.message,
+    });
+  }
+};
+
 export const resumeSessionTracking = async (req: Request, res: Response) => {
   try {
     const sessionId = Number(req.params.id);
@@ -262,6 +318,14 @@ export const resumeSessionTracking = async (req: Request, res: Response) => {
     if (session.status !== "paused") {
       return res.status(400).json({
         message: "Session is not paused",
+      });
+    }
+
+    const pauseInfo = await trackingService.isPauseExpired(sessionId);
+
+    if (pauseInfo.expired) {
+      return res.status(400).json({
+        message: "Pause timeout exceeded",
       });
     }
 
@@ -344,3 +408,20 @@ export const getRealtimeTrackingDetail = async (
     });
   }
 };
+
+export const uploadTrackingImage =
+  async (
+    req: Request,
+    res: Response,
+  ) => {
+    if (!req.file) {
+      return res.status(400).json({
+        message:
+          "Không tìm thấy ảnh",
+      });
+    }
+
+    return res.json({
+       image_url: `/uploads/${req.file.filename}`,
+    });
+  };

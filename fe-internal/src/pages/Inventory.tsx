@@ -9,6 +9,7 @@ import {
   // X,
   // Trash2,
   // Plus,
+  Package2Icon
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../app/hook";
 import {
@@ -21,12 +22,16 @@ import {
   selectInventoryTransactionLoading,
   selectInventoryTransactions,
 } from "../features/inventoryTransaction/inventoryTransactionSlice";
+import { fetchTechnicians } from "../features/technician/technicianSlice";
+import ExportInventoryModal from "../modal/ExportInventoryModal";
 import { formatPrice } from "../features/product/productFunction";
 import InventoryModal from "../modal/InventoryModal";
+import { selectUser } from "../features/auth/authSlice";
 
 export default function Inventory() {
   const dispatch = useAppDispatch();
 
+  const user = useAppSelector(selectUser);
   const transactions = useAppSelector(selectInventoryTransactions);
   const loading = useAppSelector(selectInventoryTransactionLoading);
 
@@ -40,11 +45,23 @@ export default function Inventory() {
   const [yearFilter, setYearFilter] = useState("ALL");
 
   const [openModal, setOpenModal] = useState(false);
+  const [openExportModal, setOpenExportModal] = useState(false);
+
+  // const [staffList, setStaffList] = useState<any[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
 
   useEffect(() => {
     dispatch(fetchInventoryTransactions());
+    dispatch(fetchTechnicians());
   }, [dispatch]);
+
+  const technicians = useAppSelector((state: any) => state.staff.technicians);
+
+  useEffect(() => {
+    if (technicians?.length) {
+      // setStaffList(technicians);
+    }
+  }, [technicians]);
 
   const years = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -99,16 +116,29 @@ export default function Inventory() {
             </p>
           </div>
 
-          <button
-            onClick={() => {
-              setSelectedTransaction(null);
-              setOpenModal(true);
-            }}
-            className="flex items-center gap-2 rounded-xl bg-amber-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
-          >
-            <PackagePlus size={18} />
-            Nhập kho
-          </button>
+          <div className="flex items-center gap-3 md:justify-end">
+            <button
+              onClick={() => {
+                setSelectedTransaction(null);
+                setOpenModal(true);
+              }}
+              className="flex items-center gap-2 rounded-xl bg-amber-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
+            >
+              <PackagePlus size={18} />
+              Nhập kho
+            </button>
+
+            <button
+              onClick={() => {
+                setSelectedTransaction(null);
+                setOpenExportModal(true);
+              }}
+              className="flex items-center gap-2 rounded-xl bg-amber-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
+            >
+              <Package2Icon size={18} />
+              Xuất kho
+            </button>
+          </div>
         </div>
 
         {/* Filter */}
@@ -239,6 +269,8 @@ export default function Inventory() {
                   <th className="p-4 text-left">Ngày tạo</th>
                   <th className="p-4 text-left">Ngày giao dịch</th>
                   <th className="p-4 text-left">Chi phí phát sinh</th>
+                  <th className="p-4 text-left">Người xuất</th>
+                  <th className="p-4 text-left">Người nhận</th>
                   <th className="p-4 text-left">Ghi chú</th>
                   <th className="p-4 text-left">Hành động</th>
                 </tr>
@@ -257,7 +289,12 @@ export default function Inventory() {
                           ).unwrap();
 
                           setSelectedTransaction(result);
-                          setOpenModal(true);
+
+                          if (result.type === "IMPORT") {
+                            setOpenModal(true);
+                          } else if (result.type === "EXPORT") {
+                            setOpenExportModal(true);
+                          }
                         } catch (err) {
                           console.error(err);
                         }
@@ -315,6 +352,14 @@ export default function Inventory() {
                         {formatPrice(item.total_extra_cost || 0)}
                       </td>
 
+                      <td className="p-4 text-gray-600">
+                        {item.issued_by_name || "-"}
+                      </td>
+
+                      <td className="p-4 text-gray-600">
+                        {item.received_by_name || "-"}
+                      </td>
+
                       <td className="max-w-[260px] p-4 text-gray-500">
                         <div className="truncate">
                           {item.note || "Không có"}
@@ -332,7 +377,11 @@ export default function Inventory() {
                               ).unwrap();
 
                               setSelectedTransaction(result);
-                              setOpenModal(true);
+                              if (result.type === "IMPORT") {
+                                setOpenModal(true);
+                              } else {
+                                setOpenExportModal(true);
+                              }
                             }}
                             className="rounded-lg bg-amber-500 px-3 py-1 text-xs text-white"
                           >
@@ -460,6 +509,51 @@ export default function Inventory() {
           setOpenModal(false);
           setSelectedTransaction(null);
         }}
+        onSubmit={async (data) => {
+          if (selectedTransaction) {
+            await dispatch(
+              updateInventoryTransaction({
+                id: selectedTransaction.id,
+                data,
+              }),
+            ).unwrap();
+          } else {
+            await dispatch(createInventoryTransaction(data)).unwrap();
+          }
+
+          await dispatch(fetchInventoryTransactions());
+        }}
+        onConfirm={async (data, transactionId) => {
+          let transaction;
+
+          if (transactionId) {
+            transaction = await dispatch(
+              updateInventoryTransaction({
+                id: transactionId,
+                data,
+              }),
+            ).unwrap();
+          } else {
+            transaction = await dispatch(
+              createInventoryTransaction(data),
+            ).unwrap();
+          }
+
+          await dispatch(confirmInventoryTransaction(transaction.id)).unwrap();
+
+          await dispatch(fetchInventoryTransactions());
+        }}
+      />
+
+      <ExportInventoryModal
+        open={openExportModal}
+        onClose={() => {
+          setOpenExportModal(false);
+          setSelectedTransaction(null);
+        }}
+        initialData={selectedTransaction}
+        currentUserId={user.id}
+        // staffList={staffList}
         onSubmit={async (data) => {
           if (selectedTransaction) {
             await dispatch(

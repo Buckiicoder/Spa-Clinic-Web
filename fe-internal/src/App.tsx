@@ -28,7 +28,8 @@ import Payment from "./pages/Payment";
 import Customer from "./pages/Customer";
 import PaymentBill from "./pages/PaymentBill";
 import BillDetail from "./pages/BillDetail";
-import RoleRoute from "./utils/RoleRoute";
+// import RoleRoute from "./utils/RoleRoute";
+import PaymentResult from "./pages/PaymentResult";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -59,9 +60,9 @@ export default function App() {
             path="/trangchu"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Quản lý"]}>
-                  <Dashboard />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Quản lý"]}> */}
+                <Dashboard />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />
@@ -77,9 +78,9 @@ export default function App() {
             path="/qlychamcong"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Quản lý"]}>
-                  <TimeKeepingManage />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Quản lý"]}> */}
+                <TimeKeepingManage />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />
@@ -95,19 +96,22 @@ export default function App() {
             path="/qlynhanvien"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Quản lý"]}>
-                  <StaffManage />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Quản lý"]}> */}
+                <StaffManage />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />
+          
+          <Route path="/payment/result" element={<PaymentResult />} />
+
           <Route
             path="/checklich"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Lễ tân", "Quản lý"]}>
-                  <ReceptionDashboard />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Lễ tân", "Quản lý"]}> */}
+                <ReceptionDashboard />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />
@@ -131,9 +135,9 @@ export default function App() {
             path="/product"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Quản lý"]}>
-                  <Product />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Quản lý"]}> */}
+                <Product />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />
@@ -141,9 +145,9 @@ export default function App() {
             path="/customer"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Quản lý"]}>
-                  <Customer />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Quản lý"]}> */}
+                <Customer />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />
@@ -151,9 +155,9 @@ export default function App() {
             path="/service"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Quản lý"]}>
-                  <Service />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Quản lý"]}> */}
+                <Service />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />
@@ -161,9 +165,9 @@ export default function App() {
             path="/treatment"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Quản lý"]}>
-                  <Treatment />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Quản lý"]}> */}
+                <Treatment />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />
@@ -171,9 +175,9 @@ export default function App() {
             path="/inventory"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Quản lý"]}>
-                  <Inventory />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Quản lý"]}> */}
+                <Inventory />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />
@@ -181,29 +185,30 @@ export default function App() {
             path="/doctor"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Bác sĩ", "Quản lý"]}>
-                  <Doctor />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Bác sĩ", "Quản lý"]}> */}
+                <Doctor />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />
           <Route
-            path="/manage-assign"
+            path="/manager-assign"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Quản lý"]}>
-                  <ManagerAssign />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Quản lý"]}> */}
+                <ManagerAssign />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/technician"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Kỹ thuật viên", "Quản lý"]}>
-                  <Technician />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Kỹ thuật viên", "Quản lý"]}> */}
+                <Technician />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />
@@ -211,9 +216,9 @@ export default function App() {
             path="/payroll"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Quản lý"]}>
-                  <Payroll />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Quản lý"]}> */}
+                <Payroll />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />
@@ -221,9 +226,9 @@ export default function App() {
             path="/timekeepingdaily"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Quản lý"]}>
-                  <TimekeepingDaily />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Quản lý"]}> */}
+                <TimekeepingDaily />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />
@@ -231,9 +236,9 @@ export default function App() {
             path="/discount"
             element={
               <ProtectedRoute>
-                <RoleRoute allowedPositions={["Quản lý"]}>
-                  <Discount />
-                </RoleRoute>
+                {/* <RoleRoute allowedPositions={["Quản lý"]}> */}
+                <Discount />
+                {/* </RoleRoute> */}
               </ProtectedRoute>
             }
           />

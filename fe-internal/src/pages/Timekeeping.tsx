@@ -40,6 +40,11 @@ export default function TimeKeeping() {
   const period = useSelector(selectSchedulePeriod);
   const user = useSelector(selectUser);
   const registeredRecords = useSelector(selectTimekeepingRecords);
+
+  //   useEffect(() => {
+  //   console.log("registeredRecords: ", registeredRecords);
+  // }, [registeredRecords]);
+
   const selectedDateRecords = useSelector(selectSelectedDateRecords);
   const branches = useSelector(selectBranches);
 
@@ -115,7 +120,11 @@ export default function TimeKeeping() {
   const daysInMonth = new Date(year, month, 0).getDate();
 
   const getShiftId = (item: any) => {
-    return Number(item?.shift_id ?? item?.shift?.id ?? 0);
+    return Number(item?.shift_id ?? item?.shift?.id ?? item?.shiftId ?? 0);
+  };
+
+  const getShiftName = (item: any) => {
+    return item?.shift_name || item?.shift?.name || item?.name || "Ca làm";
   };
 
   const now = new Date();
@@ -124,47 +133,18 @@ export default function TimeKeeping() {
 
   const openTo = period?.open_to ? new Date(period.open_to) : null;
 
-  const isBeforeOpen = openFrom ? now < openFrom : false;
-  const isAfterClose = openTo ? now > openTo : false;
+  const isBeforeOpen = openFrom ? now < openFrom : true;
+  const isAfterClose = openTo ? now > openTo : true;
 
-  // const STATUS_CONFIG = {
-  //   PENDING: {
-  //     cell: "...",
-  //     badge: "...",
-  //   },
+  const formatDate = (date: string) => {
+    const d = new Date(date);
 
-  //   OFF: {
-  //     cell: "...",
-  //     badge: "...",
-  //   },
-
-  //   ABSENT: {
-  //     cell: "bg-gray-200 border-gray-500 text-gray-700",
-  //     badge: "bg-gray-600 text-white",
-  //   },
-
-  //   SCHEDULED: {
-  //     cell: "...",
-  //     badge: "...",
-  //   },
-
-  //   WORKING: {
-  //     cell: "...",
-  //     badge: "...",
-  //   },
-
-  //   BREAK: {
-  //     cell: "...",
-  //     badge: "...",
-  //   },
-
-  //   COMPLETED: {
-  //     cell: "...",
-  //     badge: "...",
-  //   },
-  // };
-
-  const formatDate = (date: string) => date;
+    return [
+      d.getFullYear(),
+      String(d.getMonth() + 1).padStart(2, "0"),
+      String(d.getDate()).padStart(2, "0"),
+    ].join("-");
+  };
 
   const formatDateTime = (value?: string | null) => {
     if (!value) return "--";
@@ -187,11 +167,37 @@ export default function TimeKeeping() {
     !isBeforeOpen &&
     !isAfterClose;
 
-  const availableDays = useMemo(() => {
-    if (!canRegister) return [];
+  // useEffect(() => {
+  //   console.log({
+  //     period,
+  //     month,
+  //     year,
+  //     periodMonth: period?.month,
+  //     periodYear: period?.year,
+  //     isCorrectMonth,
+  //     isBeforeOpen,
+  //     isAfterClose,
+  //     canRegister,
+  //   });
+  // }, [
+  //   period,
+  //   month,
+  //   year,
+  //   isCorrectMonth,
+  //   isBeforeOpen,
+  //   isAfterClose,
+  //   canRegister,
+  // ]);
 
+  const availableDays = useMemo(() => {
     return days.filter((d: any) => d.employee_type === employeeType);
-  }, [days, employeeType, canRegister]);
+  }, [days, employeeType]);
+
+  // useEffect(() => {
+  //   console.log("employeeType", employeeType);
+  //   console.log("days", days);
+  //   console.log("availableDays", availableDays);
+  // }, [days, availableDays, employeeType]);
 
   useEffect(() => {
     dispatch(fetchSchedule({ month, year }) as any);
@@ -237,6 +243,10 @@ export default function TimeKeeping() {
     return map;
   }, [availableDays]);
 
+  //   useEffect(() => {
+  //   console.log(scheduleMap);
+  // }, [scheduleMap]);
+
   const registeredMap = useMemo(() => {
     const map: Record<string, any[]> = {};
 
@@ -250,7 +260,86 @@ export default function TimeKeeping() {
     return map;
   }, [registeredRecords]);
 
-  const hasRegistered = registeredRecords.length > 0;
+  const registeredShiftMap = useMemo(() => {
+    const map: Record<string, any> = {};
+
+    registeredRecords.forEach((item: any) => {
+      const key = `${formatDate(item.work_date)}_${item.shift_id}`;
+
+      map[key] = item;
+    });
+
+    return map;
+  }, [registeredRecords]);
+
+  const getParttimeShiftClass = (dateStr: string, shiftId: number) => {
+    const isSelected = selectedShifts.some(
+      (x) => x.work_date === dateStr && Number(x.shift_id) === Number(shiftId),
+    );
+
+    if (isSelected) {
+      return `
+      bg-blue-100
+      border-blue-400
+      text-blue-800
+      ring-2
+      ring-blue-300
+      shadow-sm
+    `;
+    }
+
+    const record = registeredShiftMap[`${dateStr}_${shiftId}`];
+
+    if (!record) {
+      return `
+      bg-slate-100
+      border-slate-400
+      text-slate-700
+    `;
+    }
+
+    switch (record.status) {
+      case "PENDING":
+        return `
+        bg-blue-100
+        border-blue-500
+        text-blue-900
+      `;
+
+      case "SCHEDULED":
+      case "WORKING":
+      case "BREAK":
+      case "COMPLETED":
+        return `
+        bg-green-100
+        border-green-500
+        text-green-800
+      `;
+
+      case "OFF":
+      case "ABSENT":
+        return `
+        bg-red-100
+        border-red-500
+        text-red-800
+      `;
+
+      default:
+        return `
+        bg-slate-100
+        border-slate-400
+        text-slate-700
+      `;
+    }
+  };
+
+  useEffect(() => {
+    console.log("registeredMap", registeredMap);
+    console.log("scheduleMap", scheduleMap);
+  }, [registeredMap, scheduleMap]);
+
+  const hasRegistered =
+    employeeType === "FULLTIME" ? registeredRecords.length > 0 : false;
 
   const todayRecords = registeredMap[todayStr] || [];
 
@@ -268,11 +357,11 @@ export default function TimeKeeping() {
     null;
   const isViewingToday = selectedDate === todayStr;
 
-  useEffect(() => {
-    console.log("selectedDate", selectedDate);
-    console.log("selectedDateRecords", selectedDateRecords);
-    console.log("selectedRecord", selectedRecord);
-  }, [selectedDate, selectedDateRecords, selectedRecord]);
+  // useEffect(() => {
+  //   console.log("selectedDate", selectedDate);
+  //   console.log("selectedDateRecords", selectedDateRecords);
+  //   console.log("selectedRecord", selectedRecord);
+  // }, [selectedDate, selectedDateRecords, selectedRecord]);
 
   const todaySchedule = scheduleMap[todayStr]?.[0] || null;
 
@@ -433,6 +522,39 @@ export default function TimeKeeping() {
 
   const isRegisterLocked = isBeforeOpen || isAfterClose || hasRegistered;
 
+  const handleSelectShift = (workDate: string, shiftId: number) => {
+    setSelectedShifts((prev) => {
+      const exists = prev.some(
+        (x) =>
+          x.work_date === workDate && Number(x.shift_id) === Number(shiftId),
+      );
+
+      if (exists) {
+        return prev.filter(
+          (x) =>
+            !(
+              x.work_date === workDate && Number(x.shift_id) === Number(shiftId)
+            ),
+        );
+      }
+
+      const dayCount = prev.filter((x) => x.work_date === workDate).length;
+
+      if (dayCount >= 2) {
+        toast.error("Mỗi ngày chỉ được đăng ký tối đa 2 ca");
+        return prev;
+      }
+
+      return [
+        ...prev,
+        {
+          work_date: workDate,
+          shift_id: shiftId,
+        },
+      ];
+    });
+  };
+
   const handleSelectDay = (
     dateStr: string,
     isAvailable: boolean,
@@ -471,6 +593,15 @@ export default function TimeKeeping() {
                 Number(x.shift_id) === Number(shiftId)
               ),
           );
+        }
+
+        const dayShiftCount = prev.filter(
+          (x) => x.work_date === dateStr,
+        ).length;
+
+        if (dayShiftCount >= 2) {
+          alert("Mỗi ngày chỉ được đăng ký tối đa 2 ca");
+          return prev;
         }
 
         return [...prev, { work_date: dateStr, shift_id: Number(shiftId) }];
@@ -732,60 +863,66 @@ export default function TimeKeeping() {
         return employeeType === "FULLTIME"
           ? {
               cell: "bg-red-100 border-red-500 text-red-800",
-              badge: "bg-red-600 text-white",
+              badge: "bg-red-700 text-white",
               shift: "bg-red-100 border-red-500 text-red-800",
             }
           : {
               cell: "bg-amber-100 border-amber-500 text-amber-800",
-              badge: "bg-amber-600 text-white",
+              badge: "bg-amber-700 text-white",
               shift: "bg-amber-100 border-amber-500 text-amber-800",
             };
 
       case "OFF":
         return {
           cell: "bg-red-100 border-red-500 text-red-800",
-          badge: "bg-red-600 text-white",
+          badge: "bg-red-700 text-white",
           shift: "bg-red-100 border-red-500 text-red-800",
         };
 
       case "SCHEDULED":
         return {
           cell: "bg-blue-100 border-blue-500 text-blue-800",
-          badge: "bg-blue-600 text-white",
+          badge: "bg-blue-700 text-white",
           shift: "bg-blue-100 border-blue-500 text-blue-800",
         };
 
       case "WORKING":
         return {
-          cell: "bg-green-100 border-green-500 text-green-800",
-          badge: "bg-green-600 text-white",
-          shift: "bg-green-100 border-green-500 text-green-800",
+          cell: "bg-emerald-100 border-emerald-500 text-emerald-800",
+          badge: "bg-emerald-700 text-white",
+          shift: "bg-emerald-100 border-emerald-500 text-emerald-800",
         };
 
       case "BREAK":
         return {
           cell: "bg-yellow-100 border-yellow-500 text-yellow-800",
-          badge: "bg-yellow-600 text-white",
+          badge: "bg-yellow-700 text-white",
           shift: "bg-yellow-100 border-yellow-500 text-yellow-800",
         };
 
       case "COMPLETED":
         return {
           cell: "bg-emerald-100 border-emerald-500 text-emerald-800",
-          badge: "bg-emerald-600 text-white",
+          badge: "bg-emerald-700 text-white",
           shift: "bg-emerald-100 border-emerald-500 text-emerald-800",
         };
 
       case "ABSENT":
         return {
           cell: "bg-gray-100 border-gray-500 text-gray-800",
-          badge: "bg-gray-600 text-white",
+          badge: "bg-gray-700 text-white",
           shift: "bg-gray-100 border-gray-500 text-gray-800",
         };
 
       default:
         return null;
     }
+  };
+
+  const getBadgeClass = (status: string, employeeType: string) => {
+    return (
+      getStatusConfig(status, employeeType)?.badge || "bg-gray-500 text-white"
+    );
   };
 
   return (
@@ -866,6 +1003,12 @@ export default function TimeKeeping() {
               const hasSchedule = scheduleMap[dateStr] || [];
               const registeredDay = registeredMap[dateStr] || [];
 
+              //               console.log({
+              //   dateStr,
+              //   hasSchedule,
+              //   registeredDay,
+              // });
+
               const registrationState = registeredDay.length
                 ? getRegistrationState(registeredDay[0])
                 : null;
@@ -880,16 +1023,13 @@ export default function TimeKeeping() {
               const isAvailable = hasSchedule.length > 0;
               const hasRegisteredDay = registeredDay.length > 0;
 
-              const isSelected =
-                employeeType === "FULLTIME"
-                  ? selectedDays.includes(dateStr)
-                  : selectedShifts.some((s) => s.work_date === dateStr);
+              const isSelectedDay =
+                employeeType === "FULLTIME" && selectedDays.includes(dateStr);
 
-              const shiftsToRender = hasRegisteredDay
-                ? registeredDay
-                : hasSchedule;
-              const visibleShifts = shiftsToRender.slice(0, 2);
-              const hiddenShiftCount = shiftsToRender.length - 2;
+              const shiftsToRender = hasSchedule;
+
+              const visibleShifts = shiftsToRender;
+              const hiddenShiftCount = 0;
 
               const isToday =
                 day === today.getDate() &&
@@ -899,7 +1039,7 @@ export default function TimeKeeping() {
               const isViewingDate = selectedDate === dateStr;
               const viewingClass =
                 isViewingDate && !statusConfig
-                  ? "bg-amber-50 border-amber-400 border-2"
+                  ? "bg-amber-100 border-amber-100 border-2"
                   : "";
               return (
                 <div
@@ -919,7 +1059,9 @@ export default function TimeKeeping() {
 
                     if (hasRegistered || isBeforeOpen || isAfterClose) return;
 
-                    handleSelectDay(dateStr, isAvailable);
+                    if (employeeType === "FULLTIME") {
+                      handleSelectDay(dateStr, isAvailable);
+                    }
                   }}
                   className={`
   relative py-2 md:py-3 rounded-xl border transition-all text-sm min-h-[88px]
@@ -929,81 +1071,113 @@ export default function TimeKeeping() {
       ? "bg-stone-50 border-stone-200 text-stone-300 cursor-default"
       : statusConfig
         ? statusConfig.cell
-        : isSelected
+        : isSelectedDay
           ? employeeType === "FULLTIME"
-            ? "bg-red-100 border-red-700 text-red-800 ring-2 ring-red-300"
-            : "bg-amber-100 border-amber-500 text-amber-800 ring-2 ring-amber-300"
+            ? "bg-red-100 border-red-100 text-red-800 ring-2 ring-red-300"
+            : "bg-amber-100 border-amber-100 text-amber-800 ring-2 ring-amber-300"
           : employeeType === "PARTTIME"
-            ? "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
-            : "bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-100"
+            ? "bg-amber-100 border-amber-100 text-amber-700 hover:bg-amber-100"
+            : "bg-amber-100 border-amber-100 text-amber-700 hover:bg-amber-100"
   }
 ${viewingClass}
 ${
   isToday && isViewingDate
-    ? "ring-4 ring-violet-500"
+    ? "ring-2 ring-violet-500"
     : isToday
-      ? "ring-2 ring-amber-400"
+      ? "ring-4 ring-amber-200"
       : isViewingDate
-        ? "ring-4 ring-amber-400"
+        ? "ring-2 ring-amber-200"
         : ""
 }
- ${
-   // isRegisterLocked && !hasFinalStatus
-   //   ? "opacity-55 cursor-not-allowed"
-   //   : isRegisterLocked
-   //     ? "cursor-default"
-   //     :
-   ""
- }
 `}
                 >
                   {day}
 
                   <div className="mt-1 flex justify-center">
                     {registrationState === "PENDING_OFF" && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-700 text-white font-semibold">
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${getBadgeClass(
+                          "OFF",
+                          employeeType,
+                        )}`}
+                      >
                         Chờ duyệt nghỉ
                       </span>
                     )}
 
                     {registrationState === "PENDING_WORK" && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-600 text-white font-semibold">
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${getBadgeClass(
+                          "PENDING_WORK",
+                          employeeType,
+                        )}`}
+                      >
                         Chờ duyệt làm
                       </span>
                     )}
 
                     {registrationState === "OFF" && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-700 text-white font-semibold">
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${getBadgeClass(
+                          "OFF",
+                          employeeType,
+                        )}`}
+                      >
                         {employeeType === "FULLTIME" ? "Đã duyệt nghỉ" : "Nghỉ"}
                       </span>
                     )}
 
                     {registrationState === "SCHEDULED" && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-600 text-white font-semibold">
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${getBadgeClass(
+                          "SCHEDULED",
+                          employeeType,
+                        )}`}
+                      >
                         Đi làm
                       </span>
                     )}
 
                     {registrationState === "WORKING" && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-600 text-white font-semibold">
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${getBadgeClass(
+                          "WORKING",
+                          employeeType,
+                        )}`}
+                      >
                         Đang làm
                       </span>
                     )}
 
                     {registrationState === "BREAK" && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500 text-white font-semibold">
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${getBadgeClass(
+                          "BREAK",
+                          employeeType,
+                        )}`}
+                      >
                         Nghỉ trưa
                       </span>
                     )}
 
                     {registrationState === "COMPLETED" && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-700 text-white font-semibold">
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${getBadgeClass(
+                          "COMPLETED",
+                          employeeType,
+                        )}`}
+                      >
                         Hoàn thành
                       </span>
                     )}
 
                     {registrationState === "ABSENT" && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-700 text-white font-semibold">
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${getBadgeClass(
+                          "ABSENT",
+                          employeeType,
+                        )}`}
+                      >
                         Vắng mặt
                       </span>
                     )}
@@ -1011,15 +1185,24 @@ ${
 
                   {/* shift */}
                   {(isAvailable || hasRegisteredDay) && (
-                    <div className="mt-2 space-y-1 text-[10px]">
+                    <div className="mt-2 space-y-2 text-[10px] px-1">
                       {visibleShifts.map((s: any, idx: number) => {
                         const shiftId = getShiftId(s);
 
-                        const isShiftSelected = selectedShifts.some(
-                          (x) =>
-                            x.work_date === dateStr &&
-                            Number(x.shift_id) === Number(shiftId),
-                        );
+                        // const isShiftSelected = (
+                        //   workDate: string,
+                        //   shiftId: number,
+                        // ) =>
+                        //   selectedShifts.some(
+                        //     (x) =>
+                        //       x.work_date === workDate &&
+                        //       Number(x.shift_id) === Number(shiftId),
+                        //   );
+
+                        const shiftRecord =
+                          registeredShiftMap[`${dateStr}_${shiftId}`];
+
+                        const shiftStatus = shiftRecord?.status;
 
                         return (
                           <button
@@ -1031,71 +1214,38 @@ ${
                               if (isRegisterLocked || hasRegistered) return;
 
                               if (employeeType === "PARTTIME") {
-                                handleSelectDay(dateStr, true, shiftId);
+                                handleSelectShift(dateStr, Number(shiftId));
+                                return;
                               }
 
                               if (employeeType === "FULLTIME") {
                                 handleSelectDay(dateStr, true);
                               }
                             }}
-                            className={`w-full rounded-md px-1.5 py-1 font-medium transition text-center
+                            className={`w-full rounded-lg border px-2 py-1.5 font-medium transition-all duration-200 text-center
 ${
-  // FULLTIME đã chọn nghỉ / chờ duyệt
-  employeeType === "FULLTIME" && isSelected
-    ? "bg-red-100 border-red-600 text-red-700 ring-1 ring-red-300"
-    : // PARTTIME đã chọn ca
-      employeeType === "PARTTIME" && isShiftSelected
-      ? "bg-amber-100 border-amber-500 text-amber-800 ring-1 ring-amber-300"
-      : // Đã gửi chờ duyệt
-        s.status === "PENDING"
-        ? employeeType === "FULLTIME"
-          ? "bg-red-100 border-red-600 text-red-700"
-          : "bg-amber-100 border-amber-500 text-amber-800"
-        : // Đã duyệt nghỉ / từ chối
-          s.status === "OFF"
-          ? "bg-red-100 border-red-700 text-red-800"
-          : // Đi làm / đã duyệt
-            s.status === "SCHEDULED"
-            ? "bg-blue-100 border-blue-500 text-blue-800"
-            : s.status === "WORKING"
-              ? "bg-green-100 border-green-500 text-green-800"
-              : s.status === "BREAK"
-                ? "bg-yellow-100 border-yellow-500 text-yellow-800"
-                : s.status === "COMPLETED"
-                  ? "bg-emerald-100 border-emerald-500 text-emerald-800"
-                  : // Vắng mặt
-                    s.status === "ABSENT"
-                    ? "bg-red-50 border-red-400 text-red-700"
-                    : // Chưa chọn
-                      employeeType === "FULLTIME"
-                      ? "bg-amber-100 border-amber-300 text-amber-800"
-                      : "border-t-2 bg-amber-50 border-amber-200 text-amber-700"
-}
-${
-  employeeType === "PARTTIME" && !isRegisterLocked
-    ? " hover:bg-amber-50 cursor-pointer"
-    : employeeType === "FULLTIME" && !isRegisterLocked
-      ? " cursor-pointer"
-      : " cursor-default"
-}
-${
-  isRegisterLocked &&
-  ![
-    "PENDING",
-    "OFF",
-    "SCHEDULED",
-    "WORKING",
-    "BREAK",
-    "COMPLETED",
-    "ABSENT",
-  ].includes(s.status)
-    ? "opacity-60"
-    : ""
+  employeeType === "PARTTIME"
+    ? getParttimeShiftClass(dateStr, shiftId)
+    : employeeType === "FULLTIME" && isSelectedDay
+      ? "bg-red-100 border-red-100 text-red-800 ring-1 ring-red-300"
+      : shiftStatus === "PENDING"
+        ? "bg-red-100 border-red-100 text-red-800"
+        : shiftStatus === "OFF"
+          ? "bg-red-100 border-red-100 text-red-800"
+          : shiftStatus === "SCHEDULED"
+            ? "bg-blue-100 border-blue-100 text-blue-800"
+            : shiftStatus === "WORKING"
+              ? "bg-green-100 border-green-100 text-green-800"
+              : shiftStatus === "BREAK"
+                ? "bg-yellow-100 border-yellow-100 text-yellow-800"
+                : shiftStatus === "COMPLETED"
+                  ? "bg-emerald-100 border-emerald-100 text-emerald-800"
+                  : "bg-amber-100 border-amber-100 text-amber-800"
 }
 `}
                           >
                             <span className="font-semibold">
-                              {`${s.shift_name || s.name || "Ca làm"} : ${(
+                              {`${getShiftName(s)} : ${(
                                 s.start_time || ""
                               ).slice(0, 5)} - ${(s.end_time || "").slice(
                                 0,
@@ -1103,11 +1253,32 @@ ${
                               )}`}
                             </span>
 
-                            {employeeType === "PARTTIME" && isShiftSelected && (
-                              <div className="mt-1 text-[9px] font-semibold text-amber-700">
-                                Đã chọn
-                              </div>
-                            )}
+                            {employeeType === "PARTTIME" &&
+                              shiftStatus === "PENDING" && (
+                                <div className="mt-1">
+                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-blue-300 text-blue-800">
+                                    Chờ duyệt
+                                  </span>
+                                </div>
+                              )}
+
+                            {employeeType === "PARTTIME" &&
+                              shiftStatus === "SCHEDULED" && (
+                                <div className="mt-1">
+                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-green-200 text-green-800">
+                                    Đã duyệt
+                                  </span>
+                                </div>
+                              )}
+
+                            {employeeType === "PARTTIME" &&
+                              shiftStatus === "OFF" && (
+                                <div className="mt-1">
+                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-200 text-red-800">
+                                    Từ chối
+                                  </span>
+                                </div>
+                              )}
                           </button>
                         );
                       })}
@@ -1211,8 +1382,10 @@ ${
               </div>
 
               <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                {(scheduleMap[expandedDate] || []).map(
-                  (s: any, idx: number) => {
+                {(registeredMap[expandedDate]?.length
+                  ? registeredMap[expandedDate]
+                  : scheduleMap[expandedDate]) ||
+                  [].map((s: any, idx: number) => {
                     const shiftId = getShiftId(s);
 
                     const isShiftSelected = selectedShifts.some(
@@ -1259,8 +1432,7 @@ ${
                         </div>
                       </button>
                     );
-                  },
-                )}
+                  })}
               </div>
             </div>
           </div>
@@ -1493,7 +1665,7 @@ ${
             )}
 
             {locationError && (
-              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              <div className="mb-4 rounded-xl border border-red-100 bg-red-100 px-4 py-3 text-sm text-red-600">
                 {locationError}
               </div>
             )}
@@ -1604,7 +1776,7 @@ ${
               </p>
             </div>
           </div>
-        </div> 
+        </div>
       </div>
 
       <OvertimeRequestModal

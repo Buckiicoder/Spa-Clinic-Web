@@ -51,6 +51,8 @@ export const createInventoryTransaction = async (
   res: Response,
 ) => {
   try {
+    console.log("EXPORT BODY:", req.body);
+    
     const data = createInventoryTransactionSchema.parse(req.body);
 
     // check trùng code
@@ -167,17 +169,17 @@ export const confirmInventoryTransaction = async (
       });
     }
 
-    if (transaction.type === "EXPORT") {
-      for (const item of transaction.items) {
-        const product = await inventoryService.getProductById(item.product_id);
+    // if (transaction.type === "EXPORT") {
+    //   for (const item of transaction.items) {
+    //     const product = await inventoryService.getProductById(item.product_id);
 
-        if (product.stock_quantity < item.quantity) {
-          return res.status(400).json({
-            message: `Sản phẩm "${product.name}" không đủ tồn kho`,
-          });
-        }
-      }
-    }
+    //     if (product.stock_quantity < item.quantity) {
+    //       return res.status(400).json({
+    //         message: `Sản phẩm "${product.name}" không đủ tồn kho`,
+    //       });
+    //     }
+    //   }
+    // }
 
     await inventoryService.confirmInventoryTransaction(id);
 
@@ -225,5 +227,20 @@ export const cancelInventoryTransaction = async (
     return res.status(500).json({
       message: err.message,
     });
+  }
+};
+
+export const exportInventoryToStaff = async (req: Request, res: Response) => {
+  try {
+    const data = createInventoryTransactionSchema.parse(req.body);
+
+    const result = await inventoryService.exportToStaff(data);
+
+    return res.json({
+      message: "Xuất kho cho nhân viên thành công",
+      transaction: result,
+    });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
   }
 };

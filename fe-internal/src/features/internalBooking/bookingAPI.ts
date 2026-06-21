@@ -29,3 +29,28 @@ export const checkInBookingAPI = (id: string) =>
 // 🔹 DELETE
 export const deleteBookingAPI = (id: string) =>
   api.delete(`/booking/${id}`);
+
+export const getDayCapacityAPI = (
+  bookingDate: string,
+  quantity: number,
+) =>
+  api.get("/booking/capacity/day", {
+    params: {
+      booking_date: bookingDate,
+      quantity,
+    },
+  });
+
+export const checkBookingCapacityAPI = (
+  booking_date: string,
+  booking_time: string,
+  quantity: number,
+) =>
+  api.get("/booking/capacity", {
+    params: {
+      booking_date,
+      booking_time,
+      quantity,
+    },
+  });
+

@@ -148,6 +148,15 @@ export class ChatService {
     return { updates };
   }
 
+  private static isValidPhone(phone: string) {
+  const normalized = phone
+    .replace(/\s/g, "")
+    .replace(/\./g, "")
+    .replace(/-/g, "");
+
+  return /^0\d{9}$/.test(normalized);
+}
+
   static async handleMessage({
     message,
     userId,
@@ -231,7 +240,7 @@ export class ChatService {
       name:
         extracted.name ?? (this.hasNameCue(message) ? aiExtract.name : null),
 
-      phone: extracted.phone ?? aiExtract.phone,
+      phone: extracted.phone,
 
       email: extracted.email ?? aiExtract.email,
 
@@ -247,6 +256,25 @@ export class ChatService {
 
       symptom: extracted.symptom,
     };
+
+    if (
+  merged.phone &&
+  !this.isValidPhone(merged.phone)
+) {
+  const reply =
+    "Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 chữ số.";
+
+  await this.saveMessage(
+    conversationId,
+    "assistant",
+    reply
+  );
+
+  return {
+    reply,
+    conversationId,
+  };
+}
 
     const relativeDate = ChatConsultService.parseRelativeDate(message);
 

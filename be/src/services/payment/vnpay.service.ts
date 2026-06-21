@@ -2,15 +2,23 @@ import { db } from "../../config/db.js";
 import crypto from "crypto";
 import qs from "qs";
 import * as paymentServices from "./payment.service.js";
+import dayjs from "dayjs";
 
 const sortObject = (obj: any) => {
   const sorted: any = {};
+  const str: string[] = [];
 
-  Object.keys(obj)
-    .sort()
-    .forEach((key) => {
-      sorted[key] = obj[key];
-    });
+  Object.keys(obj).forEach((key) => {
+    str.push(encodeURIComponent(key));
+  });
+
+  str.sort();
+
+  for (let i = 0; i < str.length; i++) {
+    const key = str[i];
+
+    sorted[key] = encodeURIComponent(obj[key]).replace(/%20/g, "+");
+  }
 
   return sorted;
 };
@@ -24,12 +32,18 @@ export const createVNPayPayment = async ({
   discount_id,
   amount,
   ipAddr,
+  source,
 }: {
   profile_id: number;
   discount_id?: number | null;
   amount: number;
   ipAddr: string;
+  source?: "customer" | "staff";
 }) => {
+  console.log("===== SERVICE SOURCE =====");
+console.log(source);
+console.log(typeof source);
+
   const client = await db.connect();
 
   try {
@@ -41,7 +55,7 @@ export const createVNPayPayment = async ({
       throw new Error("Không tìm thấy hồ sơ");
     }
 
-    if(!amount || amount <= 0) {
+    if (!amount || amount <= 0) {
       throw new Error("Số tiền thanh toán không hợp lệ");
     }
 
@@ -57,12 +71,20 @@ export const createVNPayPayment = async ({
     let discount: any = null;
 
     if (pendingPayment) {
-      subtotal = Number(pendingPayment.remaining_amount);
+      subtotal = Number(pendingPayment.subtotal_amount);
 
-      finalAmount = subtotal;
+      discountAmount = Number(pendingPayment.discount_amount);
+
+      finalAmount = Number(pendingPayment.final_amount);
+
+      if (pendingPayment.discount_id) {
+        discount = {
+          id: pendingPayment.discount_id,
+        };
+      }
     }
 
-    if (discount_id) {
+    if (discount_id && !pendingPayment) {
       const availableDiscounts =
         await paymentServices.getAvailableDiscounts(profile_id);
 
@@ -85,88 +107,115 @@ export const createVNPayPayment = async ({
     //-----------------------------------
     // CREATE PAYMENT
     //-----------------------------------
+    let payment: any;
 
-    const paymentResult = await client.query(
-      `
-      INSERT INTO payments (
-        payment_code,
-        customer_id,
-        booking_id,
-        subtotal_amount,
-        discount_amount,
-        final_amount,
-        paid_amount,
-        remaining_amount,
-        discount_id,
-        status
-      )
-      VALUES (
-        $1,$2,$3,$4,$5,
-        $6,$7,$8,$9,$10
-      )
-      RETURNING *
-      `,
-      [
-        `PAY${Date.now()}`,
-        profile.customer_id,
-        profile.booking_id || null,
-        subtotal,
-        discountAmount,
-        finalAmount,
-        0,
-        finalAmount,
-        discount?.id || null,
-        "pending",
-      ],
-    );
+    if (!pendingPayment) {
+      // =========================
+      // CREATE NEW PAYMENT
+      // =========================
+      const paymentResult = await client.query(
+        `
+    INSERT INTO payments (
+      payment_code,
+      customer_id,
+      booking_id,
+      subtotal_amount,
+      discount_amount,
+      final_amount,
+      paid_amount,
+      remaining_amount,
+      discount_id,
+      status
+    )
+    VALUES (
+      $1,$2,$3,$4,$5,
+      $6,$7,$8,$9,$10
+    )
+    RETURNING *
+    `,
+        [
+          `PAY${Date.now()}`,
+          profile.customer_id,
+          profile.booking_id || null,
+          subtotal,
+          discountAmount,
+          finalAmount,
+          0,
+          finalAmount,
+          discount?.id || null,
+          "pending",
+        ],
+      );
 
-    const payment = paymentResult.rows[0];
+      payment = paymentResult.rows[0];
+    } else {
+      payment = pendingPayment;
+    }
 
     //-----------------------------------
     // PAYMENT ITEM
     //-----------------------------------
 
-    await client.query(
+    const existingItem = await client.query(
       `
-      INSERT INTO payment_items(
-        payment_id,
-        profile_id,
-        service_id,
-        package_id,
-        item_type,
-        item_name,
-        quantity,
-        unit_price,
-        subtotal_amount,
-        discount_amount,
-        final_amount
-      )
-      VALUES(
-        $1,$2,$3,$4,
-        $5,$6,$7,
-        $8,$9,$10,$11
-      )
-      `,
-      [
-        payment.id,
-        profile.profile_id,
-        profile.service_id,
-        profile.package_id,
-        "service_package",
-        profile.package_name,
-        1,
-        subtotal,
-        subtotal,
-        discountAmount,
-        finalAmount,
-      ],
+  SELECT id
+  FROM payment_items
+  WHERE payment_id = $1
+    AND profile_id = $2
+  `,
+      [payment.id, profile.profile_id],
     );
+
+    if (existingItem.rows.length === 0) {
+      await client.query(
+        `
+    INSERT INTO payment_items(
+      payment_id,
+      profile_id,
+      service_id,
+      package_id,
+      item_type,
+      item_name,
+      quantity,
+      unit_price,
+      subtotal_amount,
+      discount_amount,
+      final_amount
+    )
+    VALUES(
+      $1,$2,$3,$4,
+      $5,$6,$7,
+      $8,$9,$10,$11
+    )
+    `,
+        [
+          payment.id,
+          profile.profile_id,
+          profile.service_id,
+          profile.package_id,
+          "service_package",
+          profile.package_name,
+          1,
+          payment.subtotal_amount,
+          payment.subtotal_amount,
+          payment.discount_amount,
+          payment.final_amount,
+        ],
+      );
+    }
 
     //-----------------------------------
     // CREATE TRANSACTION PENDING
     //-----------------------------------
 
-    const vnpTxnRef = `${payment.id}_${Date.now()}`;
+    const vnpTxnRef = `PAY${payment.id}${Date.now()}`;
+
+    //  const expireDate = dayjs()
+    // .add(15, "minute")
+    // .format("YYYYMMDDHHmmss");
+
+    console.log("===== INSERT SOURCE =====");
+console.log(source);
 
     const transactionResult = await client.query(
       `
@@ -176,28 +225,40 @@ export const createVNPayPayment = async ({
           gateway_provider,
           amount,
           status,
-          vnp_txn_ref
+          vnp_txn_ref,
+          source
         )
         VALUES(
-          $1,$2,$3,$4,$5,$6
+          $1,$2,$3,$4,$5,$6,$7
         )
         RETURNING *
         `,
-      [payment.id, "vnpay", "vnpay", amount, "pending", vnpTxnRef],
+      [payment.id, "vnpay", "vnpay", amount, "pending", vnpTxnRef, source || "customer"],
     );
 
     //-----------------------------------
     // VNPay URL
     //-----------------------------------
+    let clientIp = ipAddr;
 
-    const createDate = new Date();
+    if (clientIp === "::1") {
+      clientIp = "127.0.0.1";
+    }
 
-    const vnpParams: any = {
+    if (clientIp.includes(",")) {
+      clientIp = clientIp.split(",")[0].trim();
+    }
+
+    console.log("IP", clientIp);
+
+    const createDate = dayjs().format("YYYYMMDDHHmmss");
+
+    const vnpParams = {
       vnp_Version: "2.1.0",
       vnp_Command: "pay",
       vnp_TmnCode: process.env.VNP_TMN_CODE,
 
-      vnp_Locale: "vn",
+      vnp_Amount: amount * 100,
 
       vnp_CurrCode: "VND",
 
@@ -207,17 +268,18 @@ export const createVNPayPayment = async ({
 
       vnp_OrderType: "other",
 
-      vnp_Amount: Math.round(amount * 100),
+      vnp_Locale: "vn",
 
       vnp_ReturnUrl: process.env.VNP_RETURN_URL,
 
-      vnp_IpAddr: ipAddr,
+      vnp_IpAddr: clientIp,
 
-      vnp_CreateDate: createDate
-        .toISOString()
-        .replace(/[-:TZ.]/g, "")
-        .substring(0, 14),
+      vnp_CreateDate: createDate,
     };
+
+    console.log("amount=", amount);
+    console.log(new Date());
+    console.log(dayjs().format("YYYYMMDDHHmmss"));
 
     const sortedParams = sortObject(vnpParams);
 
@@ -225,16 +287,39 @@ export const createVNPayPayment = async ({
       encode: false,
     });
 
+    console.log(process.env.VNP_RETURN_URL);
+
+    console.log("===== VNPAY PARAMS =====");
+    console.log(sortedParams);
+
+    console.log("===== SIGN DATA =====");
+    console.log(signData);
+
+    console.log("HASH_SECRET_LENGTH", process.env.VNP_HASH_SECRET?.length);
+
     const secureHash = crypto
       .createHmac("sha512", process.env.VNP_HASH_SECRET!)
-      .update(signData)
+      .update(signData, "utf-8")
       .digest("hex");
 
+    console.log("===== HASH =====");
+    console.log(secureHash);
+
+    sortedParams["vnp_SecureHash"] = secureHash;
+    sortedParams.vnp_SecureHashType = "HmacSHA512";
     sortedParams.vnp_SecureHash = secureHash;
 
-    const paymentUrl = `${process.env.VNP_URL}?${qs.stringify(sortedParams, {
-      encode: false,
-    })}`;
+    const paymentUrl =
+      process.env.VNP_URL +
+      "?" +
+      qs.stringify(sortedParams, {
+        encode: false,
+      });
+
+    console.log("===== PAYMENT URL =====");
+    console.log(paymentUrl);
+
+    console.log(paymentUrl);
 
     await client.query("COMMIT");
 
@@ -252,6 +337,9 @@ export const createVNPayPayment = async ({
 };
 
 export const vnpayReturnService = async (query: any) => {
+  console.log("===== VNP QUERY =====");
+  console.log(query);
+
   const client = await db.connect();
 
   try {
@@ -273,6 +361,9 @@ export const vnpayReturnService = async (query: any) => {
       .update(signData)
       .digest("hex");
 
+    console.log("secureHash", secureHash);
+    console.log("checkHash", checkHash);
+
     if (secureHash !== checkHash) {
       throw new Error("Sai chữ ký VNPay");
     }
@@ -280,6 +371,8 @@ export const vnpayReturnService = async (query: any) => {
     const txnRef = query.vnp_TxnRef;
 
     const responseCode = query.vnp_ResponseCode;
+
+    console.log("responseCode", responseCode);
 
     const transactionResult = await client.query(
       `
@@ -292,6 +385,11 @@ export const vnpayReturnService = async (query: any) => {
     );
 
     const transaction = transactionResult.rows[0];
+
+console.log("===== CREATED TRANSACTION =====");
+console.log(transaction);
+
+    const source = transaction.source || "customer";
 
     if (!transaction) {
       throw new Error("Không tìm thấy giao dịch");
@@ -330,6 +428,7 @@ export const vnpayReturnService = async (query: any) => {
 
       return {
         success: true,
+        source,
       };
     }
 
@@ -350,10 +449,14 @@ export const vnpayReturnService = async (query: any) => {
 
     await client.query("COMMIT");
 
+    
     return {
       success: false,
       code: responseCode,
+      source,
     };
+
+    
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;

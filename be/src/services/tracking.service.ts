@@ -1,8 +1,6 @@
 import { db } from "../config/db.js";
 
-export const getSessionById = async (
-  sessionId: number,
-) => {
+export const getSessionById = async (sessionId: number) => {
   const result = await db.query(
     `
     SELECT *
@@ -16,27 +14,34 @@ export const getSessionById = async (
   return result.rows[0];
 };
 
-export const updateSessionToInProgress =
-  async (sessionId: number) => {
-    await db.query(
-      `
+export const updateSessionToInProgress = async (
+  sessionId: number,
+  beforeImageUrl?: string,
+) => {
+  await db.query(
+    `
       UPDATE customer_service_sessions
       SET
         status = 'in_progress',
-        started_at = COALESCE(
-          started_at,
-          NOW()
-        )
+
+        started_at =
+          COALESCE(started_at, NOW()),
+
+        before_image_url =
+          COALESCE(
+            $2,
+            before_image_url
+          )
+
       WHERE id = $1
     `,
-      [sessionId],
-    );
-  };
+    [sessionId, beforeImageUrl],
+  );
+};
 
-export const getFirstTreatmentStep =
-  async (sessionId: number) => {
-    const result = await db.query(
-      `
+export const getFirstTreatmentStep = async (sessionId: number) => {
+  const result = await db.query(
+    `
       SELECT
         st.id,
         st.step_no,
@@ -60,30 +65,29 @@ export const getFirstTreatmentStep =
       ORDER BY st.step_no ASC
       LIMIT 1
     `,
-      [sessionId],
-    );
+    [sessionId],
+  );
 
-    return result.rows[0];
-  };
+  return result.rows[0];
+};
 
-export const getTrackingByStepNo =
-  async (
-    sessionId: number,
-    stepNo: number,
-  ) => {
-    const result = await db.query(
-      `
+export const getTrackingByStepNo = async (
+  sessionId: number,
+  stepNo: number,
+) => {
+  const result = await db.query(
+    `
       SELECT *
       FROM session_step_trackings
       WHERE session_id = $1
         AND step_no = $2
       LIMIT 1
     `,
-      [sessionId, stepNo],
-    );
+    [sessionId, stepNo],
+  );
 
-    return result.rows[0];
-  };
+  return result.rows[0];
+};
 
 export const createTrackingStep = async (
   sessionId: number,
@@ -129,13 +133,12 @@ export const createTrackingStep = async (
   return result.rows[0];
 };
 
-export const completeCurrentTrackingStep =
-  async (
-    sessionId: number,
-    currentStepNo: number,
-  ) => {
-    await db.query(
-      `
+export const completeCurrentTrackingStep = async (
+  sessionId: number,
+  currentStepNo: number,
+) => {
+  await db.query(
+    `
       UPDATE session_step_trackings
       SET
         status = 'completed',
@@ -154,17 +157,16 @@ export const completeCurrentTrackingStep =
       WHERE session_id = $1
         AND step_no = $2
     `,
-      [sessionId, currentStepNo],
-    );
-  };
+    [sessionId, currentStepNo],
+  );
+};
 
-export const getNextTreatmentStep =
-  async (
-    sessionId: number,
-    nextStepNo: number,
-  ) => {
-    const result = await db.query(
-      `
+export const getNextTreatmentStep = async (
+  sessionId: number,
+  nextStepNo: number,
+) => {
+  const result = await db.query(
+    `
       SELECT
         st.id,
         st.step_no,
@@ -186,46 +188,48 @@ export const getNextTreatmentStep =
       WHERE ss.id = $1
         AND st.step_no = $2
     `,
-      [sessionId, nextStepNo],
-    );
+    [sessionId, nextStepNo],
+  );
 
-    return result.rows[0];
-  };
+  return result.rows[0];
+};
 
-export const updateSessionCurrentStep =
-  async (
-    sessionId: number,
-    stepNo: number,
-  ) => {
-    await db.query(
-      `
+export const updateSessionCurrentStep = async (
+  sessionId: number,
+  stepNo: number,
+) => {
+  await db.query(
+    `
       UPDATE customer_service_sessions
       SET current_step_no = $2
       WHERE id = $1
     `,
-      [sessionId, stepNo],
-    );
-  };
+    [sessionId, stepNo],
+  );
+};
 
-export const updateSessionToPaused =
-  async (sessionId: number) => {
-    await db.query(
-      `
+export const updateSessionToPaused = async (sessionId: number) => {
+  await db.query(
+    `
       UPDATE customer_service_sessions
       SET
         status = 'paused',
         paused_at = NOW(),
+
+        pause_expired_at =
+          NOW() + interval '3 minute',
+
         pause_count = pause_count + 1
+
       WHERE id = $1
     `,
-      [sessionId],
-    );
-  };
+    [sessionId],
+  );
+};
 
-export const pauseCurrentTrackingStep =
-  async (sessionId: number) => {
-    await db.query(
-      `
+export const pauseCurrentTrackingStep = async (sessionId: number) => {
+  await db.query(
+    `
       UPDATE session_step_trackings
       SET
         status = 'paused',
@@ -245,26 +249,26 @@ export const pauseCurrentTrackingStep =
       WHERE session_id = $1
         AND is_current_step = true
     `,
-      [sessionId],
-    );
-  };
+    [sessionId],
+  );
+};
 
-export const resumeTrackingSession =
-  async (sessionId: number) => {
-    await db.query(
-      `
+export const resumeTrackingSession = async (sessionId: number) => {
+  await db.query(
+    `
       UPDATE customer_service_sessions
       SET
         status = 'in_progress',
         resumed_at = NOW(),
-        paused_at = NULL
+        paused_at = NULL,
+          pause_expired_at = NULL
       WHERE id = $1
     `,
-      [sessionId],
-    );
+    [sessionId],
+  );
 
-    await db.query(
-      `
+  await db.query(
+    `
       UPDATE session_step_trackings
       SET
         status = 'in_progress',
@@ -274,16 +278,15 @@ export const resumeTrackingSession =
       WHERE session_id = $1
         AND is_current_step = true
     `,
-      [sessionId],
-    );
+    [sessionId],
+  );
 
-    return true;
-  };
+  return true;
+};
 
-export const transferTrackingSession =
-  async (sessionId: number) => {
-    await db.query(
-      `
+export const transferTrackingSession = async (sessionId: number) => {
+  await db.query(
+    `
       UPDATE customer_service_sessions
       SET
         status = 'transfer_pending',
@@ -291,16 +294,15 @@ export const transferTrackingSession =
         technician_id = NULL
       WHERE id = $1
     `,
-      [sessionId],
-    );
+    [sessionId],
+  );
 
-    return true;
-  };
+  return true;
+};
 
-export const completeCurrentTrackingForSession =
-  async (sessionId: number) => {
-    await db.query(
-      `
+export const completeCurrentTrackingForSession = async (sessionId: number) => {
+  await db.query(
+    `
       UPDATE session_step_trackings
       SET
         status = 'completed',
@@ -326,14 +328,13 @@ export const completeCurrentTrackingForSession =
       WHERE session_id = $1
         AND is_current_step = true
     `,
-      [sessionId],
-    );
-  };
+    [sessionId],
+  );
+};
 
-export const getSessionTotalDuration =
-  async (sessionId: number) => {
-    const result = await db.query(
-      `
+export const getSessionTotalDuration = async (sessionId: number) => {
+  const result = await db.query(
+    `
       SELECT
         COALESCE(
           SUM(actual_duration_seconds),
@@ -342,16 +343,15 @@ export const getSessionTotalDuration =
       FROM session_step_trackings
       WHERE session_id = $1
     `,
-      [sessionId],
-    );
+    [sessionId],
+  );
 
-    return result.rows[0].total_duration;
-  };
+  return result.rows[0].total_duration;
+};
 
-export const getSessionStepSummary =
-  async (sessionId: number) => {
-    const result = await db.query(
-      `
+export const getSessionStepSummary = async (sessionId: number) => {
+  const result = await db.query(
+    `
       SELECT
         css.current_step_no,
 
@@ -376,20 +376,19 @@ export const getSessionStepSummary =
 
       WHERE css.id = $1
     `,
-      [sessionId],
-    );
+    [sessionId],
+  );
 
-    return result.rows[0];
-  };
+  return result.rows[0];
+};
 
-export const completeSessionRecord =
-  async (
-    sessionId: number,
-    data: any,
-    totalDuration: number,
-  ) => {
-    const result = await db.query(
-      `
+export const completeSessionRecord = async (
+  sessionId: number,
+  data: any,
+  totalDuration: number,
+) => {
+  const result = await db.query(
+    `
       UPDATE customer_service_sessions
       SET
         status = $1::varchar,
@@ -398,27 +397,29 @@ export const completeSessionRecord =
 
         skin_reaction = $2,
 
-        total_actual_duration_seconds = $3
+        after_image_url = $3,
 
-      WHERE id = $4
+        total_actual_duration_seconds = $4
+
+      WHERE id = $5
 
       RETURNING *
     `,
-      [
-        data.status,
-        data.skin_reaction ?? null,
-        totalDuration,
-        sessionId,
-      ],
-    );
+    [
+      data.status,
+      data.skin_reaction,
+      data.after_image_url,
+      totalDuration,
+      sessionId,
+    ],
+  );
 
-    return result.rows[0];
-  };
+  return result.rows[0];
+};
 
-export const increaseUsedSession =
-  async (sessionId: number) => {
-    await db.query(
-      `
+export const increaseUsedSession = async (sessionId: number) => {
+  await db.query(
+    `
       UPDATE customer_service_profiles
       SET used_sessions = used_sessions + 1
       WHERE id = (
@@ -427,13 +428,11 @@ export const increaseUsedSession =
         WHERE id = $1
       )
     `,
-      [sessionId],
-    );
-  };
+    [sessionId],
+  );
+};
 
-export const getRealtimeTrackingDetail = async (
-  sessionId: number,
-) => {
+export const getRealtimeTrackingDetail = async (sessionId: number) => {
   const result = await db.query(
     `
     SELECT
@@ -446,4 +445,43 @@ export const getRealtimeTrackingDetail = async (
   );
 
   return result.rows;
+};
+
+export const isPauseExpired = async (sessionId: number) => {
+  const result = await db.query(
+    `
+    SELECT
+      pause_expired_at,
+      NOW() > pause_expired_at AS expired
+    FROM customer_service_sessions
+    WHERE id = $1
+    `,
+    [sessionId],
+  );
+
+  return result.rows[0];
+};
+
+export const closeSessionAfterPauseTimeout = async (
+  sessionId: number,
+  totalDuration: number,
+) => {
+  const result = await db.query(
+    `
+      UPDATE customer_service_sessions
+      SET
+        status = 'partial_done',
+
+        completed_at = NOW(),
+
+        total_actual_duration_seconds = $2
+
+      WHERE id = $1
+
+      RETURNING *
+      `,
+    [sessionId, totalDuration],
+  );
+
+  return result.rows[0];
 };

@@ -2,11 +2,24 @@ import { Request, Response } from "express";
 import { createBookingSchema } from "../validators/booking.schema.js";
 import * as bookingService from "../services/booking.service.js";
 import { getIO } from "../socket.js";
+import { ChatCapacityService } from "../services/chat/chat-capacity.service.js";
 
 export const createBookingPublic = async (req: Request, res: Response) => {
   try {
     const data = createBookingSchema.parse(req.body);
 
+    const capacityCheck = await ChatCapacityService.isSlotAvailable(
+      data.booking_date,
+      data.booking_time,
+      data.quantity,
+    );
+
+    if (!capacityCheck.available) {
+      return res.status(400).json({
+        message:
+          "Khung giờ này đã đầy hoặc không tiếp nhận đủ số khách đã chọn, vui lòng chọn giờ khác",
+      });
+    }
     const phone = data.phone || null;
     const email = data.email || null;
 
@@ -42,6 +55,19 @@ export const createBookingPublic = async (req: Request, res: Response) => {
 export const createBookingByStaff = async (req: Request, res: Response) => {
   try {
     const data = createBookingSchema.parse(req.body);
+
+    const capacityCheck = await ChatCapacityService.isSlotAvailable(
+      data.booking_date,
+      data.booking_time,
+      data.quantity,
+    );
+
+    if (!capacityCheck.available) {
+      return res.status(400).json({
+        message:
+          "Khung giờ này đã đầy hoặc không thể tiếp nhận số khách đã chọn, vui lòng chọn giờ khác",
+      });
+    }
 
     const phone = data.phone || null;
     const email = data.email || null;
@@ -100,56 +126,37 @@ export const getBookingById = async (req: Request, res: Response) => {
   }
 };
 
-export const updateBookingAndCustomer = async (
-  req: Request,
-  res: Response,
-) => {
+export const updateBookingAndCustomer = async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
 
     const data = req.body;
 
-    const bookingExist =
-      await bookingService.getBookingById(id);
+    const bookingExist = await bookingService.getBookingById(id);
 
     if (!bookingExist) {
-      return res
-        .status(404)
-        .json({ message: "Booking not found" });
+      return res.status(404).json({ message: "Booking not found" });
     }
 
     const cleanData = {
-  ...data,
+      ...data,
 
-  referrer_id: data.referrer_id
-    ? Number(data.referrer_id)
-    : null,
-};
+      referrer_id: data.referrer_id ? Number(data.referrer_id) : null,
+    };
 
     // customer
-    await bookingService.upsertCustomer(
-      bookingExist.customer_id,
-      cleanData,
-    );
+    await bookingService.upsertCustomer(bookingExist.customer_id, cleanData);
 
     // booking
-    await bookingService.updateBooking(
-      id,
-      cleanData,
-    );
+    await bookingService.updateBooking(id, cleanData);
 
-    const booking =
-      await bookingService.getBookingById(id);
+    const booking = await bookingService.getBookingById(id);
 
-    getIO()
-      .to("reception")
-      .emit("booking:updated", booking);
+    getIO().to("reception").emit("booking:updated", booking);
 
     return res.json(booking);
   } catch (err: any) {
-    return res
-      .status(400)
-      .json({ message: err.message });
+    return res.status(400).json({ message: err.message });
   }
 };
 
@@ -170,6 +177,7 @@ export const checkInBooking = async (req: Request, res: Response) => {
 
     const io = getIO();
     io.to("reception").emit("booking:updated", booking);
+    io.to("doctor").emit("booking:updated", booking);
 
     res.json(booking);
   } catch (err: any) {
@@ -208,5 +216,62 @@ export const searchCustomers = async (req: Request, res: Response) => {
     return res.json(customers);
   } catch (err: any) {
     return res.status(500).json({ message: err.message });
+  }
+};
+
+export const checkBookingCapacity = async (req: Request, res: Response) => {
+  try {
+    const { booking_date, booking_time } = req.query;
+
+    const quantity = Number(req.query.quantity) || 1;
+    if (!booking_date || !booking_time) {
+      return res.status(400).json({
+        message: "booking_date và booking_time là bắt buộc",
+      });
+    }
+
+    const result = await ChatCapacityService.isSlotAvailable(
+      booking_date as string,
+      booking_time as string,
+      quantity,
+    );
+
+    const suggestions = !result.available
+      ? await ChatCapacityService.suggestSlots(booking_date as string, quantity)
+      : [];
+
+    return res.json({
+      ...result,
+      suggestions,
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+export const getDayCapacity = async (req: Request, res: Response) => {
+  try {
+    const { booking_date } = req.query;
+
+    const quantity = Number(req.query.quantity) || 1;
+
+    if (!booking_date) {
+      return res.status(400).json({
+        message: "booking_date bắt buộc",
+      });
+    }
+
+    const slots = await ChatCapacityService.getDayCapacity(
+      booking_date as string,
+      quantity,
+    );
+
+    return res.json(slots);
+  } catch (err: any) {
+    return res.status(500).json({
+      message: err.message,
+    });
   }
 };

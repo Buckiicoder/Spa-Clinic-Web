@@ -10,6 +10,7 @@ import {
   cancelInventoryTransactionAPI,
   getInventoryTransactionByIdAPI,
   getInventoryTransactionsAPI,
+  exportInventoryToStaffAPI,
 } from "./inventoryTransactionAPI";
 
 interface InventoryTransactionState {
@@ -86,7 +87,27 @@ export const cancelInventoryTransaction = createAsyncThunk(
   async (id: number) => {
     const res = await cancelInventoryTransactionAPI(id);
 
-    return res.data;
+    return res.data.transaction ?? res.data;
+  },
+);
+
+export const exportInventoryTransaction = createAsyncThunk(
+  "inventoryTransaction/export",
+  async (data: {
+    code: string;
+    note?: string;
+    transaction_date?: string;
+    issued_by: number;
+    received_by: number;
+    items: {
+      product_id: number;
+      quantity: number;
+      unit_price: number;
+      note?: string;
+    }[];
+  }) => {
+    const res = await exportInventoryToStaffAPI(data);
+    return res.data.transaction;
   },
 );
 
@@ -175,6 +196,10 @@ const inventoryTransactionSlice = createSlice({
       if (state.selectedTransaction?.id === updated.id) {
         state.selectedTransaction = updated;
       }
+    });
+
+    builder.addCase(exportInventoryTransaction.fulfilled, (state, action) => {
+      state.transactions.unshift(action.payload);
     });
   },
 });

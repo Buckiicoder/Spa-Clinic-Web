@@ -1,5 +1,5 @@
 export const PHONE_REGEX =
-  /(0|\+84)(3|5|7|8|9)[0-9]{8}/g;
+  /(?:\+84|84|0)(?:\d){9}/;
 
 export const EMAIL_REGEX =
   /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;

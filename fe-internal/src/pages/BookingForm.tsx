@@ -7,6 +7,11 @@ import {
   createBookingStaff,
   updateBooking,
   searchCustomers,
+  checkBookingCapacity,
+  getDayCapacity,
+  selectBookingCapacity,
+  selectDayCapacity,
+  selectCheckingCapacity,
 } from "../features/internalBooking/bookingSlice";
 import { useSelector } from "react-redux";
 import { useAppDispatch } from "../app/hook";
@@ -31,6 +36,9 @@ export default function BookingForm() {
 
   const action = searchParams.get("action");
   const services = useSelector(selectMiddleServices);
+  const capacity = useSelector(selectBookingCapacity);
+  const dayCapacity = useSelector(selectDayCapacity);
+  const checkingCapacity = useSelector(selectCheckingCapacity);
   const user = useSelector(selectUser);
 
   const [loading, setLoading] = useState(false);
@@ -78,6 +86,38 @@ export default function BookingForm() {
   useEffect(() => {
     dispatch(fetchMiddleServices());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!form.date) return;
+
+    dispatch(
+      getDayCapacity({
+        bookingDate: form.date,
+        quantity: Number(form.quantity),
+      }),
+    );
+  }, [form.date, form.quantity, dispatch]);
+
+  useEffect(() => {
+    if (!form.date || !form.time) return;
+
+    dispatch(
+      checkBookingCapacity({
+        booking_date: form.date,
+        booking_time: form.time,
+        quantity: Number(form.quantity),
+      }),
+    );
+  }, [form.date, form.time, form.quantity, dispatch]);
+
+  useEffect(() => {
+    if (capacity && !capacity.available) {
+      setForm((prev: any) => ({
+        ...prev,
+        time: "",
+      }));
+    }
+  }, [capacity]);
 
   const formatDateLocal = (iso: string) => {
     const d = new Date(iso);
@@ -219,6 +259,23 @@ export default function BookingForm() {
     validatePhone(form.phone);
     if (error.phone) return;
 
+    if (Number(form.quantity) > 3) {
+      alert("Một lần đặt lịch chỉ tối đa 3 khách");
+      return;
+    }
+
+    const bookingDateTime = new Date(`${form.date}T${form.time}:00`);
+
+    if (bookingDateTime < new Date()) {
+      alert("Không thể đặt lịch trong quá khứ");
+      return;
+    }
+
+    if (capacity && !capacity.available) {
+      alert("Khung giờ này không đủ sức chứa");
+      return;
+    }
+
     try {
       if (isEdit) {
         await dispatch(
@@ -295,6 +352,42 @@ export default function BookingForm() {
       </div>
     );
   }
+
+  const slotMap = Object.fromEntries(
+    dayCapacity.map((slot: any) => [slot.time, slot]),
+  );
+
+  const timeSlots = [];
+
+  let hour = 8;
+  let minute = 0;
+
+  while (hour < 20 || (hour === 19 && minute <= 30)) {
+    timeSlots.push(
+      `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+    );
+
+    minute += 30;
+
+    if (minute === 60) {
+      hour++;
+      minute = 0;
+    }
+  }
+
+  const today = new Date().toLocaleDateString("en-CA");
+
+  const now = new Date();
+
+  const currentTime =
+    `${String(now.getHours()).padStart(2, "0")}:` +
+    `${String(now.getMinutes()).padStart(2, "0")}`;
+
+  const isPastTime = (date: string, time: string) => {
+    if (date !== today) return false;
+
+    return time < currentTime;
+  };
 
   return (
     <div className="min-h-screen bg-amber-50 flex items-center justify-center px-6 py-20">
@@ -412,9 +505,19 @@ export default function BookingForm() {
                 type="number"
                 name="quantity"
                 value={form.quantity}
-                onChange={handleChange}
+                onChange={(e) => {
+                  const value = Math.min(
+                    3,
+                    Math.max(1, Number(e.target.value)),
+                  );
+
+                  setForm((prev: any) => ({
+                    ...prev,
+                    quantity: value,
+                  }));
+                }}
                 min={1}
-                max={10}
+                max={3}
                 className="w-full rounded-xl border px-4 py-3"
               />
             </div>
@@ -457,19 +560,73 @@ export default function BookingForm() {
                 name="time"
                 value={form.time}
                 onChange={handleChange}
+                required
                 className="w-full rounded-xl border px-4 py-3"
               >
                 <option value="">-- Chọn giờ --</option>
-                <option value="08:00">08:00</option>
-                <option value="09:00">09:00</option>
-                <option value="10:00">10:00</option>
-                <option value="11:00">11:00</option>
-                <option value="13:00">13:00</option>
-                <option value="14:00">14:00</option>
-                <option value="15:00">15:00</option>
-                <option value="16:00">16:00</option>
-                <option value="17:00">17:00</option>
+
+                {timeSlots.map((time) => {
+                  const slot = slotMap[time];
+
+                  const disabledByCapacity = slot && !slot.available;
+
+                  const disabledByPast = isPastTime(form.date, time);
+
+                  const disabled = disabledByCapacity || disabledByPast;
+
+                  return (
+                    <option key={time} value={time} disabled={disabled}>
+                      {disabledByPast
+                        ? `${time} (Đã qua)`
+                        : disabledByCapacity
+                          ? `${time} (Đã đầy)`
+                          : `${time} (còn ${slot?.remaining ?? "-"} chỗ)`}
+                    </option>
+                  );
+                })}
               </select>
+
+              {capacity && !capacity.available && (
+                <div className="mt-2 rounded-lg border border-red-300 bg-red-50 p-3">
+                  <div className="font-medium text-red-700">
+                    Khung giờ này không đủ sức chứa
+                  </div>
+
+                  <div className="text-sm text-red-600 mt-1">
+                    Đang có {capacity.bookingCount}/{capacity.maxCapacity} khách
+                  </div>
+
+                  <div className="text-sm text-red-600">
+                    Còn lại {capacity.remaining} chỗ
+                  </div>
+                </div>
+              )}
+
+              {capacity &&
+                !capacity.available &&
+                capacity.suggestions?.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-sm font-medium">Khung giờ còn trống:</p>
+
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {capacity.suggestions.map((slot: any) => (
+                        <button
+                          key={slot.time}
+                          type="button"
+                          onClick={() =>
+                            setForm((prev: any) => ({
+                              ...prev,
+                              time: slot.time,
+                            }))
+                          }
+                          className="px-3 py-1 rounded-full bg-green-100 text-green-700"
+                        >
+                          {slot.time}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
           {/* DATE */}

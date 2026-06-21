@@ -67,6 +67,8 @@ export const createVNPaySchema = z.object({
   discount_id: z.number().nullable().optional(),
 
   amount: z.number().positive(),
+
+  source: z.enum(["customer", "staff"]).optional(),
 });
 
 export const createZaloPaySchema =

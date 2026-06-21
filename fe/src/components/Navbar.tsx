@@ -181,7 +181,7 @@ export default function Navbar() {
                 <img
                   src={
                     user?.avatar
-                      ? SERVER_URL + +user.avatar
+                      ? SERVER_URL + user.avatar
                       : "https://ui-avatars.com/api/?name=" +
                         (user?.name || "User")
                   }

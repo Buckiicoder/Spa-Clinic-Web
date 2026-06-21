@@ -205,6 +205,7 @@ export const createVNPayPayment = createAsyncThunk(
     profile_id: number;
     discount_id?: number | null;
     amount: number;
+    source: string;
   }) => {
     const res = await createVNPayPaymentAPI(data);
 

@@ -16,6 +16,7 @@ import SpaChatWidget from "./components/SpaChatWidget";
 import Payment from "./pages/Payment";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import PaymentResult from "./pages/PaymentResult";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -54,6 +55,13 @@ export default function App() {
         <Route path="/payment/customer/:customerId" element={<Payment />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
+        {/* <Route path="/payment/result" element={<PaymentResult />} /> */}
+
+        <Route
+  path="/payment/result"
+  element={<PaymentResult />}
+/>
+        
         <Route path="/verify-otp" element={<VerifyOTP />} />
 
         <Route path="/reset-password" element={<ResetPassword />} />

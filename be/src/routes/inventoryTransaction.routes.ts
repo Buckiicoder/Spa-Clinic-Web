@@ -32,4 +32,10 @@ router.patch(
   inventoryController.cancelInventoryTransaction,
 );
 
+router.post(
+  "/export",
+  authStaffMiddleware,
+  inventoryController.exportInventoryToStaff,
+);
+
 export default router;

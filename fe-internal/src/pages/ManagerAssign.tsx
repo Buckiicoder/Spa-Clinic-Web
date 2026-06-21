@@ -11,10 +11,12 @@ import {
   selectTechnicians,
 } from "../features/technician/technicianSlice";
 // import { io } from "socket.io-client";
+import { selectUser } from "../features/auth/authSlice";
 
 export default function ManagerAssign() {
   const dispatch = useAppDispatch();
 
+  const user = useAppSelector(selectUser);
   const consultedToday = useAppSelector(selectConsultedToday);
   const technicians = useAppSelector(selectTechnicians);
 
@@ -35,44 +37,36 @@ export default function ManagerAssign() {
   useEffect(() => {
     socket.connect();
 
-    // 🔥 join manager room
     socket.emit("join-manager");
 
-    // 🔥 realtime khi có thay đổi session
-    socket.on("session:updated", async () => {
+    const reloadData = async () => {
       const updatedBookings = await dispatch(fetchConsultedToday()).unwrap();
 
       await dispatch(fetchTechnicians());
 
-      // 🔥 update selected booking realtime
-      if (selectedBooking) {
+      setSelectedBooking((current: any) => {
+        if (!current) return current;
+
         const fresh = updatedBookings.find(
-          (x: any) => x.session_id === selectedBooking.session_id,
+          (x: any) => x.session_id === current.session_id,
         );
 
-        setSelectedBooking(fresh || null);
-      }
-    });
+        return fresh || null;
+      });
+    };
 
-    // 🔥 realtime khi manager khác assign
-    socket.on("session:assigned", async () => {
-      const updatedBookings = await dispatch(fetchConsultedToday()).unwrap();
+    socket.on("booking:updated", reloadData);
 
-      await dispatch(fetchTechnicians());
+    socket.on("session:updated", reloadData);
 
-      if (selectedBooking) {
-        const fresh = updatedBookings.find(
-          (x: any) => x.session_id === selectedBooking.session_id,
-        );
-
-        setSelectedBooking(fresh || null);
-      }
-    });
+    socket.on("session:assigned", reloadData);
 
     return () => {
-      socket.disconnect();
+      socket.off("booking:updated", reloadData);
+      socket.off("session:updated", reloadData);
+      socket.off("session:assigned", reloadData);
     };
-  }, [dispatch, selectedBooking]);
+  }, [dispatch]);
 
   const waitingBookings = useMemo(() => {
     return consultedToday.filter(
@@ -111,10 +105,12 @@ export default function ManagerAssign() {
 
   const handleAssign = async (sessionId: number, technicianId: number) => {
     try {
+      const managerId = user?.id;
       await dispatch(
         assignTechnician({
           session_id: sessionId,
           technician_id: technicianId,
+          manager_id: managerId,
         }),
       ).unwrap();
 
@@ -546,16 +542,14 @@ export default function ManagerAssign() {
                 </div>
 
                 <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-  <span className="pl-4 pb-2">
-    {selectedBooking.current_tracking_status ||
-      "Waiting"}
-  </span>
+                  <span className="pl-4 pb-2">
+                    {selectedBooking.current_tracking_status || "Waiting"}
+                  </span>
 
-  <span className="pr-4 pb-3">
-    Tạm dừng:{" "}
-    {selectedBooking.current_step_pause_count || 0}
-  </span>
-</div>
+                  <span className="pr-4 pb-3">
+                    Tạm dừng: {selectedBooking.current_step_pause_count || 0}
+                  </span>
+                </div>
               </div>
 
               {/* TECHNICIAN LIST */}

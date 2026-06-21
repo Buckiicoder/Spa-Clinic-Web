@@ -53,7 +53,7 @@ export const fetchTechnicians = createAsyncThunk(
 export const assignTechnician = createAsyncThunk(
   "technician/assign",
   async (
-    data: { session_id: number; technician_id: number },
+    data: { session_id: number; technician_id: number; manager_id: number },
     { dispatch },
   ) => {
     const res = await assignTechnicianAPI(data);

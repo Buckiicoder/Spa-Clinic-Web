@@ -7,9 +7,34 @@ import {
   createBookingStaffAPI,
   updateBookingAPI,
   searchCustomersAPI,
-  deleteBookingAPI
+  deleteBookingAPI,
+  getDayCapacityAPI,
+  checkBookingCapacityAPI,
 } from "./bookingAPI";
-import { Booking } from "../../types/booking";
+import { Booking, CapacityResponse, DayCapacityItem } from "../../types/booking";
+
+interface BookingState {
+  bookings: Booking[];
+  customers: any[];
+
+  capacity: CapacityResponse | null;
+  dayCapacity: DayCapacityItem[];
+
+  checkingCapacity: boolean;
+  loadingDayCapacity: boolean;
+}
+
+const initialState: BookingState = {
+  bookings: [],
+  customers: [],
+
+  capacity: null,
+  dayCapacity: [],
+
+  checkingCapacity: false,
+  loadingDayCapacity: false,
+};
+
 
 export const fetchBookings = createAsyncThunk(
   "booking/fetch",
@@ -91,12 +116,57 @@ export const searchCustomers = createAsyncThunk(
   }
 );
 
+export const checkBookingCapacity = createAsyncThunk(
+  "booking/checkCapacity",
+  async (
+    {
+      booking_date,
+      booking_time,
+      quantity,
+    }: {
+      booking_date: string;
+      booking_time: string;
+      quantity: number;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await checkBookingCapacityAPI(
+        booking_date,
+        booking_time,
+        quantity
+      );
+
+      return res.data as CapacityResponse;
+    } catch (err: any) {
+      return rejectWithValue(
+        err.response?.data || "Không kiểm tra được capacity"
+      );
+    }
+  }
+);
+
+export const getDayCapacity = createAsyncThunk(
+  "booking/dayCapacity",
+  async (
+    {
+      bookingDate,
+      quantity,
+    }: {
+      bookingDate: string;
+      quantity: number;
+    }
+  ) => {
+    const res = await getDayCapacityAPI(bookingDate,
+      quantity,);
+
+    return res.data as DayCapacityItem[];
+  }
+);
+
 const slice = createSlice({
   name: "booking",
-  initialState: {
-    bookings: [] as Booking[],
-    customers: [],
-  },
+  initialState,
   reducers: {
     bookingCreated: (state, action) => {
       state.bookings.unshift(action.payload);
@@ -151,10 +221,48 @@ const slice = createSlice({
       // 🔹 search customer
       .addCase(searchCustomers.fulfilled, (state, action) => {
         state.customers = action.payload;
-      });
+      })
+
+      .addCase(checkBookingCapacity.pending, (state) => {
+  state.checkingCapacity = true;
+})
+
+.addCase(checkBookingCapacity.fulfilled, (state, action) => {
+  state.checkingCapacity = false;
+  state.capacity = action.payload;
+})
+
+.addCase(checkBookingCapacity.rejected, (state) => {
+  state.checkingCapacity = false;
+})
+
+.addCase(getDayCapacity.pending, (state) => {
+  state.loadingDayCapacity = true;
+})
+
+.addCase(getDayCapacity.fulfilled, (state, action) => {
+  state.loadingDayCapacity = false;
+  state.dayCapacity = action.payload;
+})
+
+.addCase(getDayCapacity.rejected, (state) => {
+  state.loadingDayCapacity = false;
+})
   },
 });
 
 export const { bookingCreated, bookingUpdated, bookingDeleted } = slice.actions;
 
 export default slice.reducer;
+
+export const selectBookingCapacity = (state: any) =>
+  state.internalBooking.capacity;
+
+export const selectDayCapacity = (state: any) =>
+  state.internalBooking.dayCapacity;
+
+export const selectCheckingCapacity = (state: any) =>
+  state.internalBooking.checkingCapacity;
+
+export const selectLoadingDayCapacity = (state: any) =>
+  state.internalBooking.loadingDayCapacity;

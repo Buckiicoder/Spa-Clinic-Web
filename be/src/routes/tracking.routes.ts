@@ -1,8 +1,7 @@
 import { Router } from "express";
-
 import * as trackingController from "../controllers/tracking.controller.js";
-
 import { authStaffMiddleware } from "../middleware/auth.middleware.js";
+import { upload } from "../middleware/upload.middleware.js";
 
 const router = Router();
 
@@ -81,6 +80,25 @@ router.get(
   "/session/:id/realtime",
   authStaffMiddleware,
   trackingController.getRealtimeTrackingDetail,
+);
+
+router.get(
+  "/session/:id/check-pause",
+  authStaffMiddleware,
+  trackingController.checkPauseTimeout,
+);
+
+router.post(
+  "/session/:id/stop-after-pause",
+  authStaffMiddleware,
+  trackingController.stopAfterPauseTimeout,
+);
+
+router.post(
+  "/upload-image",
+  authStaffMiddleware,
+  upload.single("image"),
+  trackingController.uploadTrackingImage,
 );
 
 export default router;

@@ -26,7 +26,7 @@ export const getWorkingTechnicians = async (req: Request, res: Response) => {
  */
 export const assignTechnician = async (req: Request, res: Response) => {
   try {
-    const managerId = req.user.id;
+    const {managerId} = req.body;
 
     const { session_id, technician_id } = assignTechnicianSchema.parse(
       req.body,

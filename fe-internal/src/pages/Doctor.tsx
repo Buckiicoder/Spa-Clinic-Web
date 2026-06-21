@@ -74,14 +74,22 @@ export default function DoctorExamination() {
 
     socket.emit("join-doctor");
 
-    socket.on("booking:updated", () => {
+    const handleBookingUpdated = (updatedBooking: any) => {
       dispatch(fetchWaitingConsultations());
-    });
+
+      // nếu đang mở đúng booking này
+      // thì reload detail luôn
+      if (booking?.id === updatedBooking.id) {
+        dispatch(fetchConsultationDetail(updatedBooking.id));
+      }
+    };
+
+    socket.on("booking:updated", handleBookingUpdated);
 
     return () => {
-      socket.off("booking:updated");
+      socket.off("booking:updated", handleBookingUpdated);
     };
-  }, [dispatch]);
+  }, [dispatch, booking?.id]);
 
   useEffect(() => {
     if (booking) {

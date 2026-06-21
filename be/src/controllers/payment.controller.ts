@@ -113,18 +113,30 @@ export const createPayment = async (req: Request, res: Response) => {
 
 export const createVNPayPayment = async (req: Request, res: Response) => {
   try {
-    const data = createVNPaySchema.parse(req.body);
+    console.log("===== REQUEST BODY =====");
+console.log(req.body);
+
+console.log("===== SOURCE FROM BODY =====");
+console.log(req.body.source);
+
+    const data = createVNPaySchema.parse(req.body);   
 
     const ipAddr =
       req.headers["x-forwarded-for"]?.toString() ||
       req.socket.remoteAddress ||
       "127.0.0.1";
 
+    // const ipAddr = "127.0.0.1";
+
+    console.log(req.headers["x-forwarded-for"]);
+    console.log(req.socket.remoteAddress);
+
     const result = await vnpayServices.createVNPayPayment({
       profile_id: data.profile_id,
       discount_id: data.discount_id,
       amount: data.amount,
       ipAddr,
+      source: data.source,
     });
 
     return res.json({
@@ -141,17 +153,43 @@ export const createVNPayPayment = async (req: Request, res: Response) => {
 
 export const vnpayReturn = async (req: Request, res: Response) => {
   try {
+    console.log("===== CALLBACK QUERY =====");
+    console.log(req.query);
+
     const result = await vnpayServices.vnpayReturnService(req.query);
 
-    if (result.success) {
-      return res.redirect(`${process.env.FRONTEND_URL}/payment-success`);
-    }
+    console.log("===== RESULT =====");
+    console.log(result);
 
-    return res.redirect(`${process.env.FRONTEND_URL}/payment-failed`);
+    console.log("SOURCE =", result.source);
+
+    const frontendUrl =
+      result.source === "staff"
+        ? process.env.FRONTEND_STAFF_URL
+        : process.env.FRONTEND_CUSTOMER_URL;
+
+    console.log("===== RESULT =====");
+    console.log(result);
+
+    const txnRef = req.query.vnp_TxnRef;
+    const responseCode = req.query.vnp_ResponseCode;
+
+    return res.redirect(
+      `${frontendUrl}/payment/result` +
+        `?gateway=vnpay` +
+        `&success=${result.success}` +
+        `&txnRef=${txnRef}` +
+        `&responseCode=${responseCode}` +
+        `&source=${result.source}`,
+    );
   } catch (err: any) {
     console.error(err);
 
-    return res.redirect(`${process.env.FRONTEND_URL}/payment-failed`);
+    return res.redirect(
+      `${process.env.FRONTEND_CUSTOMER_URL}/payment/result` +
+        `?gateway=vnpay` +
+        `&success=false`,
+    );
   }
 };
 

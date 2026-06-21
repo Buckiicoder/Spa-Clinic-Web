@@ -30,9 +30,13 @@ export function extractName(text: string): string | null {
 
   if (phoneMatch) {
     const beforePhone = cleaned
-      .substring(0, phoneMatch.index)
-      .replace(/[,:-]/g, "")
-      .trim();
+  .substring(0, phoneMatch.index)
+  .replace(
+    /\b(sdt|sđt|số điện thoại|phone|điện thoại)\b/gi,
+    "",
+  )
+  .replace(/[,:-]/g, "")
+  .trim();
 
     if (beforePhone && beforePhone.length >= 2 && beforePhone.length <= 30) {
       return beforePhone;
@@ -72,7 +76,6 @@ export function extractDate(text: string) {
   // hôm nay
   if (
     /\bhôm nay\b/.test(lower) ||
-    /\bnay\b/.test(lower) ||
     /\bsáng nay\b/.test(lower) ||
     /\bchiều nay\b/.test(lower) ||
     /\btối nay\b/.test(lower)
@@ -82,7 +85,6 @@ export function extractDate(text: string) {
 
   // ngày mai
   if (
-    /\bmai\b/.test(lower) ||
     /\bngày mai\b/.test(lower) ||
     /\bsáng mai\b/.test(lower) ||
     /\bchiều mai\b/.test(lower) ||
@@ -127,12 +129,64 @@ export function extractDate(text: string) {
     ? parsed.format("YYYY-MM-DD")
     : null;
 }
+
+const vietnameseNumbers: Record<string, number> = {
+  "một": 1,
+  "hai": 2,
+  "ba": 3,
+  "bốn": 4,
+  "tư": 4,
+  "năm": 5,
+  "sáu": 6,
+  "bảy": 7,
+  "tám": 8,
+  "chín": 9,
+  "mười": 10,
+  "mười một": 11,
+  "mười hai": 12,
+};
+
 export function extractTime(text: string) {
   const lower = text.toLowerCase();
 
+  // ===== XỬ LÝ CHỮ =====
+
+  for (const [word, value] of Object.entries(vietnameseNumbers).sort(([a], [b]) => b.length - a.length)) {
+    const regex = new RegExp(
+      `\\b${word}\\s*giờ(?:\\s*rưỡi)?\\b`,
+      "i",
+    );
+
+    if (regex.test(lower)) {
+      let hour = value;
+
+      let minute = "00";
+
+      if (lower.includes("rưỡi")) {
+        minute = "30";
+      }
+
+      if (
+        lower.includes("chiều") ||
+        lower.includes("tối")
+      ) {
+        if (hour < 12) {
+          hour += 12;
+        }
+      }
+
+      return `${String(hour).padStart(
+        2,
+        "0",
+      )}:${minute}`;
+    }
+  }
+
+  // ===== XỬ LÝ SỐ =====
+
   const match =
-    lower.match(/\b(\d{1,2})h(\d{0,2})?\b/) ||
-    lower.match(/\b(\d{1,2})\s*giờ(?:\s*(\d{1,2}))?\b/) ||
+    lower.match(/\b(\d{1,2})h\s*(\d{1,2})?\b/) ||
+    lower.match(/\b(\d{1,2})\s*giờ\s*(\d{1,2})?\b/) ||
     lower.match(/\b(\d{1,2}):(\d{2})\b/);
 
   if (!match) {
@@ -155,5 +209,8 @@ export function extractTime(text: string) {
     }
   }
 
-  return `${String(hour).padStart(2, "0")}:${minute.padStart(2, "0")}`;
+  return `${String(hour).padStart(
+    2,
+    "0",
+  )}:${minute.padStart(2, "0")}`;
 }

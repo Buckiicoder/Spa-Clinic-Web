@@ -153,7 +153,19 @@ export const createTimekeepingBulk = async (records: TimekeepingInput[]) => {
     );
   });
 
-  console.log("SQL VALUES", values);
+  // console.log("SQL VALUES", values);
+
+  const grouped = new Map<string, number>();
+
+  for (const r of records) {
+    const key = `${r.user_id}_${r.work_date}`;
+
+    grouped.set(key, (grouped.get(key) || 0) + 1);
+
+    if ((grouped.get(key) || 0) > 2) {
+      throw new Error("Mỗi ngày chỉ được đăng ký tối đa 2 ca");
+    }
+  }
 
   const result = await db.query(
     `
@@ -441,9 +453,9 @@ export const calculateCheckoutData = async (
   const workedAfterBreak = Math.max(totalMinutes - totalBreakMinutes, 0);
 
   const workDate =
-  typeof current.work_date === "string"
-    ? current.work_date.split("T")[0]
-    : current.work_date.toISOString().split("T")[0];
+    typeof current.work_date === "string"
+      ? current.work_date.split("T")[0]
+      : current.work_date.toISOString().split("T")[0];
 
   const shiftStart = new Date(`${workDate}T${current.start_time}`);
 
@@ -544,4 +556,104 @@ WHERE
       new Date() >=
       new Date(new Date(x.final_checkout).getTime() + 60 * 60 * 1000),
   );
+};
+
+export const getExpiredSchedulePeriods = async () => {
+  const result = await db.query(`
+      SELECT *
+      FROM schedule_periods
+      WHERE status = 'OPEN'
+      AND open_to < NOW()
+    `);
+
+  return result.rows;
+};
+
+export const getFulltimeWithoutRegister = async (
+  month: number,
+  year: number,
+) => {
+  const result = await db.query(
+    `
+      SELECT
+        u.id as user_id
+      FROM users u
+      JOIN staffs st
+        ON st.user_id = u.id
+
+      WHERE st.employee_type = 'FULLTIME'
+
+      AND NOT EXISTS (
+        SELECT 1
+        FROM timekeeping_daily tk
+        WHERE tk.user_id = u.id
+        AND EXTRACT(MONTH FROM tk.work_date) = $1
+        AND EXTRACT(YEAR FROM tk.work_date) = $2
+      )
+      `,
+    [month, year],
+  );
+
+  return result.rows;
+};
+
+export const getMostCrowdedWorkingDays = async (
+  month: number,
+  year: number,
+) => {
+  const result = await db.query(
+    `
+      SELECT
+        sd.work_date,
+        sd.shift_id,
+        COUNT(tk.id) as employee_count
+
+      FROM schedule_days sd
+
+      LEFT JOIN timekeeping_daily tk
+        ON tk.work_date = sd.work_date
+        AND tk.shift_id = sd.shift_id
+
+      JOIN shifts s
+        ON s.id = sd.shift_id
+
+      WHERE
+        EXTRACT(MONTH FROM sd.work_date)= $1
+        AND
+        EXTRACT(YEAR FROM sd.work_date)= $2
+
+      GROUP BY
+        sd.work_date,
+        sd.shift_id
+
+      ORDER BY
+        employee_count DESC,
+        sd.work_date ASC
+      `,
+    [month, year],
+  );
+
+  return result.rows;
+};
+
+export const autoAssignFulltimeOffDays = async (
+  userId: number,
+  month: number,
+  year: number,
+) => {
+  const crowdedDays = await getMostCrowdedWorkingDays(month, year);
+
+  const selectedDays = crowdedDays
+    .map((x) => x.work_date)
+    .filter((value, index, self) => self.indexOf(value) === index)
+    .slice(0, 4);
+
+  const records = selectedDays.map((workDate: string) => ({
+    user_id: userId,
+    shift_id: 1,
+    work_date: workDate,
+    status: "OFF",
+  }));
+
+  return createTimekeepingBulk(records);
 };

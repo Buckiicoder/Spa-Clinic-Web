@@ -16,6 +16,7 @@ export const getWorkingTechniciansAPI = () =>
 export const assignTechnicianAPI = (data: {
   session_id: number;
   technician_id: number;
+   manager_id: number;
 }) => api.post("/technician/assign", data);
 
 /**

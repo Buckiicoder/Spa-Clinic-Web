@@ -15,7 +15,7 @@ export const createBookingSchema = z
     service_id: z.number(),
     booking_date: z.string(),
     booking_time: z.string(),
-    quantity: z.number().min(1).default(1),
+    quantity: z.number().min(1).max(3).default(1),
 
     // ✅ thêm mới (optional → không phá FE cũ)
     note: z.string().optional(),

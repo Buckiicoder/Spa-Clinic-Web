@@ -52,6 +52,8 @@ export const fetchTimekeepingByDate = createAsyncThunk(
   async ({ user_id, work_date }: { user_id: number; work_date: string }) => {
     const res = await getTimekeepingByDateAPI(user_id, work_date);
 
+    // console.log("API: ", res.data.data);
+
     return res.data.data || [];
   },
 );

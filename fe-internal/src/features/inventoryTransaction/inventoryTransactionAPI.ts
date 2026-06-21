@@ -28,3 +28,7 @@ export const confirmInventoryTransactionAPI = (
 export const cancelInventoryTransactionAPI = (
   id: number,
 ) => api.patch(`/inventory-transactions/${id}/cancel`);
+
+// EXPORT TO STAFF
+export const exportInventoryToStaffAPI = (data: any) =>
+  api.post("/inventory-transactions/export", data);

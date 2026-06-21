@@ -39,10 +39,13 @@ export class ChatCapacityService {
 
     return Number(result.rows[0]?.total || 0);
   }
-  static async getBookingCount(bookingDate: string, bookingTime: string) {
-    const result = await db.query(
-      `
-    SELECT COUNT(*) as total
+  static async getBookingCount(
+  bookingDate: string,
+  bookingTime: string,
+) {
+  const result = await db.query(
+    `
+    SELECT COALESCE(SUM(quantity),0) as total
     FROM bookings
     WHERE booking_date = $1
       AND booking_time BETWEEN
@@ -57,11 +60,11 @@ export class ChatCapacityService {
         'IN_TREATMENT'
       )
     `,
-      [bookingDate, bookingTime],
-    );
+    [bookingDate, bookingTime],
+  );
 
-    return Number(result.rows[0]?.total || 0);
-  }
+  return Number(result.rows[0]?.total || 0);
+}
 
   static readonly EXTRA_CAPACITY = 10;
   static async getSlotCapacity(bookingDate: string, bookingTime: string) {
@@ -70,21 +73,20 @@ export class ChatCapacityService {
     return staff + this.EXTRA_CAPACITY;
   }
 
-  static async isSlotAvailable(bookingDate: string, bookingTime: string) {
+  static async isSlotAvailable(bookingDate: string, bookingTime: string, quantity: number) {
     const staff = await this.getAvailableStaffCount(bookingDate, bookingTime);
+    const bookingQuantity = quantity || 1;
 
     const bookingCount = await this.getBookingCount(bookingDate, bookingTime);
 
     const maxCapacity = staff + this.EXTRA_CAPACITY;
 
     return {
-      available: bookingCount < maxCapacity,
-
+      available: bookingCount + bookingQuantity <= maxCapacity,
       bookingCount,
-
       staff,
-
       maxCapacity,
+      remaining: maxCapacity - bookingCount,
     };
   }
 
@@ -110,23 +112,45 @@ export class ChatCapacityService {
     return slots;
   }
 
-  static async suggestSlots(bookingDate: string) {
+  static async suggestSlots(bookingDate: string, quantity: number) {
     const slots = this.generateSlots();
 
     const availableSlots = [];
 
     for (const slot of slots) {
-      const check = await this.isSlotAvailable(bookingDate, slot);
+      const check = await this.isSlotAvailable(bookingDate, slot, quantity);
 
       if (check.available) {
         availableSlots.push({
           time: slot,
           booking: check.bookingCount,
           capacity: check.maxCapacity,
+          remaining: check.maxCapacity - check.bookingCount,
         });
       }
     }
 
     return availableSlots.slice(0, 5);
+  }
+
+
+  static async getDayCapacity(bookingDate: string, quantity: number) {
+    const slots = this.generateSlots();
+
+    const result = [];
+
+    for (const slot of slots) {
+      const check = await this.isSlotAvailable(bookingDate, slot, quantity);
+
+      result.push({
+        time: slot,
+        available: check.available,
+        bookingCount: check.bookingCount,
+        maxCapacity: check.maxCapacity,
+        remaining: check.maxCapacity - check.bookingCount,
+      });
+    }
+
+    return result;
   }
 }

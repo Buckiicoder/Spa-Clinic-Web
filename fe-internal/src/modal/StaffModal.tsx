@@ -380,8 +380,8 @@ const validate = () => {
                       })
                     }
                   >
-                    <option value="Fulltime">Fulltime</option>
-                    <option value="Parttime">Parttime</option>
+                    <option value="FULLTIME">Fulltime</option>
+                    <option value="PARTTIME">Parttime</option>
                   </select>
                 </div>
 

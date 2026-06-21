@@ -15,6 +15,11 @@ import {
   completeStepTracking,
   pauseTrackingSession,
   resumeTrackingSession,
+  checkPauseTimeout,
+  stopAfterPauseTimeout,
+  selectPauseExpired,
+  selectPauseExpiredAt,
+  uploadTrackingImage,
 } from "../features/tracking/trackingSlice";
 
 // import { io } from "socket.io-client";
@@ -32,7 +37,8 @@ export default function Technician() {
   } | null>(null);
 
   const sessions = useAppSelector(selectMySessions);
-
+  const pauseExpired = useAppSelector(selectPauseExpired);
+  const pauseExpiredAt = useAppSelector(selectPauseExpiredAt);
   const selectedSession = useAppSelector(selectSessionDetail);
 
   // giao diện ui cập nhật chạy dịch vụ KTV
@@ -48,92 +54,117 @@ export default function Technician() {
 
   const [completeForm, setCompleteForm] = useState({
     skin_reaction: "",
+    after_image_url: "",
   });
+  const [beforeImageFile, setBeforeImageFile] = useState<File | null>(null);
+
+  const [beforeImagePreview, setBeforeImagePreview] = useState("");
+
+  const [afterImageFile, setAfterImageFile] = useState<File | null>(null);
+
+  const [afterImagePreview, setAfterImagePreview] = useState("");
+
   const [tab, setTab] = useState<"assigned" | "completed">("assigned");
 
   useEffect(() => {
     dispatch(fetchMySessions());
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     socket.connect();
 
     socket.emit("join-technician");
 
-    socket.on("session:assigned", async () => {
-      await dispatch(fetchMySessions());
-    });
-
-    socket.on("tracking:session_started", async () => {
-      await dispatch(fetchMySessions());
-
-      if (selectedSession?.id) {
-        await dispatch(fetchSessionDetail(selectedSession.id));
-      }
-    });
-
-    socket.on("tracking:step_completed", async () => {
-      if (selectedSession?.id) {
-        await dispatch(fetchSessionDetail(selectedSession.id));
-      }
-    });
-
-    socket.on("tracking:paused", async () => {
-      if (selectedSession?.id) {
-        await dispatch(fetchSessionDetail(selectedSession.id));
-      }
-    });
-
-    socket.on("tracking:resumed", async () => {
-      if (selectedSession?.id) {
-        await dispatch(fetchSessionDetail(selectedSession.id));
-      }
-    });
-
-    socket.on("tracking:session_completed", async () => {
-      await dispatch(fetchMySessions());
-
-      if (selectedSession?.id) {
-        await dispatch(fetchSessionDetail(selectedSession.id));
-      }
-    });
-
-    socket.on("session:updated", async () => {
-  await dispatch(fetchMySessions());
-
-  if (selectedSession?.id) {
-    await dispatch(
-      fetchSessionDetail(selectedSession.id),
-    );
-  }
-});
-
     return () => {
       socket.disconnect();
     };
+  }, []);
+
+  useEffect(() => {
+    const reloadData = async () => {
+      await dispatch(fetchMySessions());
+
+      if (selectedSession?.id) {
+        await dispatch(fetchSessionDetail(selectedSession.id));
+      }
+    };
+
+    socket.on("session:assigned", reloadData);
+
+    socket.on("session:updated", reloadData);
+
+    socket.on("tracking:session_started", reloadData);
+
+    socket.on("tracking:step_completed", reloadData);
+
+    socket.on("tracking:paused", reloadData);
+
+    socket.on("tracking:resumed", reloadData);
+
+    socket.on("tracking:session_completed", reloadData);
+
+    return () => {
+      socket.off("session:assigned", reloadData);
+
+      socket.off("session:updated", reloadData);
+
+      socket.off("tracking:session_started", reloadData);
+
+      socket.off("tracking:step_completed", reloadData);
+
+      socket.off("tracking:paused", reloadData);
+
+      socket.off("tracking:resumed", reloadData);
+
+      socket.off("tracking:session_completed", reloadData);
+    };
   }, [dispatch, selectedSession?.id]);
 
+  useEffect(() => {
+    if (!selectedSession || selectedSession.status !== "paused") {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      dispatch(checkPauseTimeout(selectedSession.id));
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [dispatch, selectedSession?.id, selectedSession?.status]);
+
+  useEffect(() => {
+    if (!pauseExpired || !selectedSession) {
+      return;
+    }
+
+    dispatch(stopAfterPauseTimeout(selectedSession.id));
+
+    setToast({
+      message: "Dịch vụ đã tự động kết thúc do quá thời gian tạm dừng.",
+      type: "error",
+    });
+
+    dispatch(fetchMySessions());
+
+    dispatch(fetchSessionDetail(selectedSession.id));
+  }, [pauseExpired, selectedSession, dispatch]);
+
   const assignedSessions = useMemo(() => {
-  return sessions.filter((s: any) =>
-    [
-      "assigned",
-      "in_progress",
-      "paused",
-      "transfer_pending",
-    ].includes(s.status),
-  );
-}, [sessions]);
+    return sessions.filter((s: any) =>
+      ["assigned", "in_progress", "paused", "transfer_pending"].includes(
+        s.status,
+      ),
+    );
+  }, [sessions]);
 
   const completedSessions = useMemo(() => {
-  return sessions.filter((s: any) =>
-    ["done", "partial_done"].includes(s.status),
-  );
-}, [sessions]);
+    return sessions.filter((s: any) =>
+      ["done", "partial_done"].includes(s.status),
+    );
+  }, [sessions]);
 
   const displaySessions =
-  tab === "assigned"
-    ? assignedSessions
-    : completedSessions;
+    tab === "assigned" ? assignedSessions : completedSessions;
 
   const handleCompleteSession = useCallback(async () => {
     if (!selectedSession) return;
@@ -166,6 +197,12 @@ export default function Technician() {
 
       await dispatch(fetchSessionDetail(selectedSession.id));
 
+      setBeforeImageFile(null);
+      setBeforeImagePreview("");
+
+      setAfterImageFile(null);
+      setAfterImagePreview("");
+
       return;
     }
     setShowCompleteModal(true);
@@ -174,28 +211,71 @@ export default function Technician() {
   const handleSubmitCompleteForm = async () => {
     if (!selectedSession) return;
 
-    await dispatch(
-      completeTrackingSession({
-        id: selectedSession.id,
-        data: completeForm,
-      }),
-    );
+    try {
+      let uploadedAfterUrl = "";
 
-    setShowCompleteModal(false);
+      if (afterImageFile) {
+        uploadedAfterUrl = await dispatch(
+          uploadTrackingImage(afterImageFile),
+        ).unwrap();
+      }
 
-    setCompleteForm({
-      skin_reaction: "",
-    });
+      await dispatch(
+        completeTrackingSession({
+          id: selectedSession.id,
+          data: {
+            ...completeForm,
+            after_image_url: uploadedAfterUrl,
+          },
+        }),
+      ).unwrap();
 
-    await dispatch(fetchMySessions());
+      setShowCompleteModal(false);
 
-    await dispatch(fetchSessionDetail(selectedSession.id));
+      setCompleteForm({
+        skin_reaction: "",
+        after_image_url: "",
+      });
+
+      setAfterImageFile(null);
+      setAfterImagePreview("");
+
+      setBeforeImageFile(null);
+      setBeforeImagePreview("");
+
+      await dispatch(fetchMySessions());
+
+      await dispatch(fetchSessionDetail(selectedSession.id));
+
+      setToast({
+        message: "Đã hoàn thành dịch vụ",
+        type: "success",
+      });
+    } catch (err: any) {
+      setToast({
+        message: err || "Không thể hoàn thành dịch vụ",
+        type: "error",
+      });
+    }
   };
 
   useEffect(() => {
     setActiveStepIndex(0);
     setElapsedSeconds(0);
     // setStepStartedAt(null);
+
+    // reset ảnh trước điều trị
+    setBeforeImageFile(null);
+    setBeforeImagePreview("");
+
+    // reset ảnh sau điều trị
+    setAfterImageFile(null);
+    setAfterImagePreview("");
+
+    setCompleteForm({
+      skin_reaction: "",
+      after_image_url: "",
+    });
   }, [selectedSession?.id]);
 
   const steps = useMemo(() => {
@@ -231,7 +311,13 @@ export default function Technician() {
       return;
     }
 
-    const startedTime = new Date(currentStep.started_at).getTime();
+    if (!currentStep) {
+      return;
+    }
+
+    const startedTime = new Date(
+      currentStep.resumed_at || currentStep.started_at,
+    ).getTime();
 
     // setStepStartedAt(startedTime);
 
@@ -291,68 +377,101 @@ export default function Technician() {
     selectedSession?.id,
     activeStepIndex,
     currentStep?.started_at,
+    currentStep?.resumed_at,
     steps,
     dispatch,
     handleCompleteSession,
   ]);
 
   const getStatusColor = (status: string) => {
-  switch (status) {
-    case "assigned":
-      return "bg-indigo-100 text-indigo-700";
+    switch (status) {
+      case "assigned":
+        return "bg-indigo-100 text-indigo-700";
 
-    case "in_progress":
-      return "bg-blue-100 text-blue-700";
+      case "in_progress":
+        return "bg-blue-100 text-blue-700";
 
-    case "paused":
-      return "bg-yellow-100 text-yellow-700";
+      case "paused":
+        return "bg-yellow-100 text-yellow-700";
 
-    case "transfer_pending":
-      return "bg-purple-100 text-purple-700";
+      case "transfer_pending":
+        return "bg-purple-100 text-purple-700";
 
-    case "partial_done":
-      return "bg-orange-100 text-orange-700";
+      case "partial_done":
+        return "bg-orange-100 text-orange-700";
 
-    case "done":
-      return "bg-green-100 text-green-700";
+      case "done":
+        return "bg-green-100 text-green-700";
 
-    default:
-      return "bg-gray-100 text-gray-700";
-  }
-};
+      default:
+        return "bg-gray-100 text-gray-700";
+    }
+  };
 
   const getStatusText = (status: string) => {
-  switch (status) {
-    case "assigned":
-      return "Chờ tiếp nhận";
+    switch (status) {
+      case "assigned":
+        return "Chờ tiếp nhận";
 
-    case "in_progress":
-      return "Đang thực hiện";
+      case "in_progress":
+        return "Đang thực hiện";
 
-    case "paused":
-      return "Tạm dừng";
+      case "paused":
+        return "Tạm dừng";
 
-    case "transfer_pending":
-      return "Chờ chuyển ca";
+      case "transfer_pending":
+        return "Chờ chuyển ca";
 
-    case "partial_done":
-      return "Hoàn thành sớm";
+      case "partial_done":
+        return "Hoàn thành sớm";
 
-    case "done":
-      return "Đã hoàn thành";
+      case "done":
+        return "Đã hoàn thành";
 
-    default:
-      return status;
-  }
-};
+      default:
+        return status;
+    }
+  };
 
   const handleReceiveCustomer = async () => {
     if (!selectedSession) return;
 
-    await dispatch(startTrackingSession(selectedSession.id));
-    await dispatch(fetchMySessions());
-    await dispatch(fetchSessionDetail(selectedSession.id));
-    // setStepStartedAt(Date.now());
+    if (!beforeImageFile) {
+      setToast({
+        message: "Vui lòng chọn ảnh trước điều trị",
+        type: "error",
+      });
+      return;
+    }
+
+    try {
+      const uploadedUrl = await dispatch(
+        uploadTrackingImage(beforeImageFile),
+      ).unwrap();
+
+      await dispatch(
+        startTrackingSession({
+          id: selectedSession.id,
+          before_image_url: uploadedUrl,
+        }),
+      ).unwrap();
+
+      setBeforeImageFile(null);
+      setBeforeImagePreview("");
+
+      await dispatch(fetchMySessions());
+      await dispatch(fetchSessionDetail(selectedSession.id));
+
+      setToast({
+        message: "Đã tiếp nhận khách hàng",
+        type: "success",
+      });
+    } catch (err: any) {
+      setToast({
+        message: err || "Upload ảnh thất bại",
+        type: "error",
+      });
+    }
   };
 
   return (
@@ -369,28 +488,28 @@ export default function Technician() {
           </div>
 
           <div className="flex border-b mb-4">
-  <button
-    onClick={() => setTab("assigned")}
-    className={`flex-1 py-2 text-sm transition ${
-      tab === "assigned"
-        ? "border-b-2 border-amber-500 font-semibold"
-        : "text-gray-500"
-    }`}
-  >
-    Đang chờ phục vụ
-  </button>
+            <button
+              onClick={() => setTab("assigned")}
+              className={`flex-1 py-2 text-sm transition ${
+                tab === "assigned"
+                  ? "border-b-2 border-amber-500 font-semibold"
+                  : "text-gray-500"
+              }`}
+            >
+              Đang chờ phục vụ
+            </button>
 
-  <button
-    onClick={() => setTab("completed")}
-    className={`flex-1 py-2 text-sm transition ${
-      tab === "completed"
-        ? "border-b-2 border-green-500 font-semibold"
-        : "text-gray-500"
-    }`}
-  >
-    Đã hoàn thành
-  </button>
-</div>
+            <button
+              onClick={() => setTab("completed")}
+              className={`flex-1 py-2 text-sm transition ${
+                tab === "completed"
+                  ? "border-b-2 border-green-500 font-semibold"
+                  : "text-gray-500"
+              }`}
+            >
+              Đã hoàn thành
+            </button>
+          </div>
 
           <div className="space-y-3 max-h-[78vh] overflow-auto pr-1">
             {displaySessions.map((s: any) => (
@@ -444,8 +563,8 @@ export default function Technician() {
             {displaySessions.length === 0 && (
               <div className="text-center text-sm text-gray-400 py-10">
                 {tab === "assigned"
-  ? "Chưa có khách hàng đang chờ"
-  : "Chưa có ca hoàn thành"}
+                  ? "Chưa có khách hàng đang chờ"
+                  : "Chưa có ca hoàn thành"}
               </div>
             )}
           </div>
@@ -472,12 +591,47 @@ export default function Technician() {
                 {/* ACTION BUTTON */}
                 <div className="flex gap-3">
                   {selectedSession.status === "assigned" ? (
-                    <button
-                      onClick={handleReceiveCustomer}
-                      className="px-5 py-2 rounded-2xl bg-amber-500 text-white font-medium hover:bg-amber-600 transition"
-                    >
-                      Nhận khách
-                    </button>
+                    <div className="flex flex-col gap-3">
+                      <label className="cursor-pointer inline-flex items-center rounded-xl bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600">
+                        Chọn ảnh trước điều trị
+                        <input
+                          key={`${selectedSession?.id}-${beforeImagePreview}`}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+
+                            if (!file) return;
+
+                            setBeforeImageFile(file);
+
+                            setBeforeImagePreview(URL.createObjectURL(file));
+                          }}
+                        />
+                      </label>
+
+                      {beforeImageFile && (
+                        <p className="text-xs text-gray-500">
+                          {beforeImageFile.name}
+                        </p>
+                      )}
+
+                      {beforeImagePreview && (
+                        <img
+                          src={beforeImagePreview}
+                          alt="before-preview"
+                          className="h-24 w-24 rounded-xl border object-cover"
+                        />
+                      )}
+
+                      <button
+                        onClick={handleReceiveCustomer}
+                        className="px-5 py-2 rounded-2xl bg-amber-500 text-white"
+                      >
+                        Nhận khách
+                      </button>
+                    </div>
                   ) : selectedSession.status === "in_progress" ? (
                     <>
                       {selectedSession?.pause_count < 1 &&
@@ -519,32 +673,50 @@ export default function Technician() {
                       </button>
                     </>
                   ) : selectedSession.status === "paused" ? (
-                    <button
-                      onClick={async () => {
-                        try {
-                          await dispatch(
-                            resumeTrackingSession(selectedSession.id),
-                          ).unwrap();
+                    <>
+                      <div className="mb-4 rounded-2xl bg-yellow-50 border border-yellow-200 p-4">
+                        <p className="font-semibold text-yellow-700">
+                          Dịch vụ đang tạm dừng
+                        </p>
 
-                          setToast({
-                            message: "Đã tiếp tục dịch vụ",
-                            type: "success",
-                          });
+                        <p className="text-sm text-yellow-600 mt-1">
+                          Sau 3 phút hệ thống sẽ tự động kết thúc buổi dịch vụ.
+                        </p>
 
-                          await dispatch(
-                            fetchSessionDetail(selectedSession.id),
-                          );
-                        } catch (err: any) {
-                          setToast({
-                            message: err || "Không thể tiếp tục dịch vụ",
-                            type: "error",
-                          });
-                        }
-                      }}
-                      className="px-5 py-2 rounded-2xl bg-green-600 text-white font-medium"
-                    >
-                      Tiếp tục
-                    </button>
+                        {pauseExpiredAt && (
+                          <p className="text-xs text-red-500 mt-2">
+                            Hết hạn lúc:{" "}
+                            {new Date(pauseExpiredAt).toLocaleTimeString()}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await dispatch(
+                              resumeTrackingSession(selectedSession.id),
+                            ).unwrap();
+
+                            setToast({
+                              message: "Đã tiếp tục dịch vụ",
+                              type: "success",
+                            });
+
+                            await dispatch(
+                              fetchSessionDetail(selectedSession.id),
+                            );
+                          } catch (err: any) {
+                            setToast({
+                              message: err || "Không thể tiếp tục dịch vụ",
+                              type: "error",
+                            });
+                          }
+                        }}
+                        className="px-5 py-2 rounded-2xl bg-green-600 text-white font-medium"
+                      >
+                        Tiếp tục
+                      </button>
+                    </>
                   ) : (
                     <button
                       disabled
@@ -816,6 +988,44 @@ export default function Technician() {
                   className="w-full border rounded-2xl px-4 py-3"
                   placeholder="Ví dụ: Da hơi đỏ nhẹ sau treatment..."
                 />
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Ảnh sau điều trị
+                  </label>
+
+                  <label className="cursor-pointer inline-flex items-center rounded-xl bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600">
+                    Chọn ảnh
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+
+                        if (!file) return;
+
+                        setAfterImageFile(file);
+
+                        setAfterImagePreview(URL.createObjectURL(file));
+                      }}
+                    />
+                  </label>
+
+                  {afterImageFile && (
+                    <p className="mt-2 text-xs text-gray-500">
+                      {afterImageFile.name}
+                    </p>
+                  )}
+
+                  {afterImagePreview && (
+                    <img
+                      src={afterImagePreview}
+                      alt="after-preview"
+                      className="mt-3 h-40 w-40 rounded-xl border object-cover"
+                    />
+                  )}
+                </div>
               </div>
             </div>
 
